@@ -35,6 +35,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.WebViewStreamSniffer
 import com.kiduyuk.klausk.kiduyutv.util.AdvancedAdBlocker
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
 import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
+import kotlinx.coroutines.launch
 
 /**
  * Hosts third-party movie and TV providers inside a fullscreen WebView.
