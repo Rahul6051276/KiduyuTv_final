@@ -368,7 +368,8 @@ fun NavGraph(navController: NavHostController) {
                 season = if (season == 0) null else season,
                 episode = if (episode == 0) null else episode,
                 timestamp = timestamp,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onOpenSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
 

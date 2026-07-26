@@ -703,6 +703,7 @@ fun MobileNavGraph(navController: NavHostController) {
                 episode = if (episode == 0) null else episode,
                 timestamp = timestamp,
                 onBackClick = { navController.popBackStack() },
+                onOpenSettings = { navController.navigate(Screen.Settings.route) },
                 onProviderClick = { providerUrl ->
                     val intent = Intent(navController.context, PlayerActivity::class.java).apply {
                         putExtra("TMDB_ID", tmdbId)
@@ -779,7 +780,8 @@ fun MobileNavGraph(navController: NavHostController) {
                 season = if (season == 0) null else season,
                 episode = if (episode == 0) null else episode,
                 timestamp = timestamp,
-                onBackClick = { navController.popBackStack() }
+                onBackClick = { navController.popBackStack() },
+                onOpenSettings = { navController.navigate(Screen.Settings.route) }
             )
         }
     }

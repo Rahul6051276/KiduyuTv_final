@@ -36,7 +36,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +59,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.theme.PrimaryRed
 import com.kiduyuk.klausk.kiduyutv.ui.theme.TextPrimary
 import com.kiduyuk.klausk.kiduyutv.ui.theme.TextSecondary
 import com.kiduyuk.klausk.kiduyutv.util.TvInterstitialManager
+import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import com.kiduyuk.klausk.kiduyutv.viewmodel.StreamLinksViewModel
 import com.kiduyuk.klausk.kiduyutv.viewmodel.StreamProviderUi
 
@@ -75,10 +78,36 @@ fun StreamLinksScreen(
     episode: Int? = null,
     timestamp: Long = 0L,
     onBackClick: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     viewModel: StreamLinksViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
+    var directStreamPromptResolved by remember {
+        mutableStateOf(SettingsManager(context).isDirectStreamEnabled())
+    }
+
+    LaunchedEffect(tmdbId) {
+        if (!directStreamPromptResolved) {
+            android.app.AlertDialog.Builder(context)
+                .setTitle("Enable Direct Stream?")
+                .setMessage(
+                    "Direct Stream uses the native player and automatically loads streams " +
+                        "from all enabled providers."
+                )
+                .setPositiveButton("Open Settings") { dialog, _ ->
+                    directStreamPromptResolved = true
+                    dialog.dismiss()
+                    onOpenSettings()
+                }
+                .setNegativeButton("Not now") { dialog, _ ->
+                    directStreamPromptResolved = true
+                    dialog.dismiss()
+                }
+                .setOnCancelListener { directStreamPromptResolved = true }
+                .show()
+        }
+    }
 
     LaunchedEffect(tmdbId, isTv, season, episode) {
         viewModel.loadStreamProviders(tmdbId, isTv, season, episode, context, filterPhoneOnly = true)

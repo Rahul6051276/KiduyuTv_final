@@ -33,7 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -96,12 +98,38 @@ fun MobileStreamLinksScreen(
     timestamp: Long = 0L,
     onBackClick: () -> Unit,
     onProviderClick: (String) -> Unit,
+    onOpenSettings: () -> Unit = {},
     viewModel: StreamLinksViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val activity = context.findActivity()
     val handleBackClick = rememberPhoneInterstitialBackClick(onBackClick)
     val uiState by viewModel.uiState.collectAsState()
+    var directStreamPromptResolved by remember {
+        mutableStateOf(SettingsManager(context).isDirectStreamEnabled())
+    }
+
+    LaunchedEffect(tmdbId) {
+        if (!directStreamPromptResolved) {
+            android.app.AlertDialog.Builder(context)
+                .setTitle("Enable Direct Stream?")
+                .setMessage(
+                    "Direct Stream uses the native player and automatically loads streams " +
+                        "from all enabled providers."
+                )
+                .setPositiveButton("Open Settings") { dialog, _ ->
+                    directStreamPromptResolved = true
+                    dialog.dismiss()
+                    onOpenSettings()
+                }
+                .setNegativeButton("Not now") { dialog, _ ->
+                    directStreamPromptResolved = true
+                    dialog.dismiss()
+                }
+                .setOnCancelListener { directStreamPromptResolved = true }
+                .show()
+        }
+    }
 
     BackHandler(onBack = handleBackClick)
 
@@ -118,8 +146,12 @@ fun MobileStreamLinksScreen(
 
     // Auto-launch if a default provider is set and providers have loaded
     val defaultProvider = remember { SettingsManager(context).getDefaultProvider() }
-    LaunchedEffect(uiState.streamProviders) {
-        if (defaultProvider != SettingsManager.AUTO && uiState.streamProviders.isNotEmpty()) {
+    LaunchedEffect(uiState.streamProviders, directStreamPromptResolved) {
+        if (
+            directStreamPromptResolved &&
+            defaultProvider != SettingsManager.AUTO &&
+            uiState.streamProviders.isNotEmpty()
+        ) {
             val match = uiState.streamProviders.find { it.name == defaultProvider }
             if (match != null) {
                 try {
