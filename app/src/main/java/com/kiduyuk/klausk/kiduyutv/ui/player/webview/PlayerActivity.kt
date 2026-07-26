@@ -28,8 +28,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.webkit.WebViewCompat
 import com.kiduyuk.klausk.kiduyutv.R
 import com.kiduyuk.klausk.kiduyutv.data.model.StreamProviderManager
-import com.kiduyuk.klausk.kiduyutv.data.model.WatchHistoryItem
-import com.kiduyuk.klausk.kiduyutv.data.repository.TmdbRepository
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedStream
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedSubtitle
@@ -37,17 +35,13 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.WebViewStreamSniffer
 import com.kiduyuk.klausk.kiduyutv.util.AdvancedAdBlocker
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
 import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Hosts third-party movie and TV providers inside a fullscreen WebView.
  *
  * The activity configures provider playback, initializes player-only ad blocking before the
  * first page load, exposes playback progress through [PlayerBridge], supports a virtual TV
- * cursor, and persists watch-history progress locally and to Firebase.
+ * cursor, and can hand captured streams to the native direct-stream player.
  *
  * Required intent data includes `TMDB_ID` and `IS_TV`. Provider HTML may be supplied through
  * `IFRAME_HTML`; otherwise [StreamProviderManager] generates it from the selected stream URL.
@@ -91,15 +85,6 @@ class PlayerActivity : AppCompatActivity() {
     private val sniffedSubtitles = linkedMapOf<String, SniffedSubtitle>()
     private val snifferHandoffHandler = Handler(Looper.getMainLooper())
     private val snifferHandoffRunnable = Runnable { openSniffedStream() }
-    private var currentPlaybackPosition: Long = 0L
-    private var currentDuration: Long = 0L
-
-    // 15-second progress update handler
-    private val progressUpdateHandler = Handler(Looper.getMainLooper())
-    private val progressUpdateRunnable = Runnable {
-        updateWatchProgress()
-    }
-    private val repository = TmdbRepository()
 
     /** Returns true for Amazon Fire TV hardware features or known AFT model identifiers. */
     private fun isFireTVDevice(context: Context): Boolean {
@@ -211,9 +196,6 @@ class PlayerActivity : AppCompatActivity() {
                 onSubtitleCaptured = ::rememberSniffedSubtitle
             )
         }
-
-        // Check and add to watch history, timer will be started after check completes
-        checkAndAddToWatchHistory()
 
         val uiModeManager = getSystemService(android.content.Context.UI_MODE_SERVICE) as UiModeManager
         val deviceModel = Build.MODEL
@@ -354,12 +336,8 @@ class PlayerActivity : AppCompatActivity() {
 
         // Add JavascriptInterface bridge for player events (must be called on webView, not Activity)
         webView.addJavascriptInterface(
-            PlayerBridge { provider, positionSec, durationSec, season, episode ->
+            PlayerBridge { _, _, _, season, episode ->
                 runOnUiThread {
-                    // positionSec is in seconds, convert to milliseconds for storage
-                    currentPlaybackPosition = (positionSec * 1000).toLong()
-                    // Store duration in milliseconds
-                    currentDuration = (durationSec * 1000).toLong()
                     // Update season and episode if provided and they have changed
                     if (currentIsTv && season != null && episode != null) {
                         if (season != currentSeason || episode != currentEpisode) {
@@ -422,7 +400,7 @@ class PlayerActivity : AppCompatActivity() {
             isTv = currentIsTv,
             season = if (currentIsTv) currentSeason else null,
             episode = if (currentIsTv) currentEpisode else null,
-            timestamp = currentPlaybackPosition / 1000L, // Provider parameters use seconds.
+            timestamp = intent.getLongExtra("TIMESTAMP", 0L),
             isTvDevice = currentIsTvDevice
         )
         initializeAdBlockerAndLoadPlayer(baseUrl, finalHtml)
@@ -454,13 +432,11 @@ class PlayerActivity : AppCompatActivity() {
         super.onPause()
         webView.onPause()
         webView.pauseTimers()
-        stopProgressUpdateTimer()
         snifferHandoffHandler.removeCallbacks(snifferHandoffRunnable)
     }
 
     /** Stops callbacks and releases every WebView resource owned by this activity. */
     override fun onDestroy() {
-        stopProgressUpdateTimer()
         cursorHideHandler.removeCallbacks(cursorHideRunnable)
         dismissLoadingDialog()
 
@@ -578,137 +554,6 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     /**
-     * Creates the watch-history row when necessary and starts periodic progress persistence.
-     * Errors are fail-soft so playback tracking can continue on the next timer cycle.
-     */
-    private fun checkAndAddToWatchHistory() {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                Log.d(TAG, "[WatchHistory] Checking if media is in watch history: id=$currentTmdbId, isTv=$currentIsTv")
-
-                // Check synchronously before deciding to add
-                val alreadyInHistory = repository.isInWatchHistory(
-                    this@PlayerActivity,
-                    currentTmdbId,
-                    currentIsTv
-                )
-
-                if (!alreadyInHistory) {
-                    Log.d(TAG, "[WatchHistory] Adding to watch history: id=$currentTmdbId, title=$currentTitle, isTv=$currentIsTv, season=$currentSeason, episode=$currentEpisode")
-                    val watchHistoryItem = WatchHistoryItem(
-                        id = currentTmdbId,
-                        title = currentTitle,
-                        overview = currentOverview,
-                        posterPath = currentPosterPath,
-                        backdropPath = currentBackdropPath,
-                        voteAverage = currentVoteAverage,
-                        releaseDate = currentReleaseDate,
-                        isTv = currentIsTv,
-                        seasonNumber = if (currentIsTv) currentSeason else null,
-                        episodeNumber = if (currentIsTv) currentEpisode else null,
-                        lastWatched = System.currentTimeMillis(),
-                        playbackPosition = 0L
-                    )
-
-                    repository.saveToWatchHistory(this@PlayerActivity, watchHistoryItem)
-                    Log.d(TAG, "[WatchHistory] saveToWatchHistory called successfully")
-
-                    // Start progress timer only after adding to history
-                    withContext(Dispatchers.Main) {
-                        startProgressUpdateTimer()
-                    }
-
-                    com.kiduyuk.klausk.kiduyutv.util.FirebaseManager.syncWatchHistory(
-                        tmdbId = currentTmdbId,
-                        isTv = currentIsTv,
-                        seasonNumber = if (currentIsTv) currentSeason else null,
-                        episodeNumber = if (currentIsTv) currentEpisode else null,
-                        playbackPosition = 0L,
-                        duration = 0L,
-                        title = currentTitle,
-                        overview = currentOverview,
-                        posterPath = currentPosterPath,
-                        backdropPath = currentBackdropPath,
-                        voteAverage = currentVoteAverage,
-                        releaseDate = currentReleaseDate
-                    )
-                } else {
-                    Log.d(TAG, "[WatchHistory] Media already in watch history, starting timer anyway")
-                    // Start timer even if already in history (for resume functionality)
-                    withContext(Dispatchers.Main) {
-                        startProgressUpdateTimer()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "[WatchHistory] Error checking/adding to watch history: ${e.message}", e)
-                // Still start timer on error to enable progress tracking
-                withContext(Dispatchers.Main) {
-                    startProgressUpdateTimer()
-                }
-            }
-        }
-    }
-
-    /** Schedules the next watch-progress write fifteen seconds from now. */
-    private fun startProgressUpdateTimer() {
-        progressUpdateHandler.removeCallbacks(progressUpdateRunnable)
-        progressUpdateHandler.postDelayed(progressUpdateRunnable, 15000)
-    }
-
-    /** Persists the latest bridge-reported position, duration, and episode metadata. */
-    private fun persistWatchProgress() {
-        if (currentTmdbId == -1) return
-
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                repository.updatePlaybackPosition(
-                    mediaId = currentTmdbId,
-                    mediaType = if (currentIsTv) "tv" else "movie",
-                    position = currentPlaybackPosition
-                )
-
-                if (currentIsTv) {
-                    repository.updateEpisodeInfo(
-                        mediaId = currentTmdbId,
-                        mediaType = "tv",
-                        seasonNumber = currentSeason,
-                        episodeNumber = currentEpisode
-                    )
-                }
-
-                com.kiduyuk.klausk.kiduyutv.util.FirebaseManager.syncWatchHistory(
-                    tmdbId = currentTmdbId,
-                    isTv = currentIsTv,
-                    seasonNumber = if (currentIsTv) currentSeason else null,
-                    episodeNumber = if (currentIsTv) currentEpisode else null,
-                    playbackPosition = currentPlaybackPosition,
-                    duration = currentDuration,
-                    title = currentTitle,
-                    overview = currentOverview,
-                    posterPath = currentPosterPath,
-                    backdropPath = currentBackdropPath,
-                    voteAverage = currentVoteAverage,
-                    releaseDate = currentReleaseDate
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "[WatchHistory] Error persisting progress: ${e.message}")
-            }
-        }
-    }
-
-    /** Performs one timer-driven progress write and schedules the following cycle. */
-    private fun updateWatchProgress() {
-        // Timer-based sync - uses the current position already set by PlayerBridge
-        persistWatchProgress()
-        progressUpdateHandler.postDelayed(progressUpdateRunnable, 15000)
-    }
-
-    /** Removes any pending progress callback from the main-thread handler. */
-    private fun stopProgressUpdateTimer() {
-        progressUpdateHandler.removeCallbacks(progressUpdateRunnable)
-    }
-
-    /**
      * Initializes cached/downloaded domain filters before loading provider subresources.
      *
      * Stale cached rules protect the initial page immediately; their replacement downloads after
@@ -781,6 +626,9 @@ class PlayerActivity : AppCompatActivity() {
                     title = currentTitle,
                     posterPath = currentPosterPath,
                     backdropPath = currentBackdropPath,
+                    overview = currentOverview,
+                    voteAverage = currentVoteAverage,
+                    releaseDate = currentReleaseDate,
                     streamUrl = stream.url,
                     headers = stream.headers,
                     cookie = stream.cookie,

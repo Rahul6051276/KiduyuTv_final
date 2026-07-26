@@ -18,6 +18,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.bumptech.glide.Glide
+import com.kiduyuk.klausk.kiduyutv.data.model.WatchHistoryItem
+import com.kiduyuk.klausk.kiduyutv.data.repository.TmdbRepository
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,8 +34,11 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamProvide
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamResolver
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamSelectionDialog
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.TrackSelectionDialog
+import com.kiduyuk.klausk.kiduyutv.util.FirebaseManager
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -76,9 +81,24 @@ class DirectStreamActivity : AppCompatActivity() {
     private var currentSeason: Int? = null
     private var currentEpisode: Int? = null
     private var currentTitle: String = ""
+    private var currentOverview: String? = null
+    private var currentPosterPath: String? = null
+    private var currentBackdropPath: String? = null
+    private var currentVoteAverage: Double = 0.0
+    private var currentReleaseDate: String? = null
     private var currentProvider: StreamProviderChoice = StreamCatalog.default
+    private val repository = TmdbRepository()
+    private var pendingStartPositionMs = 0L
+    private var watchHistoryReady = false
     private val controlsClock = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     private val controlsTime = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+    private val watchProgressTick = object : Runnable {
+        override fun run() {
+            persistWatchProgress()
+            uiHandler.postDelayed(this, WATCH_PROGRESS_INTERVAL_MS)
+        }
+    }
 
     private val progressTick = object : Runnable {
         override fun run() {
@@ -137,6 +157,11 @@ class DirectStreamActivity : AppCompatActivity() {
         currentSeason = intent.getIntExtra(EXTRA_SEASON, -1).takeIf { it > 0 }
         currentEpisode = intent.getIntExtra(EXTRA_EPISODE, -1).takeIf { it > 0 }
         currentTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
+        currentOverview = intent.getStringExtra(EXTRA_OVERVIEW)
+        currentPosterPath = intent.getStringExtra(EXTRA_POSTER_PATH)
+        currentBackdropPath = intent.getStringExtra(EXTRA_BACKDROP_URL)
+        currentVoteAverage = intent.getDoubleExtra(EXTRA_VOTE_AVERAGE, 0.0)
+        currentReleaseDate = intent.getStringExtra(EXTRA_RELEASE_DATE)
         currentProvider = StreamCatalog.resolve(intent.getStringExtra(EXTRA_PROVIDER))
         updatePlayerTitle()
 
@@ -237,12 +262,7 @@ class DirectStreamActivity : AppCompatActivity() {
         showControls()
         uiHandler.post(progressTick)
 
-        val sniffedUrl = intent.getStringExtra(EXTRA_SNIFFED_URL)
-        if (sniffedUrl.isNullOrBlank()) {
-            loadCurrentMedia()
-        } else {
-            playSniffedStream(sniffedUrl)
-        }
+        checkAndAddToWatchHistory()
     }
 
     private fun playSniffedStream(url: String) {
@@ -273,7 +293,7 @@ class DirectStreamActivity : AppCompatActivity() {
         activeStream = stream
         showStatus(getString(R.string.buffering), retry = false)
         activeSubtitles = parseSniffedSubtitles()
-        engine.play(stream, subtitles = activeSubtitles)
+        engine.play(stream, consumePendingStartPosition(), activeSubtitles)
     }
 
     private fun parseSniffedSubtitles(): List<SubtitleItem> {
@@ -327,6 +347,7 @@ class DirectStreamActivity : AppCompatActivity() {
         if (nextEpisode < 1) return
 
         currentEpisode = nextEpisode
+        pendingStartPositionMs = 0L
         currentTitle = currentTitle.substringBefore(" • ")
         updatePlayerTitle()
         updateEpisodeButtons()
@@ -338,6 +359,7 @@ class DirectStreamActivity : AppCompatActivity() {
             PROVIDER_TAG,
             "Loading adjacent episode season=$currentSeason episode=$nextEpisode delta=$delta"
         )
+        resetWatchProgressForCurrentEpisode()
         loadCurrentMedia()
         showControls()
     }
@@ -519,11 +541,17 @@ class DirectStreamActivity : AppCompatActivity() {
             "playBest picked provider=${chosen.provider.ifBlank { "?" }} " +
                 "quality=${chosen.quality} scheme=$scheme url=${chosen.url}"
         )
-        startStreamPlayback(chosen)
+        startStreamPlayback(chosen, consumePendingStartPosition())
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
         engine.play(stream, startPositionMs, activeSubtitles)
+    }
+
+    private fun consumePendingStartPosition(): Long {
+        val position = pendingStartPositionMs.coerceAtLeast(0L)
+        pendingStartPositionMs = 0L
+        return position
     }
 
     private fun qualityRank(quality: String): Int {
@@ -707,13 +735,153 @@ class DirectStreamActivity : AppCompatActivity() {
         uiHandler.removeCallbacks(skipTick)
     }
 
+    private fun checkAndAddToWatchHistory() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val isTv = currentMediaType == TYPE_SERIES
+                val saved = repository.getWatchHistoryItem(
+                    this@DirectStreamActivity,
+                    currentTmdbId,
+                    isTv
+                )
+                val sameEpisode = !isTv || (
+                    saved != null &&
+                        saved.seasonNumber == currentSeason &&
+                        saved.episodeNumber == currentEpisode
+                    )
+
+                if (saved == null) {
+                    repository.saveToWatchHistory(
+                        this@DirectStreamActivity,
+                        WatchHistoryItem(
+                            id = currentTmdbId,
+                            title = currentTitle,
+                            overview = currentOverview,
+                            posterPath = currentPosterPath,
+                            backdropPath = currentBackdropPath,
+                            voteAverage = currentVoteAverage,
+                            releaseDate = currentReleaseDate,
+                            isTv = isTv,
+                            seasonNumber = currentSeason.takeIf { isTv },
+                            episodeNumber = currentEpisode.takeIf { isTv },
+                            playbackPosition = 0L
+                        )
+                    )
+                    syncWatchHistory(0L, 0L)
+                } else {
+                    pendingStartPositionMs =
+                        if (sameEpisode) saved.playbackPosition.coerceAtLeast(0L) else 0L
+                    if (isTv && !sameEpisode) {
+                        repository.updatePlaybackPosition(currentTmdbId, "tv", 0L)
+                        repository.updateEpisodeInfo(
+                            currentTmdbId,
+                            "tv",
+                            currentSeason ?: 1,
+                            currentEpisode ?: 1
+                        )
+                        syncWatchHistory(0L, 0L)
+                    }
+                }
+            } catch (error: Exception) {
+                Log.e(TAG, "[WatchHistory] Could not initialize playback progress", error)
+            }
+
+            withContext(Dispatchers.Main) {
+                watchHistoryReady = true
+                startWatchProgressUpdates()
+                val sniffedUrl = intent.getStringExtra(EXTRA_SNIFFED_URL)
+                if (sniffedUrl.isNullOrBlank()) {
+                    loadCurrentMedia()
+                } else {
+                    playSniffedStream(sniffedUrl)
+                }
+            }
+        }
+    }
+
+    private fun startWatchProgressUpdates() {
+        uiHandler.removeCallbacks(watchProgressTick)
+        uiHandler.postDelayed(watchProgressTick, WATCH_PROGRESS_INTERVAL_MS)
+    }
+
+    private fun stopWatchProgressUpdates() {
+        uiHandler.removeCallbacks(watchProgressTick)
+    }
+
+    private fun persistWatchProgress() {
+        if (!watchHistoryReady || !::engine.isInitialized || currentTmdbId <= 0) return
+
+        val isTv = currentMediaType == TYPE_SERIES
+        val mediaType = if (isTv) "tv" else "movie"
+        val position = engine.player.currentPosition.coerceAtLeast(0L)
+        val duration = engine.player.duration.takeIf { it > 0 } ?: 0L
+        val season = currentSeason
+        val episode = currentEpisode
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                repository.updatePlaybackPosition(currentTmdbId, mediaType, position)
+                if (isTv) {
+                    repository.updateEpisodeInfo(
+                        currentTmdbId,
+                        mediaType,
+                        season ?: 1,
+                        episode ?: 1
+                    )
+                }
+                syncWatchHistory(position, duration, season, episode)
+            } catch (error: Exception) {
+                Log.e(TAG, "[WatchHistory] Could not persist playback progress", error)
+            }
+        }
+    }
+
+    private fun resetWatchProgressForCurrentEpisode() {
+        if (currentMediaType != TYPE_SERIES) return
+        val season = currentSeason ?: 1
+        val episode = currentEpisode ?: 1
+        lifecycleScope.launch(Dispatchers.IO) {
+            repository.updatePlaybackPosition(currentTmdbId, "tv", 0L)
+            repository.updateEpisodeInfo(currentTmdbId, "tv", season, episode)
+            syncWatchHistory(0L, 0L, season, episode)
+        }
+    }
+
+    private fun syncWatchHistory(
+        position: Long,
+        duration: Long,
+        season: Int? = currentSeason,
+        episode: Int? = currentEpisode
+    ) {
+        val isTv = currentMediaType == TYPE_SERIES
+        FirebaseManager.syncWatchHistory(
+            tmdbId = currentTmdbId,
+            isTv = isTv,
+            seasonNumber = season.takeIf { isTv },
+            episodeNumber = episode.takeIf { isTv },
+            playbackPosition = position,
+            duration = duration,
+            title = currentTitle,
+            overview = currentOverview,
+            posterPath = currentPosterPath,
+            backdropPath = currentBackdropPath,
+            voteAverage = currentVoteAverage,
+            releaseDate = currentReleaseDate
+        )
+    }
+
     override fun onStart() {
         super.onStart()
         if (::engine.isInitialized) engine.resume()
+        if (watchHistoryReady) startWatchProgressUpdates()
     }
 
     override fun onStop() {
-        if (::engine.isInitialized) engine.pause()
+        stopWatchProgressUpdates()
+        if (::engine.isInitialized) {
+            persistWatchProgress()
+            engine.pause()
+        }
         super.onStop()
     }
 
@@ -741,6 +909,9 @@ class DirectStreamActivity : AppCompatActivity() {
         const val EXTRA_BACKDROP_URL = "BACKDROP_PATH"
         const val EXTRA_TITLE = "TITLE"
         const val EXTRA_POSTER_PATH = "POSTER_PATH"
+        const val EXTRA_OVERVIEW = "OVERVIEW"
+        const val EXTRA_VOTE_AVERAGE = "VOTE_AVERAGE"
+        const val EXTRA_RELEASE_DATE = "RELEASE_DATE"
         const val EXTRA_SNIFFED_URL = "SNIFFED_STREAM_URL"
         const val EXTRA_SNIFFED_HEADERS = "SNIFFED_STREAM_HEADERS"
         const val EXTRA_SNIFFED_COOKIE = "SNIFFED_STREAM_COOKIE"
@@ -756,7 +927,10 @@ class DirectStreamActivity : AppCompatActivity() {
             episode: Int? = null,
             title: String = "",
             posterPath: String? = null,
-            backdropPath: String? = null
+            backdropPath: String? = null,
+            overview: String? = null,
+            voteAverage: Double = 0.0,
+            releaseDate: String? = null
         ): Intent = Intent(context, DirectStreamActivity::class.java).apply {
             putExtra(EXTRA_TMDB_ID, tmdbId)
             putExtra(EXTRA_TYPE, if (isTv) TYPE_SERIES else TYPE_MOVIE)
@@ -766,6 +940,9 @@ class DirectStreamActivity : AppCompatActivity() {
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_POSTER_PATH, posterPath)
             putExtra(EXTRA_BACKDROP_URL, backdropPath)
+            putExtra(EXTRA_OVERVIEW, overview)
+            putExtra(EXTRA_VOTE_AVERAGE, voteAverage)
+            putExtra(EXTRA_RELEASE_DATE, releaseDate)
         }
 
         fun createSniffedIntent(
@@ -777,6 +954,9 @@ class DirectStreamActivity : AppCompatActivity() {
             title: String,
             posterPath: String?,
             backdropPath: String?,
+            overview: String?,
+            voteAverage: Double,
+            releaseDate: String?,
             streamUrl: String,
             headers: Map<String, String>,
             cookie: String?,
@@ -791,7 +971,10 @@ class DirectStreamActivity : AppCompatActivity() {
             episode = episode,
             title = title,
             posterPath = posterPath,
-            backdropPath = backdropPath
+            backdropPath = backdropPath,
+            overview = overview,
+            voteAverage = voteAverage,
+            releaseDate = releaseDate
         ).apply {
             putExtra(EXTRA_SNIFFED_URL, streamUrl)
             putExtra(EXTRA_SNIFFED_HEADERS, JSONObject(headers).toString())
@@ -818,6 +1001,7 @@ class DirectStreamActivity : AppCompatActivity() {
         const val TYPE_SERIES = "series"
 
         private const val SKIP_SEC_MIN = 10
+        private const val WATCH_PROGRESS_INTERVAL_MS = 15_000L
         private const val SKIP_SEC_MAX = 60
         private const val SEEK_STEP_MS = 10_000L
         private const val SKIP_RAMP_DURATION_MS = 5_000L

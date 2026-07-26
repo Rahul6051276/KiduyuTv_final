@@ -351,7 +351,10 @@ fun NavGraph(navController: NavHostController) {
                             episode = episode?.takeIf { it > 0 },
                             title = title,
                             posterPath = posterPath,
-                            backdropPath = backdropPath
+                            backdropPath = backdropPath,
+                            overview = overview,
+                            voteAverage = voteAverage,
+                            releaseDate = releaseDate
                         )
                     )
                     navController.popBackStack()
