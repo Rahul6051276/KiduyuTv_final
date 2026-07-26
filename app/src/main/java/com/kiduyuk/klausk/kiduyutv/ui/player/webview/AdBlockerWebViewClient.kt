@@ -63,7 +63,7 @@ open class AdBlockerWebViewClient(
         super.onPageFinished(view, url)
         onPageFinished()
         // Run again on finish to catch lazy-loaded assets
-        executeAntiAdScript(view)
+        //executeAntiAdScript(view)
     }
 
     private fun executeAntiAdScript(view: WebView?) {
