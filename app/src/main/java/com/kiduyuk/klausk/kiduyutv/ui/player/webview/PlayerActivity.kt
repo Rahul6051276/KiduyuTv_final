@@ -145,7 +145,8 @@ class PlayerActivity : AppCompatActivity() {
 
         /** Package name of Google's official AOSP WebView provider. */
         private const val GOOGLE_WEBVIEW_PACKAGE = "com.google.android.webview"
-        private const val SNIFFER_SUBTITLE_WAIT_MS = 2_000L
+        private const val SNIFFER_SUBTITLE_WAIT_MS = 4_000L
+        private const val SNIFFER_AFTER_SUBTITLE_WAIT_MS = 400L
 
         /**
          * Single, modern, device-agnostic User-Agent string. The previous string explicitly
@@ -749,6 +750,13 @@ class PlayerActivity : AppCompatActivity() {
     private fun rememberSniffedSubtitle(subtitle: SniffedSubtitle) {
         synchronized(sniffedSubtitles) {
             sniffedSubtitles[subtitle.url] = subtitle
+        }
+        if (pendingSniffedStream != null) {
+            snifferHandoffHandler.removeCallbacks(snifferHandoffRunnable)
+            snifferHandoffHandler.postDelayed(
+                snifferHandoffRunnable,
+                SNIFFER_AFTER_SUBTITLE_WAIT_MS
+            )
         }
     }
 

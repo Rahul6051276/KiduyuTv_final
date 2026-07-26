@@ -177,6 +177,11 @@ class DirectStreamActivity : AppCompatActivity() {
             }
         }
         binding.playerView.player = engine.player
+        binding.playerView.subtitleView?.apply {
+            visibility = View.VISIBLE
+            setApplyEmbeddedStyles(true)
+            setApplyEmbeddedFontSizes(true)
+        }
         // The Media3 default settings cog is left in place: in Media3 1.4.1
         // the PlayerView has no public setShowSettingsButton (it was added
         // in a later release). Our custom Tracks button (btnPlayerTracks) is
@@ -292,6 +297,7 @@ class DirectStreamActivity : AppCompatActivity() {
                         SubtitleItem(
                             url = url,
                             mimeType = mimeType,
+                            label = "Subtitle ${index + 1}",
                             headers = headers
                         )
                     )

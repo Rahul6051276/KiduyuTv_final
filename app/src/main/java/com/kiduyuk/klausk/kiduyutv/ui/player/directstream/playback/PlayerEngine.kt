@@ -170,7 +170,7 @@ class PlayerEngine(context: Context) {
         }
         if (subtitles.isEmpty()) return videoSource
 
-        val subtitleSources = subtitles.map { subtitle ->
+        val subtitleSources = subtitles.mapIndexed { index, subtitle ->
             val httpFactory = DefaultHttpDataSource.Factory()
                 .setUserAgent(REAL_BROWSER_USER_AGENT)
                 .setAllowCrossProtocolRedirects(true)
@@ -181,12 +181,18 @@ class PlayerEngine(context: Context) {
                 .apply {
                     subtitle.language?.let { setLanguage(it) }
                     subtitle.label?.let { setLabel(it) }
+                    if (index == 0) setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
                 }
                 .build()
             SingleSampleMediaSource.Factory(subtitleDataSource)
                 .createMediaSource(configuration, C.TIME_UNSET)
         }
-        return MergingMediaSource(videoSource, *subtitleSources.toTypedArray())
+        return MergingMediaSource(
+            true,
+            true,
+            videoSource,
+            *subtitleSources.toTypedArray()
+        )
     }
 
     private fun isDash(stream: StreamItem): Boolean =
