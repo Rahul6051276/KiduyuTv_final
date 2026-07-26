@@ -74,6 +74,7 @@ class DirectStreamActivity : AppCompatActivity() {
     private var currentTmdbId = 0
     private var currentSeason: Int? = null
     private var currentEpisode: Int? = null
+    private var currentTitle: String = ""
     private var currentProvider: StreamProviderChoice = StreamCatalog.default
     private val controlsClock = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     private val controlsTime = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -134,7 +135,9 @@ class DirectStreamActivity : AppCompatActivity() {
         currentTmdbId = intent.getIntExtra(EXTRA_TMDB_ID, 0)
         currentSeason = intent.getIntExtra(EXTRA_SEASON, -1).takeIf { it > 0 }
         currentEpisode = intent.getIntExtra(EXTRA_EPISODE, -1).takeIf { it > 0 }
+        currentTitle = intent.getStringExtra(EXTRA_TITLE).orEmpty()
         currentProvider = StreamCatalog.resolve(intent.getStringExtra(EXTRA_PROVIDER))
+        updatePlayerTitle()
 
         Log.i(
             PROVIDER_TAG,
@@ -322,6 +325,8 @@ class DirectStreamActivity : AppCompatActivity() {
         if (nextEpisode < 1) return
 
         currentEpisode = nextEpisode
+        currentTitle = currentTitle.substringBefore(" • ")
+        updatePlayerTitle()
         updateEpisodeButtons()
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         streamDialog?.takeIf { it.isShowing }?.dismiss()
@@ -341,6 +346,20 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnPreviousEpisode.visibility =
             if (isSeries && (currentEpisode ?: 1) > 1) View.VISIBLE else View.GONE
         updateBottomFocusChain()
+    }
+
+    private fun updatePlayerTitle() {
+        val hasEpisodeNumber = Regex("""(?i)\bS\d+\s*E\d+\b""").containsMatchIn(currentTitle)
+        binding.tvPlayerTitle.text = if (
+            currentMediaType == TYPE_SERIES &&
+            currentSeason != null &&
+            currentEpisode != null &&
+            !hasEpisodeNumber
+        ) {
+            "$currentTitle • S${currentSeason} E${currentEpisode}"
+        } else {
+            currentTitle
+        }
     }
 
     private fun loadCurrentMedia() {

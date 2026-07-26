@@ -212,7 +212,7 @@ fun SeasonEpisodesScreen(
                                                 putExtra("STREAM_URL", directUrl)
                                                 putExtra("TMDB_ID", tvShowId)
                                                 putExtra("IS_TV", true)
-                                                putExtra("TITLE", tvShowName)
+                                                putExtra("TITLE", "$tvShowName • ${episode.name}")
                                                 putExtra("OVERVIEW", uiState.tvShowDetail?.overview)
                                                 putExtra("POSTER_PATH", episode.stillPath)
                                                 putExtra("BACKDROP_PATH", uiState.tvShowDetail?.backdropPath)
@@ -227,7 +227,7 @@ fun SeasonEpisodesScreen(
                                                 Screen.StreamLinks.createRoute(
                                                     tmdbId = tvShowId,
                                                     isTv = true,
-                                                    title = tvShowName,
+                                                    title = "$tvShowName • ${episode.name}",
                                                     overview = uiState.tvShowDetail?.overview,
                                                     posterPath = episode.stillPath,
                                                     backdropPath = uiState.tvShowDetail?.backdropPath,

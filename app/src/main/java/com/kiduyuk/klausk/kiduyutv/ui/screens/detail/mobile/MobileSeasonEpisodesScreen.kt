@@ -231,7 +231,7 @@ fun MobileSeasonEpisodesScreen(
                                         putExtra("STREAM_URL", directUrl)
                                         putExtra("TMDB_ID", tvShowId)
                                         putExtra("IS_TV", true)
-                                        putExtra("TITLE", "$tvShowName - S${season}E${episodeNum}")
+                                        putExtra("TITLE", "$tvShowName • ${episode.name}")
                                         putExtra("OVERVIEW", episode.overview)
                                         putExtra("POSTER_PATH", episode.stillPath)
                                         putExtra("BACKDROP_PATH", null as String?)
@@ -245,7 +245,7 @@ fun MobileSeasonEpisodesScreen(
                                     val route = Screen.MobileStreamLinks.createRoute(
                                         tmdbId = tvShowId,
                                         isTv = true,
-                                        title = "$tvShowName - S${season}E${episodeNum}",
+                                        title = "$tvShowName • ${episode.name}",
                                         overview = episode.overview,
                                         posterPath = episode.stillPath,
                                         backdropPath = null,
