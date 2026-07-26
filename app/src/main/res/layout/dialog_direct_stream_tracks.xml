@@ -13,21 +13,21 @@
     android:background="@drawable/bg_direct_stream_dialog"
     android:focusable="false"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="18dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/track_settings"
             android:textColor="@color/text_primary"
-            android:textSize="22sp"
+            android:textSize="20sp"
             android:textStyle="bold" />
 
         <!-- Tab strip: Video / Audio / Subtitle.  Each tab is a focusable TextView. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:orientation="horizontal">
 
             <TextView
@@ -59,7 +59,7 @@
 
         <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="320dp"
+            android:layout_height="220dp"
             android:layout_marginTop="8dp">
 
             <ListView
@@ -90,7 +90,7 @@
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:layout_gravity="end"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="10dp"
             android:background="@drawable/direct_stream_back_btn_bg"
             android:clickable="true"
             android:focusable="true"

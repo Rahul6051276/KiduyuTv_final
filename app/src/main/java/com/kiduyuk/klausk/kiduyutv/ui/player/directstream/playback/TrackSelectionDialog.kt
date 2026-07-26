@@ -378,8 +378,8 @@ class TrackSelectionDialog(
 
     override fun onStart() {
         super.onStart()
-        val maxWidth = (context.resources.displayMetrics.widthPixels * 0.9f).toInt()
-        val preferredWidth = (680 * context.resources.displayMetrics.density).toInt()
+        val maxWidth = (context.resources.displayMetrics.widthPixels * 0.72f).toInt()
+        val preferredWidth = (520 * context.resources.displayMetrics.density).toInt()
         window?.setLayout(
             preferredWidth.coerceAtMost(maxWidth),
             WindowManager.LayoutParams.WRAP_CONTENT
