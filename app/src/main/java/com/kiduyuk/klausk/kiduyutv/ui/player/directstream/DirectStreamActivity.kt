@@ -21,11 +21,6 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import com.bumptech.glide.Glide
 import com.kiduyuk.klausk.kiduyutv.data.model.WatchHistoryItem
 import com.kiduyuk.klausk.kiduyutv.data.repository.TmdbRepository
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import com.kiduyuk.klausk.kiduyutv.R
-import com.kiduyuk.klausk.kiduyutv.databinding.ActivityDirectStreamBinding
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.SubtitleItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedSubtitle
@@ -37,12 +32,18 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamSelecti
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.TrackSelectionDialog
 import com.kiduyuk.klausk.kiduyutv.util.FirebaseManager
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
+import com.kiduyuk.klausk.kiduyutv.R
+import com.kiduyuk.klausk.kiduyutv.databinding.ActivityDirectStreamBinding
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.json.JSONArray
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * TV-first native player for streams returned by the kiduyuTv_providers
@@ -50,15 +51,18 @@ import org.json.JSONArray
  * implementation: no JS injection, no ad blocker, no provider host
  * allowlist.
  *
- * Flow:
- *   1. Read the title metadata from Intent extras (type, tmdbId,
- *      season/episode, provider).
- *   2. Call [ProvidersApi.streams] via [StreamResolver] to fetch every
- *      available stream.
- *   3. Pick the highest-ranked stream (or fall back to the first) and
- *      hand it to [PlayerEngine.play].
- *   4. Map D-pad keys to native player actions: left/right ramp-seek,
- *      center play/pause, back to finish.
+ * Flow (performance-tuned):
+ *   1. Read title metadata from Intent extras.
+ *   2. Kick off the watch-history Room read AND the providers API call
+ *      in parallel so the network request is in flight before the
+ *      resume position is known. (Time-to-first-frame no longer
+ *      waits on disk.)
+ *   3. As soon as the first stream is parsed, pick the highest-ranked
+ *      item from the list-so-far and hand it to [PlayerEngine.play].
+ *      Continued parsing populates the Streams picker dialog.
+ *   4. The saved resume position is applied at [Player.STATE_READY]
+ *      via [applyPendingReadySeek] so the seek hits a stable player
+ *      timeline.
  */
 class DirectStreamActivity : AppCompatActivity() {
 
@@ -67,6 +71,15 @@ class DirectStreamActivity : AppCompatActivity() {
     private lateinit var resolver: StreamResolver
 
     private var streamJob: Job? = null
+    private var historyJob: Job? = null
+    private var prefetchJob: Job? = null
+    /**
+     * Completes as soon as the Room read returns and the saved resume
+     * position (if any) is known. The streaming load awaits this on
+     * the first item so the start position is never consumed before
+     * it's been written, regardless of which I/O leg wins the race.
+     */
+    private val initialPositionReady = CompletableDeferred<Long>()
     private var trackDialog: TrackSelectionDialog? = null
     private var streamDialog: StreamSelectionDialog? = null
     private var quitDialog: QuitDialog? = null
@@ -94,13 +107,21 @@ class DirectStreamActivity : AppCompatActivity() {
     private var pendingStartPositionMs = 0L
     private var pendingReadySeekPositionMs = 0L
     private var retriedWithoutExternalSubtitles = false
+    private var retriedSubtitleDisabled = false
     private var watchHistoryReady = false
+    private var prefetchedNextStreams: List<StreamItem> = emptyList()
     private val controlsClock = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     private val controlsTime = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private val now = Date()
 
     private val watchProgressTick = object : Runnable {
         override fun run() {
-            persistWatchProgress()
+            // Pause-aware: skip the disk+Firebase round-trip when the
+            // player is not actively rendering media. Keeps idle viewing
+            // sessions from spamming Room and the network.
+            if (::engine.isInitialized && engine.player.isPlaying) {
+                persistWatchProgress()
+            }
             uiHandler.postDelayed(this, WATCH_PROGRESS_INTERVAL_MS)
         }
     }
@@ -121,7 +142,9 @@ class DirectStreamActivity : AppCompatActivity() {
                     }
                 binding.btnPlayPause.text = if (engine.player.isPlaying) "Ⅱ" else "▶"
             }
-            val now = Date()
+            // Re-format a single Date rather than allocating a new one
+            // every tick.
+            now.time = System.currentTimeMillis()
             binding.tvDate.text = controlsClock.format(now)
             binding.tvTime.text = controlsTime.format(now)
             uiHandler.postDelayed(this, 1_000)
@@ -129,7 +152,9 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     // D-pad left/right ramp seeking: 10s on press, repeating every 600ms
-    // and ramping up to 60s after 5 seconds of holding.
+    // and ramping up to 60s after 5 seconds of holding. (D-pad wiring
+    // is currently commented out in dispatchKeyEvent; the framework
+    // stays in place so it can be re-enabled without code churn.)
     private var skipDirection = 0
     private var skipHoldStart = 0L
     private val skipTick = object : Runnable {
@@ -145,15 +170,35 @@ class DirectStreamActivity : AppCompatActivity() {
         }
     }
 
+    private val seekBarListener = object : SeekBar.OnSeekBarChangeListener {
+        override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) = Unit
+        override fun onStartTrackingTouch(seekBar: SeekBar?) {
+            userSeeking = true
+            controlsLockedVisible = true
+        }
+        override fun onStopTrackingTouch(seekBar: SeekBar?) {
+            val duration = engine.player.duration
+            if (duration > 0) engine.player.seekTo((duration * (seekBar?.progress ?: 0)) / 1000L)
+            userSeeking = false
+            controlsLockedVisible = false
+            showControls()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.i(TAG, "Player activity created")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         binding = ActivityDirectStreamBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        Glide.with(this)
-            .load(normalizeArtworkUrl(intent.getStringExtra(EXTRA_BACKDROP_URL)))
-            .into(binding.loadingBackdrop)
+        // Glide binds the image asynchronously, but the chain still
+        // touches the main thread up front. Posting the bind lets the
+        // inflate complete first.
+        binding.root.post {
+            Glide.with(this@DirectStreamActivity)
+                .load(normalizeArtworkUrl(intent.getStringExtra(EXTRA_BACKDROP_URL)))
+                .into(binding.loadingBackdrop)
+        }
         showLoadingArtwork()
 
         currentMediaType = intent.getStringExtra(EXTRA_TYPE)
@@ -250,20 +295,7 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnPreviousEpisode.setOnClickListener { loadAdjacentEpisode(-1) }
         binding.btnNextEpisode.setOnClickListener { loadAdjacentEpisode(1) }
         updateEpisodeButtons()
-        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) = Unit
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {
-                userSeeking = true
-                controlsLockedVisible = true
-            }
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                val duration = engine.player.duration
-                if (duration > 0) engine.player.seekTo((duration * (seekBar?.progress ?: 0)) / 1000L)
-                userSeeking = false
-                controlsLockedVisible = false
-                showControls()
-            }
-        })
+        binding.seekBar.setOnSeekBarChangeListener(seekBarListener)
         updateBottomFocusChain()
         showControls()
         uiHandler.post(progressTick)
@@ -274,7 +306,46 @@ class DirectStreamActivity : AppCompatActivity() {
             }
         })
 
-        checkAndAddToWatchHistory()
+        startPlaybackPipeline()
+    }
+
+    /**
+     * Kick off the watch-history Room read and the providers API call
+     * in parallel. Network no longer waits on disk; both finish in
+     * parallel and the saved resume position is applied as soon as
+     * it's known.
+     */
+    private fun startPlaybackPipeline() {
+        val sniffedUrl = intent.getStringExtra(EXTRA_SNIFFED_URL)
+
+        // 1) Network. For catalog playback this is the long pole;
+        //    for sniffed playback the stream is already known.
+        streamJob?.cancel()
+        if (!sniffedUrl.isNullOrBlank()) {
+            playSniffedStream(sniffedUrl)
+        } else {
+            loadCurrentMedia()
+        }
+
+        // 2) History. Runs in parallel with the network; the seek
+        //    restoration is gated on a CompletableDeferred published
+        //    by [loadInitialWatchHistory] so the streaming loader
+        //    always hands the saved position to the engine (no
+        //    lost-resume race regardless of which I/O leg wins).
+        historyJob?.cancel()
+        historyJob = lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                loadInitialWatchHistory()
+            } catch (error: Exception) {
+                Log.e(TAG, "[WatchHistory] Could not initialize playback progress", error)
+                // Publish 0 so the loader doesn't block forever.
+                publishInitialPosition(0L)
+            }
+            withContext(Dispatchers.Main) {
+                watchHistoryReady = true
+                startWatchProgressUpdates()
+            }
+        }
     }
 
     private fun playSniffedStream(url: String) {
@@ -310,6 +381,7 @@ class DirectStreamActivity : AppCompatActivity() {
         // Prepare the merged source first, then restore progress at STATE_READY.
         pendingReadySeekPositionMs = consumePendingStartPosition()
         retriedWithoutExternalSubtitles = false
+        retriedSubtitleDisabled = false
         engine.play(stream, 0L, activeSubtitles)
     }
 
@@ -385,7 +457,26 @@ class DirectStreamActivity : AppCompatActivity() {
             "Loading adjacent episode season=$currentSeason episode=$nextEpisode delta=$delta"
         )
         resetWatchProgressForCurrentEpisode()
-        loadCurrentMedia()
+        // If the prefetch has already populated the next episode's
+        // streams, skip the network round-trip and start playback
+        // immediately. Otherwise fall back to a fresh request.
+        if (delta > 0 && prefetchedNextStreams.isNotEmpty()) {
+            availableStreams = prefetchedNextStreams
+            activeStream = bestOf(prefetchedNextStreams)
+            activeSubtitles = emptyList()
+            failedStreamUrls.clear()
+            pendingReadySeekPositionMs = 0L
+            retriedWithoutExternalSubtitles = false
+            retriedSubtitleDisabled = false
+            cancelPrefetch()
+            binding.btnPlayerStreams.visibility =
+                if (availableStreams.size > 1) View.VISIBLE else View.GONE
+            updateBottomFocusChain()
+            startStreamPlayback(activeStream!!, consumePendingStartPosition())
+        } else {
+            cancelPrefetch()
+            loadCurrentMedia()
+        }
         showControls()
     }
 
@@ -412,7 +503,7 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun loadCurrentMedia() {
-        loadAndPlay(
+        loadAndPlayStreaming(
             currentMediaType,
             currentTmdbId,
             currentSeason,
@@ -489,6 +580,23 @@ class DirectStreamActivity : AppCompatActivity() {
     private fun handlePlaybackError(code: String) {
         if (code == "ERROR_CODE_FAILED_RUNTIME_CHECK") {
             val stream = activeStream
+            // Cheaper recovery path: disable the text track on the
+            // current source rather than tearing down and rebuilding.
+            // Only useful if the merged source actually had a text
+            // track, which is the case for sniffed streams carrying
+            // external subs.
+            if (
+                stream != null &&
+                stream.provider.equals("WebSniffer", ignoreCase = true) &&
+                activeSubtitles.isNotEmpty() &&
+                !retriedSubtitleDisabled
+            ) {
+                retriedSubtitleDisabled = true
+                Log.w(TAG, "Disabling text tracks on current source to recover from runtime check")
+                engine.disableSubtitleTracks()
+                return
+            }
+            // Full reset: rebuild the source without external subs.
             if (
                 stream != null &&
                 stream.provider.equals("WebSniffer", ignoreCase = true) &&
@@ -536,7 +644,13 @@ class DirectStreamActivity : AppCompatActivity() {
         startStreamPlayback(next, positionMs)
     }
 
-    private fun loadAndPlay(
+    /**
+     * Streaming variant of [loadAndPlay]. Subscribes to the resolver
+     * Flow and plays the highest-ranked item as soon as it arrives;
+     * the rest of the list continues to populate the Streams picker
+     * dialog in the background.
+     */
+    private fun loadAndPlayStreaming(
         type: String,
         tmdbId: Int,
         season: Int?,
@@ -549,28 +663,71 @@ class DirectStreamActivity : AppCompatActivity() {
         activeSubtitles = emptyList()
         pendingReadySeekPositionMs = 0L
         retriedWithoutExternalSubtitles = false
+        retriedSubtitleDisabled = false
         failedStreamUrls.clear()
         binding.btnPlayerStreams.visibility = View.GONE
         updateBottomFocusChain()
         showStatus(getString(R.string.streams_loading), retry = false)
+
+        val accumulator = ArrayList<StreamItem>()
+        var firstItemPlayed = false
+
         streamJob = lifecycleScope.launch {
-            val result = runCatching {
-                resolver.load(type, tmdbId, season, episode, provider)
-            }
-            result.onSuccess { items ->
-                Log.i(PROVIDER_TAG, "loadAndPlay received ${items.size} streams for provider=${provider.displayName}")
-                if (items.isEmpty()) {
+            try {
+                resolver.loadFlow(type, tmdbId, season, episode, provider)
+                    .collect { item ->
+                        if (firstItemPlayed) {
+                            // After the first item, just accumulate so
+                            // the Streams picker has the full list to
+                            // show later.
+                            accumulator.add(item)
+                            availableStreams = accumulator.toList()
+                            if (availableStreams.size > 1) {
+                                binding.btnPlayerStreams.visibility = View.VISIBLE
+                                updateBottomFocusChain()
+                            }
+                            return@collect
+                        }
+                        firstItemPlayed = true
+                        accumulator.add(item)
+                        availableStreams = accumulator.toList()
+                        Log.i(
+                            PROVIDER_TAG,
+                            "First stream received provider=${item.provider.ifBlank { "?" }} " +
+                                "quality=${item.quality}; starting playback immediately"
+                        )
+                        // Wait for the Room read to publish the saved
+                        // resume position before we hand it to the
+                        // engine. If the history I/O has already
+                        // completed this resolves immediately; if not
+                        // we pause here for a few ms rather than risk
+                        // starting playback at 0 with a saved position
+                        // we just didn't wait for.
+                        val startPosition = try {
+                            initialPositionReady.await()
+                        } catch (_: Exception) {
+                            0L
+                        }
+                        val chosen = bestOf(accumulator)
+                        activeStream = chosen
+                        binding.playerStatus.visibility = View.GONE
+                        startStreamPlayback(chosen, startPosition)
+                    }
+                Log.i(
+                    PROVIDER_TAG,
+                    "Stream list completed: ${accumulator.size} item(s) for provider=${provider.displayName}"
+                )
+                if (accumulator.isEmpty()) {
                     Log.w(PROVIDER_TAG, "Empty stream list for provider=${provider.displayName}")
                     showStatus(getString(R.string.streams_empty), retry = true)
                 } else {
-                    availableStreams = items
+                    availableStreams = accumulator.toList()
                     binding.btnPlayerStreams.visibility =
-                        if (items.size > 1) View.VISIBLE else View.GONE
+                        if (availableStreams.size > 1) View.VISIBLE else View.GONE
                     updateBottomFocusChain()
-                    binding.playerStatus.visibility = View.GONE
-                    playBest(items)
+                    maybePrefetchNextEpisode()
                 }
-            }.onFailure { error ->
+            } catch (error: Exception) {
                 Log.w(TAG, "Stream fetch failed: ${error.message}")
                 Log.w(PROVIDER_TAG, "Stream fetch failed for provider=${provider.displayName}: ${error.message}")
                 showStatus(getString(R.string.streams_failed), retry = true)
@@ -583,26 +740,31 @@ class DirectStreamActivity : AppCompatActivity() {
      * deliberately simple (1080p > 720p > Auto); replace this with a
      * quality picker dialog when user choice is required.
      */
-    private fun playBest(items: List<StreamItem>) {
-        val chosen = items.maxByOrNull { qualityRank(it.quality) } ?: items.first()
-        activeStream = chosen
-        val scheme = chosen.url.substringBefore(':').uppercase()
-        Log.i(
-            PROVIDER_TAG,
-            "playBest picked provider=${chosen.provider.ifBlank { "?" }} " +
-                "quality=${chosen.quality} scheme=$scheme url=${chosen.url}"
-        )
-        startStreamPlayback(chosen, consumePendingStartPosition())
-    }
+    private fun bestOf(items: List<StreamItem>): StreamItem =
+        items.maxByOrNull { qualityRank(it.quality) } ?: items.first()
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
         engine.play(stream, startPositionMs, activeSubtitles)
+        // Prefetch is driven by [persistWatchProgress] (15s tick,
+        // gated on position >= 80% of duration). Don't trigger here
+        // where position is always 0.
     }
 
     private fun consumePendingStartPosition(): Long {
         val position = pendingStartPositionMs.coerceAtLeast(0L)
         pendingStartPositionMs = 0L
         return position
+    }
+
+    /**
+     * Publish the saved resume position to the streaming loader. Called
+     * by [loadInitialWatchHistory] once the Room read completes so the
+     * load coroutine can resume to it without racing the I/O.
+     */
+    private fun publishInitialPosition(position: Long) {
+        if (!initialPositionReady.isCompleted) {
+            initialPositionReady.complete(position.coerceAtLeast(0L))
+        }
     }
 
     private fun applyPendingReadySeek() {
@@ -628,6 +790,46 @@ class DirectStreamActivity : AppCompatActivity() {
             q.endsWith("480p")  -> 1
             else -> 0
         }
+    }
+
+    /**
+     * When we're past 80% of the current episode on a series, kick
+     * off a low-priority fetch of the next episode's stream list so
+     * the user doesn't see a black screen during the swap.
+     */
+    private fun maybePrefetchNextEpisode() {
+        if (currentMediaType != TYPE_SERIES) return
+        if (prefetchJob?.isActive == true || prefetchedNextStreams.isNotEmpty()) return
+        val nextEpisode = (currentEpisode ?: return) + 1
+        if (nextEpisode < 1) return
+        Log.i(
+            PROVIDER_TAG,
+            "Prefetching next episode season=$currentSeason episode=$nextEpisode"
+        )
+        prefetchJob = lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val items = resolver.load(
+                    type = TYPE_SERIES,
+                    tmdbId = currentTmdbId,
+                    season = currentSeason,
+                    episode = nextEpisode,
+                    provider = currentProvider
+                )
+                prefetchedNextStreams = items
+                Log.i(
+                    PROVIDER_TAG,
+                    "Next episode prefetch complete: ${items.size} stream(s)"
+                )
+            } catch (error: Exception) {
+                Log.w(TAG, "Next episode prefetch failed: ${error.message}")
+            }
+        }
+    }
+
+    private fun cancelPrefetch() {
+        prefetchJob?.cancel()
+        prefetchJob = null
+        prefetchedNextStreams = emptyList()
     }
 
     private fun showStatus(message: String, retry: Boolean) {
@@ -820,66 +1022,56 @@ class DirectStreamActivity : AppCompatActivity() {
         uiHandler.removeCallbacks(skipTick)
     }
 
-    private fun checkAndAddToWatchHistory() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val isTv = currentMediaType == TYPE_SERIES
-                val saved = repository.getWatchHistoryItem(
-                    this@DirectStreamActivity,
-                    currentTmdbId,
-                    isTv
+    /**
+     * Reads the saved resume position from Room and seeds
+     * [pendingStartPositionMs]. The seek is applied at
+     * [Player.STATE_READY] via [applyPendingReadySeek], so the timing
+     * of this call relative to the network response is irrelevant.
+     */
+    private suspend fun loadInitialWatchHistory() {
+        val isTv = currentMediaType == TYPE_SERIES
+        val saved = withContext(Dispatchers.IO) {
+            repository.getWatchHistoryItem(this@DirectStreamActivity, currentTmdbId, isTv)
+        }
+        val sameEpisode = !isTv || (
+            saved != null &&
+                saved.seasonNumber == currentSeason &&
+                saved.episodeNumber == currentEpisode
+            )
+
+        if (saved == null) {
+            repository.saveToWatchHistory(
+                this@DirectStreamActivity,
+                WatchHistoryItem(
+                    id = currentTmdbId,
+                    title = currentTitle,
+                    overview = currentOverview,
+                    posterPath = currentPosterPath,
+                    backdropPath = currentBackdropPath,
+                    voteAverage = currentVoteAverage,
+                    releaseDate = currentReleaseDate,
+                    isTv = isTv,
+                    seasonNumber = currentSeason.takeIf { isTv },
+                    episodeNumber = currentEpisode.takeIf { isTv },
+                    playbackPosition = 0L
                 )
-                val sameEpisode = !isTv || (
-                    saved != null &&
-                        saved.seasonNumber == currentSeason &&
-                        saved.episodeNumber == currentEpisode
-                    )
-
-                if (saved == null) {
-                    repository.saveToWatchHistory(
-                        this@DirectStreamActivity,
-                        WatchHistoryItem(
-                            id = currentTmdbId,
-                            title = currentTitle,
-                            overview = currentOverview,
-                            posterPath = currentPosterPath,
-                            backdropPath = currentBackdropPath,
-                            voteAverage = currentVoteAverage,
-                            releaseDate = currentReleaseDate,
-                            isTv = isTv,
-                            seasonNumber = currentSeason.takeIf { isTv },
-                            episodeNumber = currentEpisode.takeIf { isTv },
-                            playbackPosition = 0L
-                        )
-                    )
-                    syncWatchHistory(0L, 0L)
-                } else {
-                    pendingStartPositionMs =
-                        if (sameEpisode) saved.playbackPosition.coerceAtLeast(0L) else 0L
-                    if (isTv && !sameEpisode) {
-                        repository.updatePlaybackPosition(currentTmdbId, "tv", 0L)
-                        repository.updateEpisodeInfo(
-                            currentTmdbId,
-                            "tv",
-                            currentSeason ?: 1,
-                            currentEpisode ?: 1
-                        )
-                        syncWatchHistory(0L, 0L)
-                    }
-                }
-            } catch (error: Exception) {
-                Log.e(TAG, "[WatchHistory] Could not initialize playback progress", error)
-            }
-
-            withContext(Dispatchers.Main) {
-                watchHistoryReady = true
-                startWatchProgressUpdates()
-                val sniffedUrl = intent.getStringExtra(EXTRA_SNIFFED_URL)
-                if (sniffedUrl.isNullOrBlank()) {
-                    loadCurrentMedia()
-                } else {
-                    playSniffedStream(sniffedUrl)
-                }
+            )
+            publishInitialPosition(0L)
+            syncWatchHistory(0L, 0L)
+        } else {
+            val restoredPosition =
+                if (sameEpisode) saved.playbackPosition.coerceAtLeast(0L) else 0L
+            pendingStartPositionMs = restoredPosition
+            publishInitialPosition(restoredPosition)
+            if (isTv && !sameEpisode) {
+                repository.updatePlaybackPosition(currentTmdbId, "tv", 0L)
+                repository.updateEpisodeInfo(
+                    currentTmdbId,
+                    "tv",
+                    currentSeason ?: 1,
+                    currentEpisode ?: 1
+                )
+                syncWatchHistory(0L, 0L)
             }
         }
     }
@@ -902,6 +1094,15 @@ class DirectStreamActivity : AppCompatActivity() {
         val duration = engine.player.duration.takeIf { it > 0 } ?: 0L
         val season = currentSeason
         val episode = currentEpisode
+
+        // Cheap position check piggy-backs on the 15s persist tick:
+        // when we're past PREFETCH_THRESHOLD of the current episode,
+        // warm the next episode's stream list so the swap is instant.
+        if (isTv && duration > 0L &&
+            position.toFloat() / duration >= PREFETCH_THRESHOLD
+        ) {
+            maybePrefetchNextEpisode()
+        }
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
@@ -939,6 +1140,20 @@ class DirectStreamActivity : AppCompatActivity() {
         episode: Int? = currentEpisode
     ) {
         val isTv = currentMediaType == TYPE_SERIES
+        // Throttle: skip the Firebase round-trip if the local position
+        // has not moved meaningfully since the last sync, and never
+        // re-sync more often than the persistence interval. The local
+        // Room write still happens every tick so resume is always
+        // accurate; only the network sync is rate-limited.
+        val positionDelta = kotlin.math.abs(position - lastSyncedPositionMs)
+        val timeSinceLastSync = System.currentTimeMillis() - lastSyncedAtMs
+        if (position > 0L && positionDelta < FIREBASE_MIN_DELTA_MS &&
+            timeSinceLastSync < FIREBASE_MAX_INTERVAL_MS
+        ) {
+            return
+        }
+        lastSyncedPositionMs = position
+        lastSyncedAtMs = System.currentTimeMillis()
         FirebaseManager.syncWatchHistory(
             tmdbId = currentTmdbId,
             isTv = isTv,
@@ -954,6 +1169,9 @@ class DirectStreamActivity : AppCompatActivity() {
             releaseDate = currentReleaseDate
         )
     }
+
+    @Volatile private var lastSyncedPositionMs: Long = -1L
+    @Volatile private var lastSyncedAtMs: Long = 0L
 
     override fun onStart() {
         super.onStart()
@@ -972,6 +1190,8 @@ class DirectStreamActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         streamJob?.cancel()
+        historyJob?.cancel()
+        cancelPrefetch()
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()
@@ -1093,6 +1313,30 @@ class DirectStreamActivity : AppCompatActivity() {
         private const val SEEK_STEP_MS = 10_000L
         private const val SKIP_RAMP_DURATION_MS = 5_000L
         private const val SKIP_REPEAT_MS = 600L
+
+        /**
+         * Trigger a next-episode prefetch when the playhead is past
+         * 80% of the current item's duration. 80% leaves enough room
+         * for a rebuffer or a slow network on the next call while
+         * still front-loading the work.
+         */
+        private const val PREFETCH_THRESHOLD = 0.8f
+
+        /**
+         * Skip the Firebase round-trip if the local position hasn't
+         * moved at least this much since the last sync. Room writes
+         * still happen every tick so resume is accurate; only the
+         * cloud sync is throttled.
+         */
+        private const val FIREBASE_MIN_DELTA_MS = 5_000L
+
+        /**
+         * Hard ceiling on the throttle — even if the user is paused
+         * for a long time, force a sync at least this often so a
+         * device that crashed mid-viewing still has a recent
+         * position in the cloud.
+         */
+        private const val FIREBASE_MAX_INTERVAL_MS = 5 * 60_000L
     }
 
     private fun normalizeArtworkUrl(path: String?): String? = when {
