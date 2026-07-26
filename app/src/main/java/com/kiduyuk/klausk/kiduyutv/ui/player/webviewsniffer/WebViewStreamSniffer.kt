@@ -35,6 +35,7 @@ class WebViewStreamSniffer(
         val requestValue = request ?: return
         if (requestValue.isForMainFrame) return
         val url = requestValue.url?.toString().orEmpty()
+        if (url.contains(IGNORED_DEMO_VIDEO, ignoreCase = true)) return
         val headers = requestHeaders(requestValue)
         val cookie = cookieFor(url)
         detectSubtitleMimeType(url)?.let { mimeType ->
@@ -94,5 +95,9 @@ class WebViewStreamSniffer(
                 "direct" to "video/webm"
             else -> null
         }
+    }
+
+    private companion object {
+        const val IGNORED_DEMO_VIDEO = "demo-video.mp4"
     }
 }
