@@ -187,12 +187,10 @@ class PlayerEngine(context: Context) {
             SingleSampleMediaSource.Factory(subtitleDataSource)
                 .createMediaSource(configuration, C.TIME_UNSET)
         }
-        return MergingMediaSource(
-            true,
-            true,
-            videoSource,
-            *subtitleSources.toTypedArray()
-        )
+        // Do not clip an external subtitle source whose duration is unknown.
+        // Media3 treats that as an invalid merged timeline and reports
+        // ERROR_CODE_FAILED_RUNTIME_CHECK before playback can start.
+        return MergingMediaSource(videoSource, *subtitleSources.toTypedArray())
     }
 
     private fun isDash(stream: StreamItem): Boolean =

@@ -64,6 +64,7 @@ class DirectStreamActivity : AppCompatActivity() {
     private var streamDialog: StreamSelectionDialog? = null
     private var availableStreams: List<StreamItem> = emptyList()
     private var activeStream: StreamItem? = null
+    private var activeSubtitles: List<SubtitleItem> = emptyList()
     private val failedStreamUrls: MutableSet<String> = linkedSetOf()
     private val uiHandler = Handler(Looper.getMainLooper())
     private var controlsLockedVisible = false
@@ -271,7 +272,8 @@ class DirectStreamActivity : AppCompatActivity() {
         availableStreams = listOf(stream)
         activeStream = stream
         showStatus(getString(R.string.buffering), retry = false)
-        engine.play(stream, subtitles = parseSniffedSubtitles())
+        activeSubtitles = parseSniffedSubtitles()
+        engine.play(stream, subtitles = activeSubtitles)
     }
 
     private fun parseSniffedSubtitles(): List<SubtitleItem> {
@@ -447,12 +449,13 @@ class DirectStreamActivity : AppCompatActivity() {
         }
         val next = orderedCandidates.firstOrNull { it.url !in failedStreamUrls }
         if (next == null) {
-            showError(code)
+            showPlaybackError(code)
             return
         }
 
         val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
         activeStream = next
+        activeSubtitles = emptyList()
         Log.w(
             PROVIDER_TAG,
             "Playback failed code=$code; trying next stream " +
@@ -472,6 +475,7 @@ class DirectStreamActivity : AppCompatActivity() {
         streamJob?.cancel()
         availableStreams = emptyList()
         activeStream = null
+        activeSubtitles = emptyList()
         failedStreamUrls.clear()
         binding.btnPlayerStreams.visibility = View.GONE
         updateBottomFocusChain()
@@ -519,7 +523,7 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
-        engine.play(stream, startPositionMs)
+        engine.play(stream, startPositionMs, activeSubtitles)
     }
 
     private fun qualityRank(quality: String): Int {
@@ -561,8 +565,20 @@ class DirectStreamActivity : AppCompatActivity() {
             .start()
     }
 
-    private fun showError(code: String) {
+    private fun showPlaybackError(code: String) {
         Toast.makeText(this, getString(R.string.player_error, code), Toast.LENGTH_LONG).show()
+        binding.playerStatus.text = getString(R.string.playback_failed_retry, code)
+        binding.playerStatus.visibility = View.VISIBLE
+        binding.playerStatus.setOnClickListener {
+            val stream = activeStream
+            if (stream == null) {
+                loadCurrentMedia()
+            } else {
+                failedStreamUrls.remove(stream.url)
+                showStatus(getString(R.string.buffering), retry = false)
+                startStreamPlayback(stream, engine.player.currentPosition.coerceAtLeast(0L))
+            }
+        }
     }
 
     private val hideControlsRunnable = Runnable {
