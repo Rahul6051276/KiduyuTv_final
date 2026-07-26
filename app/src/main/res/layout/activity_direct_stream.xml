@@ -196,14 +196,16 @@
                 <TextView
                     android:id="@+id/btnPlayerStreams"
                     style="@style/DirectStreamControlButton"
-                    android:layout_width="96dp"
+                    android:layout_width="120dp"
                     android:layout_marginStart="8dp"
                     android:contentDescription="@string/stream_sources_cd"
                     android:drawableStart="@drawable/ic_direct_stream_cloud"
-                    android:drawablePadding="6dp"
+                    android:drawablePadding="8dp"
                     android:nextFocusLeft="@id/btnPlayerTracks"
                     android:nextFocusRight="@id/btnVolume"
                     android:nextFocusUp="@id/btnPlayerBack"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
                     android:text="@string/stream_sources"
                     android:visibility="gone" />
 
