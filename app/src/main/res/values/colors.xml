@@ -16,6 +16,8 @@
     <color name="auth_text_muted">#AAAAAA</color>
     <color name="auth_text_dim">#666666</color>
     <color name="kiduyu_red">#E50914</color>
+    <color name="surface_dark">#1F1F1F</color>
+    <color name="card_dark">#2A2A2A</color>
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#B3B3B3</color>
     <color name="text_muted">#808080</color>
