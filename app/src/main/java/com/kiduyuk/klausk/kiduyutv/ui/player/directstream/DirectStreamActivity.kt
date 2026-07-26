@@ -11,6 +11,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
@@ -35,6 +36,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamResolve
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamSelectionDialog
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.TrackSelectionDialog
 import com.kiduyuk.klausk.kiduyutv.util.FirebaseManager
+import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -67,6 +69,7 @@ class DirectStreamActivity : AppCompatActivity() {
     private var streamJob: Job? = null
     private var trackDialog: TrackSelectionDialog? = null
     private var streamDialog: StreamSelectionDialog? = null
+    private var quitDialog: QuitDialog? = null
     private var availableStreams: List<StreamItem> = emptyList()
     private var activeStream: StreamItem? = null
     private var activeSubtitles: List<SubtitleItem> = emptyList()
@@ -222,7 +225,7 @@ class DirectStreamActivity : AppCompatActivity() {
         // don't overlap. The subtitle button is hidden via the layout's
         // app:show_subtitle_button="false" because we don't render
         // subtitle tracks via the Media3 overlay.
-        binding.btnPlayerBack.setOnClickListener { finish() }
+        binding.btnPlayerBack.setOnClickListener { showExitConfirmationDialog() }
         binding.btnPlayerTracks.setOnClickListener { showTrackDialog() }
         binding.btnPlayerStreams.setOnClickListener { showStreamDialog() }
         binding.playerView.setOnClickListener { showControls() }
@@ -264,6 +267,12 @@ class DirectStreamActivity : AppCompatActivity() {
         updateBottomFocusChain()
         showControls()
         uiHandler.post(progressTick)
+
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                showExitConfirmationDialog()
+            }
+        })
 
         checkAndAddToWatchHistory()
     }
@@ -655,6 +664,26 @@ class DirectStreamActivity : AppCompatActivity() {
         }
     }
 
+    private fun showExitConfirmationDialog() {
+        if (quitDialog?.isShowing == true) return
+        quitDialog = QuitDialog(
+            context = this,
+            title = "Stop Playback?",
+            message = "Are you sure you want to stop playback and exit?",
+            positiveButtonText = "Stop",
+            negativeButtonText = "Continue",
+            lottieAnimRes = R.raw.exit,
+            onNo = { quitDialog = null },
+            onYes = {
+                quitDialog = null
+                finish()
+            }
+        ).also { dialog ->
+            dialog.setOnDismissListener { quitDialog = null }
+            dialog.show()
+        }
+    }
+
     private val hideControlsRunnable = Runnable {
         if (!controlsLockedVisible && trackDialog?.isShowing != true && streamDialog?.isShowing != true) {
             binding.overlayControls.visibility = View.GONE
@@ -734,10 +763,11 @@ class DirectStreamActivity : AppCompatActivity() {
             }
 
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
-                if (event.action == KeyEvent.ACTION_DOWN) {
-                    finish()
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    showExitConfirmationDialog()
                     return true
                 }
+                return true
             }
 
 //            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
@@ -937,6 +967,8 @@ class DirectStreamActivity : AppCompatActivity() {
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()
         streamDialog = null
+        quitDialog?.takeIf { it.isShowing }?.dismiss()
+        quitDialog = null
         uiHandler.removeCallbacksAndMessages(null)
         if (::engine.isInitialized) engine.release()
         super.onDestroy()
