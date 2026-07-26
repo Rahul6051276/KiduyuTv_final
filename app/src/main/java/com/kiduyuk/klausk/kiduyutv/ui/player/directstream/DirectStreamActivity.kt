@@ -353,6 +353,14 @@ class DirectStreamActivity : AppCompatActivity() {
     private fun applyResizeMode() {
         val mode = resizeModes[resizeModeIndex]
         binding.playerView.resizeMode = mode.resizeMode
+        // Some decoders update the SurfaceView dimensions independently
+        // after reporting a new video size. Explicitly relayout both levels
+        // so the selected mode also takes effect for those streams.
+        binding.playerView.requestLayout()
+        binding.playerView.videoSurfaceView?.apply {
+            requestLayout()
+            invalidate()
+        }
         binding.btnFill.setText(mode.label)
         Log.i(TAG, "Player resize mode changed to ${getString(mode.label)}")
     }
