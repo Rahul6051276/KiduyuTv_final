@@ -89,6 +89,8 @@ class DirectStreamActivity : AppCompatActivity() {
     private var currentProvider: StreamProviderChoice = StreamCatalog.default
     private val repository = TmdbRepository()
     private var pendingStartPositionMs = 0L
+    private var pendingReadySeekPositionMs = 0L
+    private var retriedWithoutExternalSubtitles = false
     private var watchHistoryReady = false
     private val controlsClock = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     private val controlsTime = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -189,6 +191,7 @@ class DirectStreamActivity : AppCompatActivity() {
                     }
                     Player.STATE_READY -> {
                         binding.playerStatus.visibility = View.GONE
+                        applyPendingReadySeek()
                     }
                     Player.STATE_ENDED ->
                         binding.playerStatus.visibility = View.GONE
@@ -293,7 +296,12 @@ class DirectStreamActivity : AppCompatActivity() {
         activeStream = stream
         showStatus(getString(R.string.buffering), retry = false)
         activeSubtitles = parseSniffedSubtitles()
-        engine.play(stream, consumePendingStartPosition(), activeSubtitles)
+        // A non-zero seek while Media3 is still resolving a sniffed video's
+        // external subtitle timelines can trigger ERROR_CODE_FAILED_RUNTIME_CHECK.
+        // Prepare the merged source first, then restore progress at STATE_READY.
+        pendingReadySeekPositionMs = consumePendingStartPosition()
+        retriedWithoutExternalSubtitles = false
+        engine.play(stream, 0L, activeSubtitles)
     }
 
     private fun parseSniffedSubtitles(): List<SubtitleItem> {
@@ -462,6 +470,29 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun handlePlaybackError(code: String) {
+        if (code == "ERROR_CODE_FAILED_RUNTIME_CHECK") {
+            val stream = activeStream
+            if (
+                stream?.provider.equals("WebSniffer", ignoreCase = true) &&
+                activeSubtitles.isNotEmpty() &&
+                !retriedWithoutExternalSubtitles
+            ) {
+                retriedWithoutExternalSubtitles = true
+                activeSubtitles = emptyList()
+                val resumePosition = pendingReadySeekPositionMs
+                    .takeIf { it > 0L }
+                    ?: engine.player.currentPosition.coerceAtLeast(0L)
+                pendingReadySeekPositionMs = resumePosition
+                Log.w(
+                    TAG,
+                    "Retrying sniffed stream without incompatible external subtitle merge"
+                )
+                showStatus(getString(R.string.buffering), retry = false)
+                engine.play(stream, 0L, emptyList())
+                return
+            }
+        }
+
         activeStream?.url?.let { failedStreamUrls.add(it) }
         val currentIndex = availableStreams.indexOfFirst { it.url == activeStream?.url }
         val orderedCandidates = if (currentIndex >= 0) {
@@ -498,6 +529,8 @@ class DirectStreamActivity : AppCompatActivity() {
         availableStreams = emptyList()
         activeStream = null
         activeSubtitles = emptyList()
+        pendingReadySeekPositionMs = 0L
+        retriedWithoutExternalSubtitles = false
         failedStreamUrls.clear()
         binding.btnPlayerStreams.visibility = View.GONE
         updateBottomFocusChain()
@@ -552,6 +585,19 @@ class DirectStreamActivity : AppCompatActivity() {
         val position = pendingStartPositionMs.coerceAtLeast(0L)
         pendingStartPositionMs = 0L
         return position
+    }
+
+    private fun applyPendingReadySeek() {
+        val requestedPosition = pendingReadySeekPositionMs
+        if (requestedPosition <= 0L) return
+        pendingReadySeekPositionMs = 0L
+        val duration = engine.player.duration
+        val target = if (duration > 0L) {
+            requestedPosition.coerceAtMost((duration - 1_000L).coerceAtLeast(0L))
+        } else {
+            requestedPosition
+        }
+        engine.player.seekTo(target)
     }
 
     private fun qualityRank(quality: String): Int {
