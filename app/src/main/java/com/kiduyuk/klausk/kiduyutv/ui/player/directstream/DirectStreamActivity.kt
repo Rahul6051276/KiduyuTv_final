@@ -490,7 +490,8 @@ class DirectStreamActivity : AppCompatActivity() {
         if (code == "ERROR_CODE_FAILED_RUNTIME_CHECK") {
             val stream = activeStream
             if (
-                stream?.provider.equals("WebSniffer", ignoreCase = true) &&
+                stream != null &&
+                stream.provider.equals("WebSniffer", ignoreCase = true) &&
                 activeSubtitles.isNotEmpty() &&
                 !retriedWithoutExternalSubtitles
             ) {
