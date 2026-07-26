@@ -29,6 +29,14 @@ class SettingsManager(context: Context) {
         return preferences.getBoolean(KEY_DIRECT_STREAM_ENABLED, false)
     }
 
+    fun setWebSnifferEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_WEB_SNIFFER_ENABLED, enabled).apply()
+    }
+
+    fun isWebSnifferEnabled(): Boolean {
+        return preferences.getBoolean(KEY_WEB_SNIFFER_ENABLED, false)
+    }
+
     /**
      * Saves the ads disabled preference.
      * @param disabled true to disable all ads, false to enable ads
@@ -78,6 +86,7 @@ class SettingsManager(context: Context) {
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_ADS_DISABLED = "ads_disabled"
         private const val KEY_DIRECT_STREAM_ENABLED = "direct_stream_enabled"
+        private const val KEY_WEB_SNIFFER_ENABLED = "web_sniffer_enabled"
 
         /** Sentinel value meaning "ask me each time" — no automatic selection. */
         const val AUTO = "Auto"

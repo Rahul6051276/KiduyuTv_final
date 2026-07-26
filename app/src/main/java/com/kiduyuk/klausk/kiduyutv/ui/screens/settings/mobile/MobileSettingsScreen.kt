@@ -144,6 +144,9 @@ fun MobileSettingsScreen(
     var directStreamEnabled by remember {
         mutableStateOf(settingsManager.isDirectStreamEnabled())
     }
+    var webSnifferEnabled by remember {
+        mutableStateOf(settingsManager.isWebSnifferEnabled())
+    }
     var showWhatsNewDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showSignInError by remember { mutableStateOf<String?>(null) }
@@ -675,6 +678,31 @@ fun MobileSettingsScreen(
                             onCheckedChange = {
                                 directStreamEnabled = it
                                 settingsManager.setDirectStreamEnabled(it)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryRed
+                            )
+                        )
+                    }
+                )
+                SettingsItem(
+                    icon = Icons.Default.PlayCircle,
+                    title = "Try Web Sniffer",
+                    subtitle = if (webSnifferEnabled)
+                        "Capture WebView streams for native playback"
+                    else
+                        "Continue playing inside the WebView",
+                    onClick = {
+                        webSnifferEnabled = !webSnifferEnabled
+                        settingsManager.setWebSnifferEnabled(webSnifferEnabled)
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = webSnifferEnabled,
+                            onCheckedChange = {
+                                webSnifferEnabled = it
+                                settingsManager.setWebSnifferEnabled(it)
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,

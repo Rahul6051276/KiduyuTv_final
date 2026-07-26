@@ -33,6 +33,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.TrackSelectio
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 /**
  * TV-first native player for streams returned by the kiduyuTv_providers
@@ -226,7 +227,42 @@ class DirectStreamActivity : AppCompatActivity() {
         showControls()
         uiHandler.post(progressTick)
 
-        loadCurrentMedia()
+        val sniffedUrl = intent.getStringExtra(EXTRA_SNIFFED_URL)
+        if (sniffedUrl.isNullOrBlank()) {
+            loadCurrentMedia()
+        } else {
+            playSniffedStream(sniffedUrl)
+        }
+    }
+
+    private fun playSniffedStream(url: String) {
+        val headers = linkedMapOf<String, String>()
+        intent.getStringExtra(EXTRA_SNIFFED_HEADERS)?.let { encoded ->
+            runCatching {
+                val json = JSONObject(encoded)
+                json.keys().forEach { key ->
+                    json.optString(key).takeIf { it.isNotBlank() }?.let { headers[key] = it }
+                }
+            }.onFailure { Log.w(TAG, "Could not parse sniffed request headers", it) }
+        }
+        intent.getStringExtra(EXTRA_SNIFFED_COOKIE)
+            ?.takeIf { it.isNotBlank() && headers.keys.none { key -> key.equals("Cookie", true) } }
+            ?.let { headers["Cookie"] = it }
+
+        val stream = StreamItem(
+            name = "Web Sniffer",
+            title = intent.getStringExtra(EXTRA_TITLE).orEmpty().ifBlank { "Captured WebView stream" },
+            url = url,
+            quality = "Auto",
+            provider = "WebSniffer",
+            type = intent.getStringExtra(EXTRA_SNIFFED_TYPE).orEmpty(),
+            mimeType = intent.getStringExtra(EXTRA_SNIFFED_MIME_TYPE).orEmpty(),
+            headers = headers
+        )
+        availableStreams = listOf(stream)
+        activeStream = stream
+        showStatus(getString(R.string.buffering), retry = false)
+        engine.play(stream)
     }
 
     private fun applyResizeMode() {
@@ -636,6 +672,11 @@ class DirectStreamActivity : AppCompatActivity() {
         const val EXTRA_BACKDROP_URL = "BACKDROP_PATH"
         const val EXTRA_TITLE = "TITLE"
         const val EXTRA_POSTER_PATH = "POSTER_PATH"
+        const val EXTRA_SNIFFED_URL = "SNIFFED_STREAM_URL"
+        const val EXTRA_SNIFFED_HEADERS = "SNIFFED_STREAM_HEADERS"
+        const val EXTRA_SNIFFED_COOKIE = "SNIFFED_STREAM_COOKIE"
+        const val EXTRA_SNIFFED_TYPE = "SNIFFED_STREAM_TYPE"
+        const val EXTRA_SNIFFED_MIME_TYPE = "SNIFFED_STREAM_MIME_TYPE"
 
         fun createIntent(
             context: Context,
@@ -655,6 +696,37 @@ class DirectStreamActivity : AppCompatActivity() {
             putExtra(EXTRA_TITLE, title)
             putExtra(EXTRA_POSTER_PATH, posterPath)
             putExtra(EXTRA_BACKDROP_URL, backdropPath)
+        }
+
+        fun createSniffedIntent(
+            context: Context,
+            tmdbId: Int,
+            isTv: Boolean,
+            season: Int?,
+            episode: Int?,
+            title: String,
+            posterPath: String?,
+            backdropPath: String?,
+            streamUrl: String,
+            headers: Map<String, String>,
+            cookie: String?,
+            type: String,
+            mimeType: String
+        ): Intent = createIntent(
+            context = context,
+            tmdbId = tmdbId,
+            isTv = isTv,
+            season = season,
+            episode = episode,
+            title = title,
+            posterPath = posterPath,
+            backdropPath = backdropPath
+        ).apply {
+            putExtra(EXTRA_SNIFFED_URL, streamUrl)
+            putExtra(EXTRA_SNIFFED_HEADERS, JSONObject(headers).toString())
+            putExtra(EXTRA_SNIFFED_COOKIE, cookie)
+            putExtra(EXTRA_SNIFFED_TYPE, type)
+            putExtra(EXTRA_SNIFFED_MIME_TYPE, mimeType)
         }
 
         const val TYPE_MOVIE  = "movie"

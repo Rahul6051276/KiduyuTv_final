@@ -30,8 +30,12 @@ import com.kiduyuk.klausk.kiduyutv.R
 import com.kiduyuk.klausk.kiduyutv.data.model.StreamProviderManager
 import com.kiduyuk.klausk.kiduyutv.data.model.WatchHistoryItem
 import com.kiduyuk.klausk.kiduyutv.data.repository.TmdbRepository
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity
+import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedStream
+import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.WebViewStreamSniffer
 import com.kiduyuk.klausk.kiduyutv.util.AdvancedAdBlocker
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
+import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -81,6 +85,7 @@ class PlayerActivity : AppCompatActivity() {
     private var currentBackdropPath: String? = null
     private var currentVoteAverage: Double = 0.0
     private var currentReleaseDate: String? = null
+    private var webStreamSniffer: WebViewStreamSniffer? = null
     private var currentPlaybackPosition: Long = 0L
     private var currentDuration: Long = 0L
 
@@ -193,6 +198,9 @@ class PlayerActivity : AppCompatActivity() {
         currentBackdropPath = contentBackdropPath
         currentVoteAverage = contentVoteAverage
         currentReleaseDate = contentReleaseDate
+        if (SettingsManager(this).isWebSnifferEnabled()) {
+            webStreamSniffer = WebViewStreamSniffer(::openSniffedStream)
+        }
 
         // Check and add to watch history, timer will be started after check completes
         checkAndAddToWatchHistory()
@@ -305,7 +313,8 @@ class PlayerActivity : AppCompatActivity() {
                     isPageLoading = false
                     dismissLoadingDialog()
                     Log.e(TAG, "[WebView] Error received with AdBlocker")
-                }
+                },
+                onRequest = { request -> webStreamSniffer?.inspect(request) }
             )
 
             webChromeClient = object : WebChromeClient() {
@@ -718,6 +727,36 @@ class PlayerActivity : AppCompatActivity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun openSniffedStream(stream: SniffedStream) {
+        runOnUiThread {
+            if (isFinishing || isDestroyed) return@runOnUiThread
+            Log.i(
+                TAG,
+                "[WebSniffer] Captured ${stream.type} stream from " +
+                    (android.net.Uri.parse(stream.url).host ?: "unknown host")
+            )
+            dismissLoadingDialog()
+            startActivity(
+                DirectStreamActivity.createSniffedIntent(
+                    context = this,
+                    tmdbId = currentTmdbId,
+                    isTv = currentIsTv,
+                    season = currentSeason.takeIf { currentIsTv },
+                    episode = currentEpisode.takeIf { currentIsTv },
+                    title = currentTitle,
+                    posterPath = currentPosterPath,
+                    backdropPath = currentBackdropPath,
+                    streamUrl = stream.url,
+                    headers = stream.headers,
+                    cookie = stream.cookie,
+                    type = stream.type,
+                    mimeType = stream.mimeType
+                )
+            )
+            finish()
         }
     }
 

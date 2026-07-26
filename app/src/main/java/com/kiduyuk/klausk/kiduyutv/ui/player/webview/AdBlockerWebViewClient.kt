@@ -12,7 +12,8 @@ import java.io.ByteArrayInputStream
 
 open class AdBlockerWebViewClient(
     private val onPageFinished: () -> Unit,
-    private val onError: () -> Unit
+    private val onError: () -> Unit,
+    private val onRequest: (WebResourceRequest?) -> Unit = {}
 ) : WebViewClient() {
 
     override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest?): WebResourceResponse? {
@@ -30,6 +31,7 @@ open class AdBlockerWebViewClient(
             }
         }
 
+        onRequest(request)
         return super.shouldInterceptRequest(view, request)
     }
 

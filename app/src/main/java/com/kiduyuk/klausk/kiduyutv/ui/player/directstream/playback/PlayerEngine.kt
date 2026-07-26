@@ -16,6 +16,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
@@ -156,10 +157,17 @@ class PlayerEngine(context: Context) {
         return when {
             isHls(stream) -> HlsMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(mediaItem)
+            isDash(stream) -> DashMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(mediaItem)
             else -> ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(mediaItem)
         }
     }
+
+    private fun isDash(stream: StreamItem): Boolean =
+        stream.type.equals("dash", ignoreCase = true) ||
+            stream.mimeType.equals("application/dash+xml", ignoreCase = true) ||
+            stream.url.substringBefore('?').lowercase().endsWith(".mpd")
 
     /**
      * HLS detection is more permissive than the obvious "URL ends in
@@ -302,7 +310,11 @@ class PlayerEngine(context: Context) {
         currentUrl = normalizedUrl
         val scheme = normalizedUrl.substringBefore(':').uppercase()
         val isHlsStream = isHls(playbackStream)
-        val sourceType = if (isHlsStream) "HlsMediaSource" else "ProgressiveMediaSource"
+        val sourceType = when {
+            isHlsStream -> "HlsMediaSource"
+            isDash(playbackStream) -> "DashMediaSource"
+            else -> "ProgressiveMediaSource"
+        }
         val host = runCatching { Uri.parse(normalizedUrl).host }.getOrNull() ?: "?"
         val requestHeaders = playbackHeaders(playbackStream)
         Log.i(

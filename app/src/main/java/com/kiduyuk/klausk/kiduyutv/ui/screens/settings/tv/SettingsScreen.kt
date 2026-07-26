@@ -1260,6 +1260,9 @@ private fun PlaybackContent(
     var directStreamEnabled by remember {
         mutableStateOf(settingsManager.isDirectStreamEnabled())
     }
+    var webSnifferEnabled by remember {
+        mutableStateOf(settingsManager.isWebSnifferEnabled())
+    }
     val options = listOf(SettingsManager.AUTO) + StreamProviderManager.getProviderNamesForDevice(isTvDevice = true)
 
     Column(
@@ -1314,6 +1317,51 @@ private fun PlaybackContent(
                 onCheckedChange = {
                     directStreamEnabled = it
                     settingsManager.setDirectStreamEnabled(it)
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = PrimaryRed)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        SettingsSectionLabel(text = "Try Web Sniffer")
+
+        val snifferInteraction = remember { MutableInteractionSource() }
+        val snifferFocused by snifferInteraction.collectIsFocusedAsState()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CardDark)
+                .border(
+                    if (snifferFocused) 2.dp else 0.dp,
+                    if (snifferFocused) PrimaryRed else Color.Transparent,
+                    RoundedCornerShape(16.dp)
+                )
+                .clickable(
+                    interactionSource = snifferInteraction,
+                    indication = null
+                ) {
+                    webSnifferEnabled = !webSnifferEnabled
+                    settingsManager.setWebSnifferEnabled(webSnifferEnabled)
+                }
+                .focusable(interactionSource = snifferInteraction)
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Try Web Sniffer", color = TextPrimary, fontSize = 16.sp)
+                Text(
+                    "Capture the WebView media request and continue in the native player.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+            }
+            Switch(
+                checked = webSnifferEnabled,
+                onCheckedChange = {
+                    webSnifferEnabled = it
+                    settingsManager.setWebSnifferEnabled(it)
                 },
                 colors = SwitchDefaults.colors(checkedTrackColor = PrimaryRed)
             )
