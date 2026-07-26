@@ -33,7 +33,6 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamResolve
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamSelectionDialog
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.TrackSelectionDialog
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import org.json.JSONArray
@@ -61,7 +60,6 @@ class DirectStreamActivity : AppCompatActivity() {
     private lateinit var resolver: StreamResolver
 
     private var streamJob: Job? = null
-    private var playbackStartJob: Job? = null
     private var trackDialog: TrackSelectionDialog? = null
     private var streamDialog: StreamSelectionDialog? = null
     private var availableStreams: List<StreamItem> = emptyList()
@@ -447,7 +445,6 @@ class DirectStreamActivity : AppCompatActivity() {
         provider: StreamProviderChoice
     ) {
         streamJob?.cancel()
-        playbackStartJob?.cancel()
         availableStreams = emptyList()
         activeStream = null
         failedStreamUrls.clear()
@@ -497,14 +494,7 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
-        playbackStartJob?.cancel()
-        playbackStartJob = lifecycleScope.launch {
-            if (stream.provider.equals("DahmerMovies", ignoreCase = true)) {
-                Log.i(PROVIDER_TAG, "Waiting ${DAHMER_CHALLENGE_WAIT_MS}ms before DahmerMovies playback")
-                delay(DAHMER_CHALLENGE_WAIT_MS)
-            }
-            engine.play(stream, startPositionMs)
-        }
+        engine.play(stream, startPositionMs)
     }
 
     private fun qualityRank(quality: String): Int {
@@ -688,7 +678,6 @@ class DirectStreamActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         streamJob?.cancel()
-        playbackStartJob?.cancel()
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()
@@ -792,7 +781,6 @@ class DirectStreamActivity : AppCompatActivity() {
         private const val SEEK_STEP_MS = 10_000L
         private const val SKIP_RAMP_DURATION_MS = 5_000L
         private const val SKIP_REPEAT_MS = 600L
-        private const val DAHMER_CHALLENGE_WAIT_MS = 5_000L
     }
 
     private fun normalizeArtworkUrl(path: String?): String? = when {
