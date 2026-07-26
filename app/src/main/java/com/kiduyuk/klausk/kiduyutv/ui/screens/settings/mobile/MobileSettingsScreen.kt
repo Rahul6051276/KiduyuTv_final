@@ -140,6 +140,10 @@ fun MobileSettingsScreen(
     val scrollState = rememberScrollState()
     val myList by MyListManager.myList.collectAsState()
     var showProviderPicker by remember { mutableStateOf(false) }
+    val settingsManager = remember(context) { SettingsManager(context) }
+    var directStreamEnabled by remember {
+        mutableStateOf(settingsManager.isDirectStreamEnabled())
+    }
     var showWhatsNewDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showSignInError by remember { mutableStateOf<String?>(null) }
@@ -654,6 +658,31 @@ fun MobileSettingsScreen(
 
             // ── Playback Section ────────────────────────────────────────────────
             SettingsGroup(title = "Playback") {
+                SettingsItem(
+                    icon = Icons.Default.PlayCircle,
+                    title = "Direct Stream",
+                    subtitle = if (directStreamEnabled)
+                        "Native player enabled"
+                    else
+                        "Use provider selection and WebView",
+                    onClick = {
+                        directStreamEnabled = !directStreamEnabled
+                        settingsManager.setDirectStreamEnabled(directStreamEnabled)
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = directStreamEnabled,
+                            onCheckedChange = {
+                                directStreamEnabled = it
+                                settingsManager.setDirectStreamEnabled(it)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryRed
+                            )
+                        )
+                    }
+                )
                 SettingsItem(
                     icon = Icons.Default.PlayCircle,
                     title = "Default Provider",
@@ -1180,7 +1209,8 @@ private fun SettingsItem(
     onClick: () -> Unit,
     isLoading: Boolean = false,
     isSuccess: Boolean = false,
-    progress: Float? = null
+    progress: Float? = null,
+    trailingContent: (@Composable () -> Unit)? = null
 ) {
     Column(
         modifier = Modifier
@@ -1207,7 +1237,9 @@ private fun SettingsItem(
                 Text(title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 Text(subtitle, color = TextSecondary, fontSize = 12.sp)
             }
-            if (isLoading && progress == null) {
+            if (trailingContent != null) {
+                trailingContent()
+            } else if (isLoading && progress == null) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = PrimaryRed, strokeWidth = 2.dp)
             } else if (isSuccess) {
                 Icon(Icons.Default.Check, contentDescription = "Success", tint = Color.Green, modifier = Modifier.size(20.dp))

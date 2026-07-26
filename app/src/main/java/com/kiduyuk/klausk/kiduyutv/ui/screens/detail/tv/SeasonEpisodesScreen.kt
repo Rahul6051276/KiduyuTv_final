@@ -189,7 +189,10 @@ fun SeasonEpisodesScreen(
                                     seasonNumber = selectedSeasonIndex + 1,
                                     episodeIndex = index,
                                     onEpisodeClick = { sNum, eNum ->
-                                        val defaultProvider = SettingsManager(context).getDefaultProvider()
+                                        val settings = SettingsManager(context)
+                                        val defaultProvider = if (settings.isDirectStreamEnabled()) {
+                                            SettingsManager.AUTO
+                                        } else settings.getDefaultProvider()
                                         val directUrl = if (defaultProvider != SettingsManager.AUTO) {
                                             StreamLinksViewModel.resolveProviderUrl(
                                                 providerName = defaultProvider,

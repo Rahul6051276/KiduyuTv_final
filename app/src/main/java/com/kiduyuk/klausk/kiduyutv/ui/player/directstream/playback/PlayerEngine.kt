@@ -1,0 +1,464 @@
+package com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback
+
+import android.content.Context
+import android.net.Uri
+import android.util.Log
+import androidx.annotation.OptIn
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.Tracks
+import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api.HttpCookieStore
+
+/**
+ * Thin wrapper around [ExoPlayer] that:
+ *  - Picks HLS or progressive media source based on the stream URL.
+ *  - Applies per-stream HTTP request headers via [DefaultHttpDataSource.Factory]
+ *    so playback works whether the server is in `enableProxy=true` (no
+ *    headers) or `enableProxy=false` (Referer/Origin required) mode.
+ *  - Forwards playback state changes and errors to the host activity via
+ *    callbacks.
+ *
+ * The activity owns the [androidx.media3.ui.PlayerView] and just sets its
+ * [Player] to [player].
+ */
+@OptIn(UnstableApi::class)
+class PlayerEngine(context: Context) {
+
+    private val appContext: Context = context.applicationContext
+
+    /**
+     * `DefaultHttpDataSource.Factory` applies `Referer`/`Origin` and any
+     * other headers required by the upstream CDN. It is rebuilt per stream
+     * because each stream may carry different headers.
+     */
+
+    private fun buildDataSourceFactory(stream: StreamItem): DefaultDataSource.Factory {
+        // Detect and replace obviously fake User-Agent strings before the
+        // factory is built. Anti-bot CDNs (Cloudflare, Akamai, DataDome)
+        // 403 any UA that claims a browser version newer than the latest
+        // stable release; vixsrc.to in particular ships "Chrome/150"
+        // which doesn't exist and triggers 403 on the manifest request.
+        val safeHeaders = playbackHeaders(stream)
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent(USER_AGENT)
+            .setConnectTimeoutMs(HTTP_CONNECT_TIMEOUT_MS)
+            .setReadTimeoutMs(HTTP_READ_TIMEOUT_MS)
+            .setAllowCrossProtocolRedirects(true)
+            .setDefaultRequestProperties(safeHeaders)
+        return DefaultDataSource.Factory(appContext, httpFactory)
+    }
+
+    /**
+     * DahmerMovies' Cloudflare worker expects a browser-shaped request.
+     * Do not copy its server-supplied `Range: bytes=0-` value: Media3
+     * generates a precise Range header for every progressive-media read,
+     * seek and reconnect.
+     */
+    private fun dahmerMoviesHeaders(): Map<String, String> = linkedMapOf(
+        "User-Agent" to REAL_BROWSER_USER_AGENT,
+        "Accept" to "*/*",
+        "Referer" to DAHMER_MOVIES_REFERER
+    )
+
+    private fun playbackHeaders(stream: StreamItem): Map<String, String> {
+        val headers = if (stream.provider.equals("DahmerMovies", ignoreCase = true)) {
+            dahmerMoviesHeaders()
+        } else {
+            sanitizeUserAgent(stream.headers)
+        }
+        val storedCookie = HttpCookieStore.cookieHeader(stream.url)
+        if (
+            storedCookie.isNullOrBlank() ||
+            headers.keys.any { it.equals("Cookie", ignoreCase = true) }
+        ) {
+            return headers
+        }
+        return LinkedHashMap(headers).apply { put("Cookie", storedCookie) }
+    }
+
+    /**
+     * The DahmerMovies worker expects the nested origin's scheme and host
+     * to be percent-encoded. Keep the already encoded media path unchanged.
+     */
+    private fun normalizePlaybackUrl(stream: StreamItem): String =
+        if (
+            stream.provider.equals("DahmerMovies", ignoreCase = true) &&
+            stream.url.startsWith(DAHMER_MOVIES_RAW_PREFIX, ignoreCase = true)
+        ) {
+            DAHMER_MOVIES_ENCODED_PREFIX +
+                stream.url.substring(DAHMER_MOVIES_RAW_PREFIX.length)
+        } else {
+            stream.url
+        }
+
+    /**
+     * Returns a copy of [headers] with the `User-Agent` entry replaced
+     * when the JSON supplies an obviously-fake version. Header lookup is
+     * case-insensitive. The replacement is logged so the operator can
+     * identify which providers are shipping bad UAs and fix them
+     * server-side. Headers without a `User-Agent` are returned unchanged
+     * (the factory's [USER_AGENT] default applies).
+     */
+    private fun sanitizeUserAgent(headers: Map<String, String>): Map<String, String> {
+        val entry = headers.entries.firstOrNull { (k, _) ->
+            k.equals("User-Agent", ignoreCase = true)
+        } ?: return headers
+
+        if (!isObviouslyFakeUserAgent(entry.value)) return headers
+
+        Log.w(TAG, "Replacing suspicious User-Agent: ${entry.value}")
+        val mutated = LinkedHashMap(headers)
+        mutated[entry.key] = REAL_BROWSER_USER_AGENT
+        return mutated
+    }
+
+    /**
+     * Returns true when [userAgent] claims a browser major version newer
+     * than the latest known stable release. Real browsers in mid-2026 are
+     * Chrome 130-140 / Firefox 130-140; anything claiming 141+ is almost
+     * certainly copy-pasted from a future release schedule by an upstream
+     * scraper. We also flag any UA whose Chrome major is *dramatically*
+     * higher than reality (Chrome/999, Chrome/150, etc.) regardless of
+     * cutoff, because the same CDNs that 403 Chrome/150 also 403 Chrome/999.
+     */
+    private fun isObviouslyFakeUserAgent(userAgent: String): Boolean {
+        val chromeMajor = Regex("""Chrome/(\d+)""")
+            .find(userAgent)?.groupValues?.get(1)?.toIntOrNull()
+        if (chromeMajor != null && chromeMajor > MAX_CHROME_MAJOR) return true
+
+        val firefoxMajor = Regex("""Firefox/(\d+)""")
+            .find(userAgent)?.groupValues?.get(1)?.toIntOrNull()
+        if (firefoxMajor != null && firefoxMajor > MAX_FIREFOX_MAJOR) return true
+
+        val safariMajor = Regex("""Version/(\d+)\.\d+""")
+            .find(userAgent)?.groupValues?.get(1)?.toIntOrNull()
+        if (safariMajor != null && safariMajor > MAX_SAFARI_MAJOR) return true
+
+        return false
+    }
+
+    private fun buildMediaSource(stream: StreamItem): MediaSource {
+        val uri = Uri.parse(stream.url)
+        val dataSourceFactory = buildDataSourceFactory(stream)
+        val mediaItem = MediaItem.fromUri(uri)
+        return when {
+            isHls(stream) -> HlsMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(mediaItem)
+            else -> ProgressiveMediaSource.Factory(dataSourceFactory)
+                .createMediaSource(mediaItem)
+        }
+    }
+
+    /**
+     * HLS detection is more permissive than the obvious "URL ends in
+     * .m3u8" rule because the server is also returning proxy URLs of the
+     * form `…/m3u8-proxy?url=<encoded real m3u8>&headers=<json>`. The
+     * `.m3u8` reference is buried in the query string in that case, so
+     * `endsWith(".m3u8")` would miss it and the engine would feed an HLS
+     * playlist to [ProgressiveMediaSource], which then throws
+     * [androidx.media3.exoplayer.source.UnrecognizedInputFormatException].
+     *
+     * Signals treated as HLS:
+     *   - the path or query string contains `.m3u8` (covers `…/master.m3u8`,
+     *     `…/playlist.m3u8?token=…`, and `…/m3u8-proxy?url=…master.m3u8&…`)
+     *   - the path ends with `/m3u8-proxy` (an explicit HLS proxy endpoint)
+     */
+    private fun isHls(stream: StreamItem): Boolean {
+        if (stream.type.equals("hls", ignoreCase = true)) return true
+        if (
+            stream.mimeType.equals("application/vnd.apple.mpegurl", ignoreCase = true) ||
+            stream.mimeType.equals("application/x-mpegURL", ignoreCase = true)
+        ) return true
+
+        val lower = stream.url.lowercase()
+        if (lower.contains(".m3u8")) return true
+        if (lower.contains("/m3u8-proxy") || lower.contains("/m3u8_proxy")) return true
+        // Hexa's CDN serves HLS playlists through extensionless signed proxy
+        // URLs. Deployed backends predating the explicit type field still
+        // need to play correctly.
+        if (
+            stream.provider.equals("hexa", ignoreCase = true) &&
+            lower.contains("oogachakacdn.store/proxy")
+        ) return true
+        if (
+            stream.provider.equals("vixsrc", ignoreCase = true) &&
+            lower.contains("vixsrc.to/playlist/")
+        ) return true
+        return false
+    }
+
+    val player: ExoPlayer = ExoPlayer.Builder(appContext)
+        .setLoadControl(buildLoadControl())
+        .setSeekBackIncrementMs(SEEK_STEP_MS)
+        .setSeekForwardIncrementMs(SEEK_STEP_MS)
+        .build()
+
+    /**
+     * Builds a [DefaultLoadControl] that keeps 3 minutes of media
+     * buffered ahead of the playhead. The 3-minute window means
+     * network hiccups have to last longer than 3 minutes before the
+     * player has to rebuffer, which is a reasonable trade-off on a TV
+     * with stable Wi-Fi.
+     *
+     * Settings:
+     *  - `minBufferMs` = 30s — playback starts once 30s is buffered.
+     *  - `maxBufferMs` = 180s — the buffer fills up to 3 minutes and
+     *    stops there. This is the "3 min buffer" the operator asked
+     *    for.
+     *  - `bufferForPlaybackMs` = 2.5s — after a rebuffer event, the
+     *    player resumes once 2.5s is back in the buffer. Standard.
+     *  - `bufferForPlaybackAfterRebufferMs` = 5s — same as above for
+     *    subsequent rebuffers. Standard.
+     */
+    private fun buildLoadControl(): DefaultLoadControl {
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                MIN_BUFFER_MS,                    // minBufferMs
+                MAX_BUFFER_MS,                    // maxBufferMs (3 minutes)
+                BUFFER_FOR_PLAYBACK_MS,           // bufferForPlaybackMs
+                BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS // bufferForPlaybackAfterRebufferMs
+            )
+            .build()
+        Log.i(
+            TAG,
+            "LoadControl: min=${MIN_BUFFER_MS}ms max=${MAX_BUFFER_MS}ms " +
+                "playback=${BUFFER_FOR_PLAYBACK_MS}ms " +
+                "afterRebuffer=${BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS}ms"
+        )
+        return loadControl
+    }
+
+    /** Most recent URL we asked the player to load. Used to enrich error logs. */
+    @Volatile
+    private var currentUrl: String = ""
+
+    /** Invoked on fatal playback errors. The argument is a stable error code name. */
+    var onError: ((String) -> Unit)? = null
+
+    /** Invoked with the new [Player.STATE_*] constant. */
+    var onPlaybackStateChanged: ((Int) -> Unit)? = null
+
+    /** Invoked when playback actually starts or stops rendering media. */
+    var onIsPlayingChanged: ((Boolean) -> Unit)? = null
+
+    /** Invoked whenever the available track list changes (manifest parsed, etc.). */
+    var onTracksChanged: ((Tracks) -> Unit)? = null
+
+    init {
+        player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                Log.i(TAG, "Playback state changed: $state")
+                onPlaybackStateChanged?.invoke(state)
+            }
+
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                onIsPlayingChanged?.invoke(isPlaying)
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                Log.w(
+                    TAG,
+                    "ExoPlayer error code=${error.errorCode} name=${error.errorCodeName} url=${sanitize(currentUrl)}",
+                    error
+                )
+                onError?.invoke(error.errorCodeName)
+            }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                Log.i(
+                    TAG,
+                    "Tracks changed: ${tracks.groups.size} groups " +
+                        "(video=${countByType(tracks, C.TRACK_TYPE_VIDEO)}, " +
+                        "audio=${countByType(tracks, C.TRACK_TYPE_AUDIO)}, " +
+                        "text=${countByType(tracks, C.TRACK_TYPE_TEXT)})"
+                )
+                onTracksChanged?.invoke(tracks)
+            }
+        })
+    }
+
+    private fun countByType(tracks: Tracks, type: Int): Int =
+        tracks.groups.count { it.type == type }
+
+    /**
+     * Begin playback of [stream]. Replaces any current item. Per-stream
+     * headers are baked into the DataSource for this playback only.
+     */
+    fun play(stream: StreamItem, startPositionMs: Long = 0L) {
+        val normalizedUrl = normalizePlaybackUrl(stream)
+        val playbackStream = if (normalizedUrl == stream.url) stream else stream.copy(url = normalizedUrl)
+        currentUrl = normalizedUrl
+        val scheme = normalizedUrl.substringBefore(':').uppercase()
+        val isHlsStream = isHls(playbackStream)
+        val sourceType = if (isHlsStream) "HlsMediaSource" else "ProgressiveMediaSource"
+        val host = runCatching { Uri.parse(normalizedUrl).host }.getOrNull() ?: "?"
+        val requestHeaders = playbackHeaders(playbackStream)
+        Log.i(
+            TAG,
+            "Engine.play provider=${playbackStream.provider.ifBlank { "?" }} " +
+                "quality=${playbackStream.quality} scheme=$scheme isHls=$isHlsStream " +
+                "source=$sourceType host=$host url=$normalizedUrl headerCount=${requestHeaders.size}"
+        )
+        // Log the actual header values (truncated) so a 403 from the CDN
+        // is diagnosable from logcat without needing to attach a debugger.
+        requestHeaders.forEach { (name, value) ->
+            Log.i(
+                PROVIDER_TAG,
+                "  header $name=${
+                    when {
+                        name.equals("Cookie", ignoreCase = true) -> "<redacted>"
+                        value.length > 120 -> value.substring(0, 117) + "..."
+                        else -> value
+                    }
+                }"
+            )
+        }
+        val source = buildMediaSource(playbackStream)
+        player.setMediaSource(source)
+        if (startPositionMs > 0L) {
+            player.seekTo(startPositionMs)
+        }
+        player.prepare()
+        player.playWhenReady = true
+    }
+
+    /**
+     * Seek relative to the current position. ExoPlayer's [Player] interface
+     * does not expose a `seekBy` method, so we compute the new absolute
+     * position ourselves and clamp it to a non-negative value.
+     */
+    fun seekBy(deltaMs: Long) {
+        val target = (player.currentPosition + deltaMs).coerceAtLeast(0L)
+        player.seekTo(target)
+    }
+
+    fun pause() {
+        player.pause()
+    }
+
+    fun resume() {
+        player.play()
+    }
+
+    /**
+     * Apply a new [TrackSelectionParameters] to the underlying player. Used
+     * by the track selection dialog to switch video / audio / subtitle
+     * tracks at runtime. Pass a value returned by [buildSelectionForOverride]
+     * (or any other builder pipeline rooted at the current parameters).
+     */
+    fun applyTrackSelectionParameters(parameters: TrackSelectionParameters) {
+        Log.i(TAG, "Applying new track selection parameters: $parameters")
+        player.trackSelectionParameters = parameters
+    }
+
+    /** Returns the player's current track selection parameters. */
+    fun currentTrackSelectionParameters(): TrackSelectionParameters =
+        player.trackSelectionParameters
+
+    /** Returns the player's current track list. */
+    fun currentTracks(): Tracks = player.currentTracks
+
+    fun release() {
+        runCatching { player.release() }
+    }
+
+    /** Redacts the query string of a URL for logging. */
+    private fun sanitize(url: String): String =
+        url.substringBefore('?').let { base ->
+            if (url.length > base.length) "$base?<redacted>" else url
+        }
+
+    companion object {
+        private const val TAG = "KiduyuLitePlayer"
+        private const val PROVIDER_TAG = "KiduyuLiteProvider"
+
+        /**
+         * A real, current Chrome-on-Windows UA. Used as the engine's
+         * baseline UA and as the replacement for obviously-fake UAs
+         * coming from providers (`Chrome/150`, `Chrome/999`, etc.).
+         * Update this when Chrome ships a new major release and CDNs
+         * start rejecting the previous one.
+         */
+        private const val REAL_BROWSER_USER_AGENT =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+                "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
+
+        /**
+         * Default User-Agent sent on every HTTP request. Most CDNs
+         * reject the platform-default `Dalvik/...` UA, and
+         * `KiduyuTVLite/...` doesn't look like a browser, so we send a
+         * plausible Chrome-on-Windows string as the baseline. The
+         * stream's `headers` map (set via
+         * [DefaultHttpDataSource.Factory.setDefaultRequestProperties])
+         * overrides this when present.
+         */
+        private const val USER_AGENT = REAL_BROWSER_USER_AGENT
+        private const val DAHMER_MOVIES_REFERER = "https://a.111477.xyz/"
+        private const val DAHMER_MOVIES_RAW_PREFIX =
+            "https://p.111477.xyz/bulk?u=https://a.111477.xyz"
+        private const val DAHMER_MOVIES_ENCODED_PREFIX =
+            "https://p.111477.xyz/bulk?u=https%3A%2F%2Fa.111477.xyz"
+
+        /**
+         * Cap above which a `Chrome/MAJOR` claim is considered fake.
+         * Real stable Chrome in mid-2026 is ~130-140. Bump this when
+         * Chrome's stable channel crosses 145.
+         */
+        private const val MAX_CHROME_MAJOR = 140
+
+        /**
+         * Cap above which a `Firefox/MAJOR` claim is considered fake.
+         * Mirrors [MAX_CHROME_MAJOR].
+         */
+        private const val MAX_FIREFOX_MAJOR = 140
+
+        /**
+         * Cap above which a `Version/MAJOR.x` (Safari) claim is
+         * considered fake. Safari 18 was current in 2025.
+         */
+        private const val MAX_SAFARI_MAJOR = 25
+
+        private const val HTTP_CONNECT_TIMEOUT_MS = 15_000
+        private const val HTTP_READ_TIMEOUT_MS = 30_000
+        private const val SEEK_STEP_MS = 10_000L
+
+        /**
+         * 3 minutes of media buffered ahead of the playhead. TV-class
+         * devices have stable Wi-Fi and benefit from a generous buffer;
+         * networks that drop out for <3 min are absorbed without
+         * rebuffering.
+         */
+        private const val MAX_BUFFER_MS = 3 * 60 * 1000  // 180_000
+
+        /**
+         * Start playback as soon as 30 seconds is buffered. Keeps the
+         * "press play → see something" latency low while still giving
+         * the player enough headroom to ride out a brief stall.
+         */
+        private const val MIN_BUFFER_MS = 30 * 1000       //  30_000
+
+        /**
+         * After a rebuffer event, the player resumes once 2.5s is
+         * back in the buffer. Standard ExoPlayer default.
+         */
+        private const val BUFFER_FOR_PLAYBACK_MS = 2_500
+
+        /**
+         * Same as [BUFFER_FOR_PLAYBACK_MS] but for subsequent
+         * rebuffers. Standard ExoPlayer default.
+         */
+        private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
+    }
+}

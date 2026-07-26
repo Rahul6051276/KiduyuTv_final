@@ -27,6 +27,32 @@
         <item name="android:hardwareAccelerated">true</item>
     </style>
 
+    <style name="DirectStreamTrackTab">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:background">@drawable/bg_direct_stream_track_tab</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="DirectStreamControlButton">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:background">@drawable/direct_stream_back_btn_bg</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <style name="Theme.NoTitleBar.Fullscreen" parent="@android:style/Theme.NoTitleBar.Fullscreen" />
     <style name="Theme.Translucent.NoTitleBar.Fullscreen" parent="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
     <style name="Theme.Translucent.NoTitleBar" parent="@android:style/Theme.Translucent.NoTitleBar" />

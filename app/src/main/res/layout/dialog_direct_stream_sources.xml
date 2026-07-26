@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_direct_stream_dialog"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/stream_choose"
+        android:textColor="@color/text_primary"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/stream_choose_hint"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <ListView
+        android:id="@+id/listStreams"
+        android:layout_width="match_parent"
+        android:layout_height="320dp"
+        android:layout_marginTop="14dp"
+        android:cacheColorHint="@android:color/transparent"
+        android:clickable="true"
+        android:divider="@null"
+        android:focusable="true"
+        android:nextFocusDown="@id/btnCloseStreams"
+        android:listSelector="@drawable/bg_direct_stream_track_row" />
+
+    <TextView
+        android:id="@+id/btnCloseStreams"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_gravity="end"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/direct_stream_back_btn_bg"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:nextFocusUp="@id/listStreams"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:text="@string/track_close"
+        android:textColor="@color/text_primary"
+        android:textSize="13sp" />
+</LinearLayout>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Tab button in the track dialog. Three states:
+      - selected: solid red (kiduyu_red), white text
+      - focused:  dark surface, red border, white text
+      - default:  transparent, dimmed text
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/kiduyu_red" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_dark" />
+            <stroke android:width="2dp" android:color="@color/kiduyu_red" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/surface_dark" />
+            <corners android:radius="4dp" />
+        </shape>
+    </item>
+</selector>

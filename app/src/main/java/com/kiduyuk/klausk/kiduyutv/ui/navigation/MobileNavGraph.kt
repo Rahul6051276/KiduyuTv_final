@@ -11,6 +11,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.kiduyuk.klausk.kiduyutv.ui.player.webview.PlayerActivity
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.youtube.YouTubePlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.screens.cast.mobile.MobileCastDetailScreen
 import com.kiduyuk.klausk.kiduyutv.ui.screens.cast.tv.CastDetailScreen
@@ -36,6 +37,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.screens.home.mobile.SeeAllScreen
 import com.kiduyuk.klausk.kiduyutv.ui.screens.search.mobile.MobileSearchScreen
 import com.kiduyuk.klausk.kiduyutv.ui.screens.settings.mobile.MobileSettingsScreen
 import com.kiduyuk.klausk.kiduyutv.ui.screens.settings.mobile.MobileTraktProfileScreen
+import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 
 @androidx.media3.common.util.UnstableApi
 @OptIn(UnstableApi::class)
@@ -672,7 +674,23 @@ fun MobileNavGraph(navController: NavHostController) {
             val releaseDate = backStackEntry.arguments?.getString("releaseDate")
             val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: 0L
 
-            MobileStreamLinksScreen(
+            if (SettingsManager(navController.context).isDirectStreamEnabled()) {
+                androidx.compose.runtime.LaunchedEffect(tmdbId, season, episode) {
+                    navController.context.startActivity(
+                        DirectStreamActivity.createIntent(
+                            context = navController.context,
+                            tmdbId = tmdbId,
+                            isTv = isTv,
+                            season = season?.takeIf { it > 0 },
+                            episode = episode?.takeIf { it > 0 },
+                            title = title,
+                            posterPath = posterPath,
+                            backdropPath = backdropPath
+                        )
+                    )
+                    navController.popBackStack()
+                }
+            } else MobileStreamLinksScreen(
                 tmdbId = tmdbId,
                 isTv = isTv,
                 title = title,
@@ -733,7 +751,23 @@ fun MobileNavGraph(navController: NavHostController) {
             val releaseDate = backStackEntry.arguments?.getString("releaseDate")
             val timestamp = backStackEntry.arguments?.getLong("timestamp") ?: 0L
 
-            StreamLinksScreen(
+            if (SettingsManager(navController.context).isDirectStreamEnabled()) {
+                androidx.compose.runtime.LaunchedEffect(tmdbId, season, episode) {
+                    navController.context.startActivity(
+                        DirectStreamActivity.createIntent(
+                            context = navController.context,
+                            tmdbId = tmdbId,
+                            isTv = isTv,
+                            season = season?.takeIf { it > 0 },
+                            episode = episode?.takeIf { it > 0 },
+                            title = title,
+                            posterPath = posterPath,
+                            backdropPath = backdropPath
+                        )
+                    )
+                    navController.popBackStack()
+                }
+            } else StreamLinksScreen(
                 tmdbId = tmdbId,
                 isTv = isTv,
                 title = title,

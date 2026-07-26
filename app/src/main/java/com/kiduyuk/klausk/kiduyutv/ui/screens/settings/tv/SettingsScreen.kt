@@ -54,6 +54,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -1253,6 +1255,11 @@ private fun PlaybackContent(
     defaultProvider: String,
     onProviderSelect: (String) -> Unit
 ) {
+    val context = LocalContext.current
+    val settingsManager = remember(context) { SettingsManager(context) }
+    var directStreamEnabled by remember {
+        mutableStateOf(settingsManager.isDirectStreamEnabled())
+    }
     val options = listOf(SettingsManager.AUTO) + StreamProviderManager.getProviderNamesForDevice(isTvDevice = true)
 
     Column(
@@ -1269,6 +1276,50 @@ private fun PlaybackContent(
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
+        SettingsSectionLabel(text = "Direct Stream")
+
+        val directInteraction = remember { MutableInteractionSource() }
+        val directFocused by directInteraction.collectIsFocusedAsState()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CardDark)
+                .border(
+                    if (directFocused) 2.dp else 0.dp,
+                    if (directFocused) PrimaryRed else Color.Transparent,
+                    RoundedCornerShape(16.dp)
+                )
+                .clickable(
+                    interactionSource = directInteraction,
+                    indication = null
+                ) {
+                    directStreamEnabled = !directStreamEnabled
+                    settingsManager.setDirectStreamEnabled(directStreamEnabled)
+                }
+                .focusable(interactionSource = directInteraction)
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Use native direct-stream player", color = TextPrimary, fontSize = 16.sp)
+                Text(
+                    "Fetch streams from all enabled providers and skip server selection.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+            }
+            Switch(
+                checked = directStreamEnabled,
+                onCheckedChange = {
+                    directStreamEnabled = it
+                    settingsManager.setDirectStreamEnabled(it)
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = PrimaryRed)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
         SettingsSectionLabel(text = "Default Provider")
 
         Box(

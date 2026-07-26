@@ -174,7 +174,10 @@ fun MobileMovieDetailScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(
                             onClick = {
-                                val defaultProvider = SettingsManager(context).getDefaultProvider()
+                                val settings = SettingsManager(context)
+                                val defaultProvider = if (settings.isDirectStreamEnabled()) {
+                                    SettingsManager.AUTO
+                                } else settings.getDefaultProvider()
                                 val directUrl = if (defaultProvider != SettingsManager.AUTO) {
                                     StreamLinksViewModel.resolveProviderUrl(
                                         providerName = defaultProvider,

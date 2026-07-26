@@ -1,0 +1,689 @@
+package com.kiduyuk.klausk.kiduyutv.ui.player.directstream
+
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.view.KeyEvent
+import android.view.View
+import android.view.WindowManager
+import android.widget.SeekBar
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.C
+import androidx.media3.common.Player
+import androidx.media3.common.Tracks
+import androidx.media3.ui.AspectRatioFrameLayout
+import com.bumptech.glide.Glide
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import com.kiduyuk.klausk.kiduyutv.R
+import com.kiduyuk.klausk.kiduyutv.databinding.ActivityDirectStreamBinding
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.PlayerEngine
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamCatalog
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamProviderChoice
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamResolver
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamSelectionDialog
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.TrackSelectionDialog
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/**
+ * TV-first native player for streams returned by the kiduyuTv_providers
+ * (TMDB-Embed-API) server. Replaces the previous WebView-based
+ * implementation: no JS injection, no ad blocker, no provider host
+ * allowlist.
+ *
+ * Flow:
+ *   1. Read the title metadata from Intent extras (type, tmdbId,
+ *      season/episode, provider).
+ *   2. Call [ProvidersApi.streams] via [StreamResolver] to fetch every
+ *      available stream.
+ *   3. Pick the highest-ranked stream (or fall back to the first) and
+ *      hand it to [PlayerEngine.play].
+ *   4. Map D-pad keys to native player actions: left/right ramp-seek,
+ *      center play/pause, back to finish.
+ */
+class DirectStreamActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityDirectStreamBinding
+    private lateinit var engine: PlayerEngine
+    private lateinit var resolver: StreamResolver
+
+    private var streamJob: Job? = null
+    private var playbackStartJob: Job? = null
+    private var trackDialog: TrackSelectionDialog? = null
+    private var streamDialog: StreamSelectionDialog? = null
+    private var availableStreams: List<StreamItem> = emptyList()
+    private var activeStream: StreamItem? = null
+    private val failedStreamUrls: MutableSet<String> = linkedSetOf()
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var controlsLockedVisible = false
+    private var userSeeking = false
+    private var resizeModeIndex = 0
+    private var muted = false
+    private var currentMediaType = TYPE_MOVIE
+    private var currentTmdbId = 0
+    private var currentSeason: Int? = null
+    private var currentEpisode: Int? = null
+    private var currentProvider: StreamProviderChoice = StreamCatalog.default
+    private val controlsClock = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
+    private val controlsTime = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+    private val progressTick = object : Runnable {
+        override fun run() {
+            if (::engine.isInitialized) {
+                val duration = engine.player.duration.takeIf { it > 0 } ?: 0L
+                if (!userSeeking) {
+                    binding.seekBar.progress =
+                        if (duration > 0) ((engine.player.currentPosition * 1000L) / duration).toInt() else 0
+                }
+                binding.seekBar.secondaryProgress =
+                    if (duration > 0) {
+                        ((engine.player.bufferedPosition.coerceAtMost(duration) * 1000L) / duration).toInt()
+                    } else {
+                        0
+                    }
+                binding.btnPlayPause.text = if (engine.player.isPlaying) "Ⅱ" else "▶"
+            }
+            val now = Date()
+            binding.tvDate.text = controlsClock.format(now)
+            binding.tvTime.text = controlsTime.format(now)
+            uiHandler.postDelayed(this, 1_000)
+        }
+    }
+
+    // D-pad left/right ramp seeking: 10s on press, repeating every 600ms
+    // and ramping up to 60s after 5 seconds of holding.
+    private var skipDirection = 0
+    private var skipHoldStart = 0L
+    private val skipTick = object : Runnable {
+        override fun run() {
+            if (skipDirection == 0) return
+            val held = System.currentTimeMillis() - skipHoldStart
+            val progress = (held.toFloat() / SKIP_RAMP_DURATION_MS).coerceIn(0f, 1f)
+            val seconds = (SKIP_SEC_MIN +
+                (SKIP_SEC_MAX - SKIP_SEC_MIN) * progress).toInt()
+            val deltaMs = (if (skipDirection < 0) -seconds else seconds) * 1000L
+            engine.seekBy(deltaMs)
+            uiHandler.postDelayed(this, SKIP_REPEAT_MS)
+        }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        Log.i(TAG, "Player activity created")
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        binding = ActivityDirectStreamBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        Glide.with(this)
+            .load(normalizeArtworkUrl(intent.getStringExtra(EXTRA_BACKDROP_URL)))
+            .into(binding.loadingBackdrop)
+        showLoadingArtwork()
+
+        currentMediaType = intent.getStringExtra(EXTRA_TYPE)
+            ?: if (intent.getBooleanExtra(EXTRA_IS_TV, false)) TYPE_SERIES else TYPE_MOVIE
+        currentTmdbId = intent.getIntExtra(EXTRA_TMDB_ID, 0)
+        currentSeason = intent.getIntExtra(EXTRA_SEASON, -1).takeIf { it > 0 }
+        currentEpisode = intent.getIntExtra(EXTRA_EPISODE, -1).takeIf { it > 0 }
+        currentProvider = StreamCatalog.resolve(intent.getStringExtra(EXTRA_PROVIDER))
+
+        Log.i(
+            PROVIDER_TAG,
+            "Player opened type=$currentMediaType tmdbId=$currentTmdbId " +
+                "season=${currentSeason ?: "-"} episode=${currentEpisode ?: "-"} " +
+                "provider=${currentProvider.displayName} key=${currentProvider.key.ifEmpty { "<aggregate>" }}"
+        )
+
+        if (currentTmdbId <= 0) {
+            Toast.makeText(this, R.string.playback_link_unavailable, Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
+
+        resolver = StreamResolver()
+        engine = PlayerEngine(this).apply {
+            onError = { code -> handlePlaybackError(code) }
+            onPlaybackStateChanged = { state ->
+                when (state) {
+                    Player.STATE_BUFFERING -> {
+                        showLoadingArtwork()
+                        showStatus(getString(R.string.buffering), retry = false)
+                    }
+                    Player.STATE_READY -> {
+                        binding.playerStatus.visibility = View.GONE
+                    }
+                    Player.STATE_ENDED ->
+                        binding.playerStatus.visibility = View.GONE
+                    // Preserve "Loading streams" and retry messages while
+                    // Media3 is idle; IDLE does not mean the request failed.
+                    Player.STATE_IDLE -> Unit
+                }
+            }
+            onIsPlayingChanged = { isPlaying ->
+                if (isPlaying) hideLoadingArtwork()
+            }
+            onTracksChanged = { tracks ->
+                updateTracksButton(tracks)
+                trackDialog?.updateCurrentTracks(tracks)
+            }
+        }
+        binding.playerView.player = engine.player
+        // The Media3 default settings cog is left in place: in Media3 1.4.1
+        // the PlayerView has no public setShowSettingsButton (it was added
+        // in a later release). Our custom Tracks button (btnPlayerTracks) is
+        // in a different visual position — top-right of the activity
+        // chrome vs top-right of the in-player control bar — so the two
+        // don't overlap. The subtitle button is hidden via the layout's
+        // app:show_subtitle_button="false" because we don't render
+        // subtitle tracks via the Media3 overlay.
+        binding.btnPlayerBack.setOnClickListener { finish() }
+        binding.btnPlayerTracks.setOnClickListener { showTrackDialog() }
+        binding.btnPlayerStreams.setOnClickListener { showStreamDialog() }
+        binding.playerView.setOnClickListener { showControls() }
+        binding.overlayControls.setOnClickListener { showControls() }
+        binding.btnRewind.setOnClickListener { engine.seekBy(-10_000L); showControls() }
+        binding.btnForward.setOnClickListener { engine.seekBy(10_000L); showControls() }
+        binding.btnPlayPause.setOnClickListener {
+            if (engine.player.isPlaying) engine.pause() else engine.resume()
+            showControls()
+        }
+        binding.btnFill.setOnClickListener {
+            resizeModeIndex = (resizeModeIndex + 1) % resizeModes.size
+            applyResizeMode()
+            showControls()
+        }
+        binding.btnVolume.setOnClickListener {
+            muted = !muted
+            engine.player.volume = if (muted) 0f else 1f
+            binding.btnVolume.text = if (muted) "MUTE" else "VOL"
+            showControls()
+        }
+        binding.btnPreviousEpisode.setOnClickListener { loadAdjacentEpisode(-1) }
+        binding.btnNextEpisode.setOnClickListener { loadAdjacentEpisode(1) }
+        updateEpisodeButtons()
+        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) = Unit
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                userSeeking = true
+                controlsLockedVisible = true
+            }
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                val duration = engine.player.duration
+                if (duration > 0) engine.player.seekTo((duration * (seekBar?.progress ?: 0)) / 1000L)
+                userSeeking = false
+                controlsLockedVisible = false
+                showControls()
+            }
+        })
+        updateBottomFocusChain()
+        showControls()
+        uiHandler.post(progressTick)
+
+        loadCurrentMedia()
+    }
+
+    private fun applyResizeMode() {
+        val mode = resizeModes[resizeModeIndex]
+        binding.playerView.resizeMode = mode.resizeMode
+        binding.btnFill.setText(mode.label)
+        Log.i(TAG, "Player resize mode changed to ${getString(mode.label)}")
+    }
+
+    private fun loadAdjacentEpisode(delta: Int) {
+        if (currentMediaType != TYPE_SERIES) return
+        val episode = currentEpisode ?: return
+        val nextEpisode = episode + delta
+        if (nextEpisode < 1) return
+
+        currentEpisode = nextEpisode
+        updateEpisodeButtons()
+        trackDialog?.takeIf { it.isShowing }?.dismiss()
+        streamDialog?.takeIf { it.isShowing }?.dismiss()
+        engine.pause()
+        showLoadingArtwork()
+        Log.i(
+            PROVIDER_TAG,
+            "Loading adjacent episode season=$currentSeason episode=$nextEpisode delta=$delta"
+        )
+        loadCurrentMedia()
+        showControls()
+    }
+
+    private fun updateEpisodeButtons() {
+        val isSeries = currentMediaType == TYPE_SERIES && currentEpisode != null
+        binding.btnNextEpisode.visibility = if (isSeries) View.VISIBLE else View.GONE
+        binding.btnPreviousEpisode.visibility =
+            if (isSeries && (currentEpisode ?: 1) > 1) View.VISIBLE else View.GONE
+        updateBottomFocusChain()
+    }
+
+    private fun loadCurrentMedia() {
+        loadAndPlay(
+            currentMediaType,
+            currentTmdbId,
+            currentSeason,
+            currentEpisode,
+            currentProvider
+        )
+    }
+
+    /**
+     * Show the custom tracks button only when the manifest exposes at
+     * least one track the user can switch to. HLS playlists with a single
+     * video track and a single audio track will leave the button hidden.
+     */
+    private fun updateTracksButton(tracks: Tracks) {
+        val hasVideoChoices = tracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 1 }
+        val hasAudioChoices = tracks.groups.any { it.type == C.TRACK_TYPE_AUDIO && it.length > 1 }
+        // A single subtitle track is still a real choice because the dialog
+        // also provides an explicit Off row.
+        val hasSubtitleChoices = tracks.groups.any { it.type == C.TRACK_TYPE_TEXT && it.length > 0 }
+        val anyChoice = hasVideoChoices || hasAudioChoices || hasSubtitleChoices
+        binding.btnPlayerTracks.visibility = if (anyChoice) View.VISIBLE else View.GONE
+        updateBottomFocusChain()
+        Log.i(
+            TAG,
+            "Tracks button visibility=$anyChoice " +
+                "(video=$hasVideoChoices audio=$hasAudioChoices subtitle=$hasSubtitleChoices)"
+        )
+    }
+
+    private fun showTrackDialog() {
+        // Don't stack two dialogs.
+        if (trackDialog?.isShowing == true) return
+        val tracks = engine.currentTracks()
+        if (tracks.groups.isEmpty()) {
+            Toast.makeText(this, R.string.track_none_available, Toast.LENGTH_SHORT).show()
+            return
+        }
+        trackDialog = TrackSelectionDialog(
+            context = this,
+            tracks = tracks,
+            initialParameters = engine.currentTrackSelectionParameters(),
+            onApply = { params -> engine.applyTrackSelectionParameters(params) }
+        )
+        trackDialog?.setOnDismissListener { trackDialog = null }
+        trackDialog?.show()
+    }
+
+    private fun showStreamDialog() {
+        if (streamDialog?.isShowing == true || availableStreams.size < 2) return
+        streamDialog = StreamSelectionDialog(
+            context = this,
+            streams = availableStreams,
+            activeUrl = activeStream?.url,
+            onStreamSelected = ::switchStream
+        )
+        streamDialog?.setOnDismissListener { streamDialog = null }
+        streamDialog?.show()
+    }
+
+    private fun switchStream(stream: StreamItem) {
+        if (stream.url == activeStream?.url) return
+        failedStreamUrls.remove(stream.url)
+        val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
+        activeStream = stream
+        Log.i(
+            PROVIDER_TAG,
+            "Switching stream provider=${stream.provider.ifBlank { "?" }} " +
+                "quality=${stream.quality} positionMs=$positionMs"
+        )
+        showStatus(getString(R.string.buffering), retry = false)
+        startStreamPlayback(stream, positionMs)
+    }
+
+    private fun handlePlaybackError(code: String) {
+        activeStream?.url?.let { failedStreamUrls.add(it) }
+        val currentIndex = availableStreams.indexOfFirst { it.url == activeStream?.url }
+        val orderedCandidates = if (currentIndex >= 0) {
+            availableStreams.drop(currentIndex + 1) + availableStreams.take(currentIndex)
+        } else {
+            availableStreams
+        }
+        val next = orderedCandidates.firstOrNull { it.url !in failedStreamUrls }
+        if (next == null) {
+            showError(code)
+            return
+        }
+
+        val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
+        activeStream = next
+        Log.w(
+            PROVIDER_TAG,
+            "Playback failed code=$code; trying next stream " +
+                "provider=${next.provider.ifBlank { "?" }} quality=${next.quality}"
+        )
+        showStatus(getString(R.string.buffering), retry = false)
+        startStreamPlayback(next, positionMs)
+    }
+
+    private fun loadAndPlay(
+        type: String,
+        tmdbId: Int,
+        season: Int?,
+        episode: Int?,
+        provider: StreamProviderChoice
+    ) {
+        streamJob?.cancel()
+        playbackStartJob?.cancel()
+        availableStreams = emptyList()
+        activeStream = null
+        failedStreamUrls.clear()
+        binding.btnPlayerStreams.visibility = View.GONE
+        updateBottomFocusChain()
+        showStatus(getString(R.string.streams_loading), retry = false)
+        streamJob = lifecycleScope.launch {
+            val result = runCatching {
+                resolver.load(type, tmdbId, season, episode, provider)
+            }
+            result.onSuccess { items ->
+                Log.i(PROVIDER_TAG, "loadAndPlay received ${items.size} streams for provider=${provider.displayName}")
+                if (items.isEmpty()) {
+                    Log.w(PROVIDER_TAG, "Empty stream list for provider=${provider.displayName}")
+                    showStatus(getString(R.string.streams_empty), retry = true)
+                } else {
+                    availableStreams = items
+                    binding.btnPlayerStreams.visibility =
+                        if (items.size > 1) View.VISIBLE else View.GONE
+                    updateBottomFocusChain()
+                    binding.playerStatus.visibility = View.GONE
+                    playBest(items)
+                }
+            }.onFailure { error ->
+                Log.w(TAG, "Stream fetch failed: ${error.message}")
+                Log.w(PROVIDER_TAG, "Stream fetch failed for provider=${provider.displayName}: ${error.message}")
+                showStatus(getString(R.string.streams_failed), retry = true)
+            }
+        }
+    }
+
+    /**
+     * Picks the highest-ranked stream from the list. The ranking is
+     * deliberately simple (1080p > 720p > Auto); replace this with a
+     * quality picker dialog when user choice is required.
+     */
+    private fun playBest(items: List<StreamItem>) {
+        val chosen = items.maxByOrNull { qualityRank(it.quality) } ?: items.first()
+        activeStream = chosen
+        val scheme = chosen.url.substringBefore(':').uppercase()
+        Log.i(
+            PROVIDER_TAG,
+            "playBest picked provider=${chosen.provider.ifBlank { "?" }} " +
+                "quality=${chosen.quality} scheme=$scheme url=${chosen.url}"
+        )
+        startStreamPlayback(chosen)
+    }
+
+    private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
+        playbackStartJob?.cancel()
+        playbackStartJob = lifecycleScope.launch {
+            if (stream.provider.equals("DahmerMovies", ignoreCase = true)) {
+                Log.i(PROVIDER_TAG, "Waiting ${DAHMER_CHALLENGE_WAIT_MS}ms before DahmerMovies playback")
+                delay(DAHMER_CHALLENGE_WAIT_MS)
+            }
+            engine.play(stream, startPositionMs)
+        }
+    }
+
+    private fun qualityRank(quality: String): Int {
+        val q = quality.lowercase()
+        return when {
+            q.endsWith("2160p") || q.contains("4k") -> 5
+            q.endsWith("1440p") -> 4
+            q.endsWith("1080p") -> 3
+            q.endsWith("720p")  -> 2
+            q.endsWith("480p")  -> 1
+            else -> 0
+        }
+    }
+
+    private fun showStatus(message: String, retry: Boolean) {
+        binding.playerStatus.text = message
+        binding.playerStatus.visibility = View.VISIBLE
+        if (retry) {
+            binding.playerStatus.setOnClickListener { loadCurrentMedia() }
+        } else {
+            binding.playerStatus.setOnClickListener(null)
+        }
+    }
+
+    private fun showLoadingArtwork() {
+        binding.loadingArtwork.animate().cancel()
+        binding.loadingArtwork.alpha = 1f
+        binding.loadingArtwork.visibility = View.VISIBLE
+    }
+
+    private fun hideLoadingArtwork() {
+        binding.loadingArtwork.animate()
+            .alpha(0f)
+            .setDuration(250L)
+            .withEndAction {
+                binding.loadingArtwork.visibility = View.GONE
+                binding.loadingArtwork.alpha = 1f
+            }
+            .start()
+    }
+
+    private fun showError(code: String) {
+        Toast.makeText(this, getString(R.string.player_error, code), Toast.LENGTH_LONG).show()
+    }
+
+    private val hideControlsRunnable = Runnable {
+        if (!controlsLockedVisible && trackDialog?.isShowing != true && streamDialog?.isShowing != true) {
+            binding.overlayControls.visibility = View.GONE
+        }
+    }
+
+    private fun showControls() {
+        uiHandler.removeCallbacks(hideControlsRunnable)
+        val wasHidden = binding.overlayControls.visibility != View.VISIBLE
+        binding.overlayControls.visibility = View.VISIBLE
+        if (wasHidden || currentFocus == null || currentFocus === binding.overlayControls) {
+            binding.btnPlayPause.post { binding.btnPlayPause.requestFocus() }
+        }
+        uiHandler.postDelayed(hideControlsRunnable, 4_000)
+    }
+
+    private fun updateBottomFocusChain() {
+        val controls = listOf(
+            binding.btnPreviousEpisode,
+            binding.btnFill,
+            binding.btnPlayerTracks,
+            binding.btnPlayerStreams,
+            binding.btnVolume,
+            binding.btnNextEpisode
+        ).filter { it.visibility == View.VISIBLE }
+        controls.forEachIndexed { index, control ->
+            control.nextFocusLeftId = controls[(index - 1 + controls.size) % controls.size].id
+            control.nextFocusRightId = controls[(index + 1) % controls.size].id
+            control.nextFocusUpId = binding.btnPlayPause.id
+        }
+        binding.btnPlayPause.nextFocusDownId = controls.first().id
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // Track dialog swallows its own back key; defer to the dialog first.
+        if (trackDialog?.isShowing == true) {
+            return super.dispatchKeyEvent(event)
+        }
+        if (streamDialog?.isShowing == true) {
+            return super.dispatchKeyEvent(event)
+        }
+        showControls()
+        when (event.keyCode) {
+            KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    engine.seekBy(-SEEK_STEP_MS)
+                }
+                return true
+            }
+
+            KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    engine.seekBy(SEEK_STEP_MS)
+                }
+                return true
+            }
+
+            KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    engine.resume()
+                }
+                return true
+            }
+
+            KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    engine.pause()
+                }
+                return true
+            }
+
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    if (engine.player.isPlaying) engine.pause() else engine.resume()
+                }
+                return true
+            }
+
+            KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    finish()
+                    return true
+                }
+            }
+
+//            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+//                if (event.action == KeyEvent.ACTION_UP) {
+//                    if (engine.player.isPlaying) engine.pause() else engine.resume()
+//                    return true
+//                }
+//            }
+
+            // KeyEvent.KEYCODE_DPAD_LEFT -> {
+            //     return handleSkip(event.action, -1)
+            // }
+
+            // KeyEvent.KEYCODE_DPAD_RIGHT -> {
+            //     return handleSkip(event.action, +1)
+            // }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun handleSkip(action: Int, dir: Int): Boolean = when (action) {
+        KeyEvent.ACTION_DOWN -> {
+            if (skipDirection != dir) {
+                stopSkipRamp()
+                skipDirection = dir
+                skipHoldStart = System.currentTimeMillis()
+                engine.seekBy(dir * SKIP_SEC_MIN * 1000L)
+                uiHandler.postDelayed(skipTick, SKIP_REPEAT_MS)
+            }
+            true
+        }
+        KeyEvent.ACTION_UP -> {
+            stopSkipRamp()
+            true
+        }
+        else -> false
+    }
+
+    private fun stopSkipRamp() {
+        skipDirection = 0
+        uiHandler.removeCallbacks(skipTick)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (::engine.isInitialized) engine.resume()
+    }
+
+    override fun onStop() {
+        if (::engine.isInitialized) engine.pause()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        streamJob?.cancel()
+        playbackStartJob?.cancel()
+        trackDialog?.takeIf { it.isShowing }?.dismiss()
+        trackDialog = null
+        streamDialog?.takeIf { it.isShowing }?.dismiss()
+        streamDialog = null
+        uiHandler.removeCallbacksAndMessages(null)
+        if (::engine.isInitialized) engine.release()
+        super.onDestroy()
+    }
+
+    companion object {
+        private const val TAG = "KiduyuLitePlayer"
+        private const val PROVIDER_TAG = "KiduyuLiteProvider"
+
+        const val EXTRA_TYPE = "MEDIA_TYPE"
+        const val EXTRA_IS_TV = "IS_TV"
+        const val EXTRA_TMDB_ID = "TMDB_ID"
+        const val EXTRA_SEASON = "SEASON_NUMBER"
+        const val EXTRA_EPISODE = "EPISODE_NUMBER"
+        const val EXTRA_PROVIDER = "PROVIDER"
+        const val EXTRA_BACKDROP_URL = "BACKDROP_PATH"
+        const val EXTRA_TITLE = "TITLE"
+        const val EXTRA_POSTER_PATH = "POSTER_PATH"
+
+        fun createIntent(
+            context: Context,
+            tmdbId: Int,
+            isTv: Boolean,
+            season: Int? = null,
+            episode: Int? = null,
+            title: String = "",
+            posterPath: String? = null,
+            backdropPath: String? = null
+        ): Intent = Intent(context, DirectStreamActivity::class.java).apply {
+            putExtra(EXTRA_TMDB_ID, tmdbId)
+            putExtra(EXTRA_TYPE, if (isTv) TYPE_SERIES else TYPE_MOVIE)
+            putExtra(EXTRA_IS_TV, isTv)
+            putExtra(EXTRA_SEASON, season ?: 0)
+            putExtra(EXTRA_EPISODE, episode ?: 0)
+            putExtra(EXTRA_TITLE, title)
+            putExtra(EXTRA_POSTER_PATH, posterPath)
+            putExtra(EXTRA_BACKDROP_URL, backdropPath)
+        }
+
+        const val TYPE_MOVIE  = "movie"
+        const val TYPE_SERIES = "series"
+
+        private const val SKIP_SEC_MIN = 10
+        private const val SKIP_SEC_MAX = 60
+        private const val SEEK_STEP_MS = 10_000L
+        private const val SKIP_RAMP_DURATION_MS = 5_000L
+        private const val SKIP_REPEAT_MS = 600L
+        private const val DAHMER_CHALLENGE_WAIT_MS = 5_000L
+    }
+
+    private fun normalizeArtworkUrl(path: String?): String? = when {
+        path.isNullOrBlank() -> null
+        path.startsWith("http://") || path.startsWith("https://") -> path
+        else -> "https://image.tmdb.org/t/p/original/${path.trimStart('/')}"
+    }
+
+    private data class ResizeModeOption(
+        val resizeMode: Int,
+        val label: Int
+    )
+
+    private val resizeModes = listOf(
+        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FIT, R.string.player_fit),
+        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FILL, R.string.player_fill),
+        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, R.string.player_zoom),
+        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH, R.string.player_fixed_width),
+        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT, R.string.player_fixed_height)
+    )
+}

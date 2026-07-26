@@ -186,7 +186,10 @@ fun MobileTvShowDetailScreen(
                                 val seasonNumber = uiState.watchHistoryItem?.seasonNumber ?: 1
                                 val episodeNumber = uiState.watchHistoryItem?.episodeNumber ?: 1
                                 val timestamp = uiState.watchHistoryItem?.playbackPosition ?: 0L
-                                val defaultProvider = SettingsManager(context).getDefaultProvider()
+                                val settings = SettingsManager(context)
+                                val defaultProvider = if (settings.isDirectStreamEnabled()) {
+                                    SettingsManager.AUTO
+                                } else settings.getDefaultProvider()
                                 val directUrl = if (defaultProvider != SettingsManager.AUTO) {
                                     StreamLinksViewModel.resolveProviderUrl(
                                         providerName = defaultProvider,
