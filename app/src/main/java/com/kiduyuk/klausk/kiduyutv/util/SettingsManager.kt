@@ -34,7 +34,7 @@ class SettingsManager(context: Context) {
     }
 
     fun isWebSnifferEnabled(): Boolean {
-        return preferences.getBoolean(KEY_WEB_SNIFFER_ENABLED, false)
+        return preferences.getBoolean(KEY_WEB_SNIFFER_ENABLED, true)
     }
 
     /**
