@@ -24,6 +24,8 @@ import java.util.Locale
 import com.kiduyuk.klausk.kiduyutv.R
 import com.kiduyuk.klausk.kiduyutv.databinding.ActivityDirectStreamBinding
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.SubtitleItem
+import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedSubtitle
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.PlayerEngine
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamCatalog
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamProviderChoice
@@ -34,6 +36,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import org.json.JSONArray
 
 /**
  * TV-first native player for streams returned by the kiduyuTv_providers
@@ -262,7 +265,43 @@ class DirectStreamActivity : AppCompatActivity() {
         availableStreams = listOf(stream)
         activeStream = stream
         showStatus(getString(R.string.buffering), retry = false)
-        engine.play(stream)
+        engine.play(stream, subtitles = parseSniffedSubtitles())
+    }
+
+    private fun parseSniffedSubtitles(): List<SubtitleItem> {
+        val encoded = intent.getStringExtra(EXTRA_SNIFFED_SUBTITLES) ?: return emptyList()
+        return runCatching {
+            val array = JSONArray(encoded)
+            buildList {
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    val url = item.optString("url")
+                    val mimeType = item.optString("mimeType")
+                    if (url.isBlank() || mimeType.isBlank()) continue
+                    val headers = linkedMapOf<String, String>()
+                    item.optJSONObject("headers")?.let { json ->
+                        json.keys().forEach { key ->
+                            json.optString(key).takeIf { it.isNotBlank() }?.let { headers[key] = it }
+                        }
+                    }
+                    item.optString("cookie")
+                        .takeIf {
+                            it.isNotBlank() &&
+                                headers.keys.none { key -> key.equals("Cookie", ignoreCase = true) }
+                        }
+                        ?.let { headers["Cookie"] = it }
+                    add(
+                        SubtitleItem(
+                            url = url,
+                            mimeType = mimeType,
+                            headers = headers
+                        )
+                    )
+                }
+            }
+        }.onFailure {
+            Log.w(TAG, "Could not parse sniffed subtitles", it)
+        }.getOrDefault(emptyList())
     }
 
     private fun applyResizeMode() {
@@ -677,6 +716,7 @@ class DirectStreamActivity : AppCompatActivity() {
         const val EXTRA_SNIFFED_COOKIE = "SNIFFED_STREAM_COOKIE"
         const val EXTRA_SNIFFED_TYPE = "SNIFFED_STREAM_TYPE"
         const val EXTRA_SNIFFED_MIME_TYPE = "SNIFFED_STREAM_MIME_TYPE"
+        const val EXTRA_SNIFFED_SUBTITLES = "SNIFFED_SUBTITLES"
 
         fun createIntent(
             context: Context,
@@ -711,7 +751,8 @@ class DirectStreamActivity : AppCompatActivity() {
             headers: Map<String, String>,
             cookie: String?,
             type: String,
-            mimeType: String
+            mimeType: String,
+            subtitles: List<SniffedSubtitle>
         ): Intent = createIntent(
             context = context,
             tmdbId = tmdbId,
@@ -727,6 +768,20 @@ class DirectStreamActivity : AppCompatActivity() {
             putExtra(EXTRA_SNIFFED_COOKIE, cookie)
             putExtra(EXTRA_SNIFFED_TYPE, type)
             putExtra(EXTRA_SNIFFED_MIME_TYPE, mimeType)
+            putExtra(
+                EXTRA_SNIFFED_SUBTITLES,
+                JSONArray().apply {
+                    subtitles.forEach { subtitle ->
+                        put(
+                            JSONObject()
+                                .put("url", subtitle.url)
+                                .put("mimeType", subtitle.mimeType)
+                                .put("headers", JSONObject(subtitle.headers))
+                                .put("cookie", subtitle.cookie.orEmpty())
+                        )
+                    }
+                }.toString()
+            )
         }
 
         const val TYPE_MOVIE  = "movie"

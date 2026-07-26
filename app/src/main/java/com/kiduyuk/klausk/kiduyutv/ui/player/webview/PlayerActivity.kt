@@ -32,6 +32,7 @@ import com.kiduyuk.klausk.kiduyutv.data.model.WatchHistoryItem
 import com.kiduyuk.klausk.kiduyutv.data.repository.TmdbRepository
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedStream
+import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedSubtitle
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.WebViewStreamSniffer
 import com.kiduyuk.klausk.kiduyutv.util.AdvancedAdBlocker
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
@@ -86,6 +87,10 @@ class PlayerActivity : AppCompatActivity() {
     private var currentVoteAverage: Double = 0.0
     private var currentReleaseDate: String? = null
     private var webStreamSniffer: WebViewStreamSniffer? = null
+    private var pendingSniffedStream: SniffedStream? = null
+    private val sniffedSubtitles = linkedMapOf<String, SniffedSubtitle>()
+    private val snifferHandoffHandler = Handler(Looper.getMainLooper())
+    private val snifferHandoffRunnable = Runnable { openSniffedStream() }
     private var currentPlaybackPosition: Long = 0L
     private var currentDuration: Long = 0L
 
@@ -140,6 +145,7 @@ class PlayerActivity : AppCompatActivity() {
 
         /** Package name of Google's official AOSP WebView provider. */
         private const val GOOGLE_WEBVIEW_PACKAGE = "com.google.android.webview"
+        private const val SNIFFER_SUBTITLE_WAIT_MS = 2_000L
 
         /**
          * Single, modern, device-agnostic User-Agent string. The previous string explicitly
@@ -199,7 +205,10 @@ class PlayerActivity : AppCompatActivity() {
         currentVoteAverage = contentVoteAverage
         currentReleaseDate = contentReleaseDate
         if (SettingsManager(this).isWebSnifferEnabled()) {
-            webStreamSniffer = WebViewStreamSniffer(::openSniffedStream)
+            webStreamSniffer = WebViewStreamSniffer(
+                onStreamCaptured = ::queueSniffedStream,
+                onSubtitleCaptured = ::rememberSniffedSubtitle
+            )
         }
 
         // Check and add to watch history, timer will be started after check completes
@@ -445,6 +454,7 @@ class PlayerActivity : AppCompatActivity() {
         webView.onPause()
         webView.pauseTimers()
         stopProgressUpdateTimer()
+        snifferHandoffHandler.removeCallbacks(snifferHandoffRunnable)
     }
 
     /** Stops callbacks and releases every WebView resource owned by this activity. */
@@ -730,7 +740,21 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
-    private fun openSniffedStream(stream: SniffedStream) {
+    private fun queueSniffedStream(stream: SniffedStream) {
+        pendingSniffedStream = stream
+        snifferHandoffHandler.removeCallbacks(snifferHandoffRunnable)
+        snifferHandoffHandler.postDelayed(snifferHandoffRunnable, SNIFFER_SUBTITLE_WAIT_MS)
+    }
+
+    private fun rememberSniffedSubtitle(subtitle: SniffedSubtitle) {
+        synchronized(sniffedSubtitles) {
+            sniffedSubtitles[subtitle.url] = subtitle
+        }
+    }
+
+    private fun openSniffedStream() {
+        val stream = pendingSniffedStream ?: return
+        val subtitles = synchronized(sniffedSubtitles) { sniffedSubtitles.values.toList() }
         runOnUiThread {
             if (isFinishing || isDestroyed) return@runOnUiThread
             Log.i(
@@ -753,7 +777,8 @@ class PlayerActivity : AppCompatActivity() {
                     headers = stream.headers,
                     cookie = stream.cookie,
                     type = stream.type,
-                    mimeType = stream.mimeType
+                    mimeType = stream.mimeType,
+                    subtitles = subtitles
                 )
             )
             finish()

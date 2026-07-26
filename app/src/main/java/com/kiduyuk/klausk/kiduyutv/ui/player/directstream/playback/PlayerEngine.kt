@@ -18,8 +18,11 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.SubtitleItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api.HttpCookieStore
 
 /**
@@ -150,11 +153,14 @@ class PlayerEngine(context: Context) {
         return false
     }
 
-    private fun buildMediaSource(stream: StreamItem): MediaSource {
+    private fun buildMediaSource(
+        stream: StreamItem,
+        subtitles: List<SubtitleItem>
+    ): MediaSource {
         val uri = Uri.parse(stream.url)
         val dataSourceFactory = buildDataSourceFactory(stream)
         val mediaItem = MediaItem.fromUri(uri)
-        return when {
+        val videoSource = when {
             isHls(stream) -> HlsMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(mediaItem)
             isDash(stream) -> DashMediaSource.Factory(dataSourceFactory)
@@ -162,6 +168,25 @@ class PlayerEngine(context: Context) {
             else -> ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(mediaItem)
         }
+        if (subtitles.isEmpty()) return videoSource
+
+        val subtitleSources = subtitles.map { subtitle ->
+            val httpFactory = DefaultHttpDataSource.Factory()
+                .setUserAgent(REAL_BROWSER_USER_AGENT)
+                .setAllowCrossProtocolRedirects(true)
+                .setDefaultRequestProperties(subtitle.headers)
+            val subtitleDataSource = DefaultDataSource.Factory(appContext, httpFactory)
+            val configuration = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.url))
+                .setMimeType(subtitle.mimeType)
+                .apply {
+                    subtitle.language?.let { setLanguage(it) }
+                    subtitle.label?.let { setLabel(it) }
+                }
+                .build()
+            SingleSampleMediaSource.Factory(subtitleDataSource)
+                .createMediaSource(configuration, C.TIME_UNSET)
+        }
+        return MergingMediaSource(videoSource, *subtitleSources.toTypedArray())
     }
 
     private fun isDash(stream: StreamItem): Boolean =
@@ -304,7 +329,11 @@ class PlayerEngine(context: Context) {
      * Begin playback of [stream]. Replaces any current item. Per-stream
      * headers are baked into the DataSource for this playback only.
      */
-    fun play(stream: StreamItem, startPositionMs: Long = 0L) {
+    fun play(
+        stream: StreamItem,
+        startPositionMs: Long = 0L,
+        subtitles: List<SubtitleItem> = emptyList()
+    ) {
         val normalizedUrl = normalizePlaybackUrl(stream)
         val playbackStream = if (normalizedUrl == stream.url) stream else stream.copy(url = normalizedUrl)
         currentUrl = normalizedUrl
@@ -337,7 +366,7 @@ class PlayerEngine(context: Context) {
                 }"
             )
         }
-        val source = buildMediaSource(playbackStream)
+        val source = buildMediaSource(playbackStream, subtitles)
         player.setMediaSource(source)
         if (startPositionMs > 0L) {
             player.seekTo(startPositionMs)

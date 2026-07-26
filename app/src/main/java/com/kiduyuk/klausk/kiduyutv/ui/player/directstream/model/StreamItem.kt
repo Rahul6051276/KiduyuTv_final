@@ -27,6 +27,14 @@ data class StreamItem(
     val headers: Map<String, String> = emptyMap()
 )
 
+data class SubtitleItem(
+    val url: String,
+    val mimeType: String,
+    val language: String? = null,
+    val label: String? = null,
+    val headers: Map<String, String> = emptyMap()
+)
+
 /**
  * Top-level response from `GET /api/streams/{type}/{tmdbId}`. Used for
  * diagnostics and resume in the future; today only the [streams] list is
