@@ -41,8 +41,8 @@ import kotlinx.coroutines.launch
  * Hosts third-party movie and TV providers inside a fullscreen WebView.
  *
  * The activity configures provider playback, initializes player-only ad blocking before the
- * first page load, exposes playback progress through [PlayerBridge], supports a virtual TV
- * cursor, and can hand captured streams to the native direct-stream player.
+ * first page load, supports a virtual TV cursor, and can hand captured streams to the native
+ * direct-stream player.
  *
  * Required intent data includes `TMDB_ID` and `IS_TV`. Provider HTML may be supplied through
  * `IFRAME_HTML`; otherwise [StreamProviderManager] generates it from the selected stream URL.
@@ -334,23 +334,6 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
         }
-
-        // Add JavascriptInterface bridge for player events (must be called on webView, not Activity)
-        webView.addJavascriptInterface(
-            PlayerBridge { _, _, _, season, episode ->
-                runOnUiThread {
-                    // Update season and episode if provided and they have changed
-                    if (currentIsTv && season != null && episode != null) {
-                        if (season != currentSeason || episode != currentEpisode) {
-                            Log.i(TAG, "[Episode] Changed S${currentSeason}E${currentEpisode} -> S${season}E${episode}")
-                            currentSeason = season
-                            currentEpisode = episode
-                        }
-                    }
-                }
-            },
-            "MavisInterface"
-        )
 
         cursorView = MouseCursorView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
