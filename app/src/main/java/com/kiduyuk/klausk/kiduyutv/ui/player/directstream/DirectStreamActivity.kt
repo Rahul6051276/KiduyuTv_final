@@ -524,6 +524,7 @@ class DirectStreamActivity : AppCompatActivity() {
                     episode = currentEpisode
                 )
             }.onSuccess { results ->
+                Log.i(TAG, "SubDL search returned ${results.size} selectable subtitles")
                 if (results.isEmpty()) {
                     Toast.makeText(
                         this@DirectStreamActivity,
@@ -604,6 +605,11 @@ class DirectStreamActivity : AppCompatActivity() {
         activeSubtitles = listOf(subtitle) + activeSubtitles.filterNot {
             it.label?.startsWith("SubDL", ignoreCase = true) == true
         }
+        Log.i(
+            TAG,
+            "Loading external subtitle label=${subtitle.label.orEmpty()} " +
+                "language=${subtitle.language.orEmpty()} mimeType=${subtitle.mimeType}"
+        )
         pendingReadySeekPositionMs = positionMs
         retriedWithoutExternalSubtitles = false
         showStatus(getString(R.string.buffering), retry = false)

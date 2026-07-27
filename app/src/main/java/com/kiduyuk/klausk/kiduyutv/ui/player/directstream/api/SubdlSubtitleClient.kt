@@ -1,6 +1,7 @@
 package com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api
 
 import android.content.Context
+import android.util.Log
 import androidx.core.net.toUri
 import com.kiduyuk.klausk.kiduyutv.BuildConfig
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.SubtitleItem
@@ -11,6 +12,7 @@ import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -66,7 +68,13 @@ class SubdlSubtitleClient(
             val subtitles = root.findArray("subtitles", "results")
                 ?: root.optJSONObject("data")?.findArray("subtitles", "results")
                 ?: JSONArray()
-            parseResults(subtitles)
+            parseResults(subtitles).also { results ->
+                Log.i(
+                    TAG,
+                    "Search complete tmdbId=$tmdbId type=${if (isTv) "tv" else "movie"} " +
+                        "season=${season ?: "-"} episode=${episode ?: "-"} results=${results.size}"
+                )
+            }
         }
     }
 
@@ -84,6 +92,11 @@ class SubdlSubtitleClient(
                 ?.let(::downloadBytes)
                 ?: executeDownload(url.toString(), null)
             val subtitle = saveSubtitle(bytes, result)
+            Log.i(
+                TAG,
+                "Subtitle downloaded id=${result.nId} language=${result.language} " +
+                    "format=${subtitle.extension.lowercase()} bytes=${subtitle.length()}"
+            )
             SubtitleItem(
                 url = subtitle.toUri().toString(),
                 mimeType = mimeType(subtitle.name),
@@ -95,32 +108,52 @@ class SubdlSubtitleClient(
     private fun parseResults(items: JSONArray): List<SubdlSubtitleResult> = buildList {
         for (index in 0 until items.length()) {
             val item = items.optJSONObject(index) ?: continue
-            val nId = item.firstString("n_id", "nId", "nid", "id") ?: continue
-            val language = item.firstString(
+            val parentNId = item.firstString("n_id", "nId", "nid", "id")
+            val parentLanguage = item.firstString(
                 "language_name",
-                "language",
                 "lang",
+                "language",
                 "language_code"
             ).orEmpty()
-            val release = item.firstString(
+            val parentRelease = item.firstString(
                 "release_name",
                 "release",
                 "name",
                 "title"
             ).orEmpty()
-            val files = item.optJSONArray("files")
+            val files = item.optJSONArray("unpack_files") ?: item.optJSONArray("files")
             if (files != null && files.length() > 0) {
                 for (fileIndex in 0 until files.length()) {
                     val file = files.optJSONObject(fileIndex) ?: continue
+                    val nId = file.firstString(
+                        "file_n_id",
+                        "n_id",
+                        "nId",
+                        "nid",
+                        "id"
+                    ) ?: parentNId ?: continue
                     val fileName = file.firstString("file_name", "filename", "name")
                     if (fileName != null && !isSupportedSubtitle(fileName)) continue
                     add(
                         SubdlSubtitleResult(
                             nId = nId,
-                            language = language,
-                            releaseName = release,
+                            language = file.firstString(
+                                "language_name",
+                                "lang",
+                                "language",
+                                "language_code"
+                            ) ?: parentLanguage,
+                            releaseName = file.firstString(
+                                "release_name",
+                                "release"
+                            ) ?: parentRelease,
                             fileName = fileName,
-                            unpackedUrl = file.firstString(
+                            unpackedUrl = item.firstString(
+                                "download_url",
+                                "file_url",
+                                "url",
+                                "link"
+                            ) ?: file.firstString(
                                 "download_url",
                                 "file_url",
                                 "url",
@@ -130,13 +163,14 @@ class SubdlSubtitleClient(
                     )
                 }
             } else {
+                val nId = parentNId ?: continue
                 val fileName = item.firstString("file_name", "filename")
                 if (fileName == null || isSupportedSubtitle(fileName)) {
                     add(
                         SubdlSubtitleResult(
                             nId = nId,
-                            language = language,
-                            releaseName = release,
+                            language = parentLanguage,
+                            releaseName = parentRelease,
                             fileName = fileName,
                             unpackedUrl = item.firstString(
                                 "download_url",
@@ -180,24 +214,41 @@ class SubdlSubtitleClient(
         }
 
     private fun resolveDownloadUrl(url: String): String =
-        API_BASE.toHttpUrl().resolve(url)?.toString()
+        url.toHttpUrlOrNull()?.toString()
+            ?: (if (url.startsWith("/subtitle/")) DOWNLOAD_BASE else API_BASE)
+                .toHttpUrl()
+                .resolve(url)
+                ?.toString()
             ?: throw IOException("SubDL returned an invalid subtitle URL")
 
     private fun saveSubtitle(bytes: ByteArray, result: SubdlSubtitleResult): File {
         val directory = File(context.cacheDir, "subdl_subtitles").apply { mkdirs() }
         val safeId = result.nId.replace(Regex("[^A-Za-z0-9._-]"), "_")
         if (bytes.isZip()) {
+            val selectedName = result.fileName?.substringAfterLast('/')
             ZipInputStream(bytes.inputStream()).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break
                     if (entry.isDirectory || !isSupportedSubtitle(entry.name)) continue
+                    if (
+                        selectedName != null &&
+                        !entry.name.substringAfterLast('/').equals(selectedName, ignoreCase = true)
+                    ) {
+                        continue
+                    }
                     val extension = entry.name.substringAfterLast('.', "srt").lowercase()
                     val output = File(directory, "$safeId.$extension")
                     FileOutputStream(output).use { zip.copyTo(it) }
                     return output
                 }
             }
-            throw IOException("The downloaded archive contains no SRT or VTT file")
+            throw IOException(
+                if (selectedName != null) {
+                    "The selected subtitle file was not found in the downloaded archive"
+                } else {
+                    "The downloaded archive contains no SRT or VTT file"
+                }
+            )
         }
 
         val extension = result.fileName
@@ -255,7 +306,9 @@ class SubdlSubtitleClient(
         if (name.lowercase().endsWith(".vtt")) "text/vtt" else "application/x-subrip"
 
     private companion object {
+        const val TAG = "SubDL"
         const val API_BASE = "https://api.subdl.com"
+        const val DOWNLOAD_BASE = "https://dl.subdl.com"
         const val SEARCH_URL = "$API_BASE/api/v2/subtitles/search"
     }
 }
