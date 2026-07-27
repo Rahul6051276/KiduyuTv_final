@@ -215,6 +215,17 @@
                     android:text="@string/player_fit" />
 
                 <TextView
+                    android:id="@+id/btnPlayerSubtitles"
+                    style="@style/DirectStreamControlButton"
+                    android:layout_width="88dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/subdl_subtitles_cd"
+                    android:nextFocusLeft="@id/btnFill"
+                    android:nextFocusRight="@id/btnPlayerTracks"
+                    android:nextFocusUp="@id/btnPlayerBack"
+                    android:text="@string/subdl_subtitles" />
+
+                <TextView
                     android:id="@+id/btnPlayerTracks"
                     style="@style/DirectStreamControlButton"
                     android:layout_width="76dp"

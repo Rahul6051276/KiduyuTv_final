@@ -34,6 +34,16 @@
     <string name="track_none_available">No tracks available</string>
     <string name="track_close">Close</string>
     <string name="track_settings_cd">Track settings</string>
+    <string name="subdl_subtitles">SUBS</string>
+    <string name="subdl_subtitles_cd">Search and load subtitles</string>
+    <string name="subdl_searching">Searching subtitles…</string>
+    <string name="subdl_downloading">Downloading subtitle…</string>
+    <string name="subdl_choose">Choose Subtitle</string>
+    <string name="subdl_no_results">No subtitles found for this title.</string>
+    <string name="subdl_key_missing">SubDL API key is not configured.</string>
+    <string name="subdl_search_failed">Subtitle search failed: %1$s</string>
+    <string name="subdl_download_failed">Subtitle download failed: %1$s</string>
+    <string name="subdl_loaded">Subtitle loaded: %1$s</string>
     <string name="stream_sources">Streams</string>
     <string name="stream_sources_cd">Choose playback stream</string>
     <string name="stream_choose">Choose Stream</string>

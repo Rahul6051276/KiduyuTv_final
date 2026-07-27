@@ -171,6 +171,8 @@ jobs:
 
       # ── Release APK ──────────────────────────────────────────
       - name: Build ${{ matrix.flavor }} Release APK
+        env:
+          SUBDL_API_KEY: ${{ secrets.SUBDL_API_KEY }}
         run: ./gradlew assemble${{ matrix.flavor_task }}Release --build-cache --configuration-cache --parallel -x lint -x test
 
       - name: Rename ${{ matrix.flavor }} Release APK

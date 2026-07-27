@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
@@ -28,6 +29,8 @@ import com.kiduyuk.klausk.kiduyutv.R
 import com.kiduyuk.klausk.kiduyutv.databinding.ActivityDirectStreamBinding
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.SubtitleItem
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api.SubdlSubtitleClient
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api.SubdlSubtitleResult
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedSubtitle
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.PlayerEngine
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamCatalog
@@ -71,7 +74,9 @@ class DirectStreamActivity : AppCompatActivity() {
     private var streamJob: Job? = null
     private var trackDialog: TrackSelectionDialog? = null
     private var streamDialog: StreamSelectionDialog? = null
+    private var subtitleDialog: AlertDialog? = null
     private var quitDialog: QuitDialog? = null
+    private var subtitleJob: Job? = null
     private var availableStreams: List<StreamItem> = emptyList()
     private var activeStream: StreamItem? = null
     private var activeSubtitles: List<SubtitleItem> = emptyList()
@@ -237,6 +242,7 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnPlayerBack.setOnClickListener { showExitConfirmationDialog() }
         binding.btnPlayerTracks.setOnClickListener { showTrackDialog() }
         binding.btnPlayerStreams.setOnClickListener { showStreamDialog() }
+        binding.btnPlayerSubtitles.setOnClickListener { searchSubdlSubtitles() }
         binding.playerView.setOnClickListener { showControls() }
         binding.overlayControls.setOnClickListener { showControls() }
         binding.btnRewind.setOnClickListener { engine.seekBy(-10_000L); showControls() }
@@ -500,6 +506,110 @@ class DirectStreamActivity : AppCompatActivity() {
         streamDialog?.show()
     }
 
+    private fun searchSubdlSubtitles() {
+        if (subtitleJob?.isActive == true || subtitleDialog?.isShowing == true) return
+        val client = SubdlSubtitleClient(applicationContext)
+        if (!client.isConfigured) {
+            Toast.makeText(this, R.string.subdl_key_missing, Toast.LENGTH_LONG).show()
+            return
+        }
+
+        Toast.makeText(this, R.string.subdl_searching, Toast.LENGTH_SHORT).show()
+        subtitleJob = lifecycleScope.launch {
+            runCatching {
+                client.search(
+                    tmdbId = currentTmdbId,
+                    isTv = currentMediaType == TYPE_SERIES,
+                    season = currentSeason,
+                    episode = currentEpisode
+                )
+            }.onSuccess { results ->
+                if (results.isEmpty()) {
+                    Toast.makeText(
+                        this@DirectStreamActivity,
+                        R.string.subdl_no_results,
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    showSubdlResults(results, client)
+                }
+            }.onFailure { error ->
+                Log.e(TAG, "SubDL subtitle search failed", error)
+                Toast.makeText(
+                    this@DirectStreamActivity,
+                    getString(
+                        R.string.subdl_search_failed,
+                        error.message ?: error.javaClass.simpleName
+                    ),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+        }
+    }
+
+    private fun showSubdlResults(
+        results: List<SubdlSubtitleResult>,
+        client: SubdlSubtitleClient
+    ) {
+        subtitleDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.subdl_choose)
+            .setItems(results.map { it.displayName }.toTypedArray()) { dialog, index ->
+                dialog.dismiss()
+                downloadAndLoadSubtitle(results[index], client)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .create()
+            .also { dialog ->
+                dialog.setOnDismissListener { subtitleDialog = null }
+                dialog.show()
+            }
+    }
+
+    private fun downloadAndLoadSubtitle(
+        result: SubdlSubtitleResult,
+        client: SubdlSubtitleClient
+    ) {
+        subtitleJob?.cancel()
+        Toast.makeText(this, R.string.subdl_downloading, Toast.LENGTH_SHORT).show()
+        subtitleJob = lifecycleScope.launch {
+            runCatching { client.download(result) }
+                .onSuccess { subtitle ->
+                    loadExternalSubtitle(subtitle)
+                    Toast.makeText(
+                        this@DirectStreamActivity,
+                        getString(R.string.subdl_loaded, result.language.ifBlank { "SubDL" }),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "SubDL subtitle download failed", error)
+                    Toast.makeText(
+                        this@DirectStreamActivity,
+                        getString(
+                            R.string.subdl_download_failed,
+                            error.message ?: error.javaClass.simpleName
+                        ),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+        }
+    }
+
+    private fun loadExternalSubtitle(subtitle: SubtitleItem) {
+        val stream = activeStream ?: run {
+            Toast.makeText(this, R.string.playback_link_unavailable, Toast.LENGTH_SHORT).show()
+            return
+        }
+        val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
+        activeSubtitles = listOf(subtitle) + activeSubtitles.filterNot {
+            it.label?.startsWith("SubDL", ignoreCase = true) == true
+        }
+        pendingReadySeekPositionMs = positionMs
+        retriedWithoutExternalSubtitles = false
+        showStatus(getString(R.string.buffering), retry = false)
+        engine.play(stream, 0L, activeSubtitles)
+    }
+
     private fun switchStream(stream: StreamItem) {
         if (stream.url == activeStream?.url) return
         failedStreamUrls.remove(stream.url)
@@ -722,7 +832,12 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private val hideControlsRunnable = Runnable {
-        if (!controlsLockedVisible && trackDialog?.isShowing != true && streamDialog?.isShowing != true) {
+        if (
+            !controlsLockedVisible &&
+            trackDialog?.isShowing != true &&
+            streamDialog?.isShowing != true &&
+            subtitleDialog?.isShowing != true
+        ) {
             binding.overlayControls.visibility = View.GONE
         }
     }
@@ -741,6 +856,7 @@ class DirectStreamActivity : AppCompatActivity() {
         val controls = listOf(
             binding.btnPreviousEpisode,
             binding.btnFill,
+            binding.btnPlayerSubtitles,
             binding.btnPlayerTracks,
             binding.btnPlayerStreams,
             binding.btnVolume,
@@ -760,6 +876,9 @@ class DirectStreamActivity : AppCompatActivity() {
             return super.dispatchKeyEvent(event)
         }
         if (streamDialog?.isShowing == true) {
+            return super.dispatchKeyEvent(event)
+        }
+        if (subtitleDialog?.isShowing == true) {
             return super.dispatchKeyEvent(event)
         }
         showControls()
@@ -1095,10 +1214,13 @@ class DirectStreamActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         streamJob?.cancel()
+        subtitleJob?.cancel()
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()
         streamDialog = null
+        subtitleDialog?.takeIf { it.isShowing }?.dismiss()
+        subtitleDialog = null
         quitDialog?.takeIf { it.isShowing }?.dismiss()
         quitDialog = null
         uiHandler.removeCallbacksAndMessages(null)

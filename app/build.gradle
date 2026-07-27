@@ -7,6 +7,11 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.serialization'
 }
 
+def subdlApiKey = providers.gradleProperty("SUBDL_API_KEY")
+        .orElse(providers.environmentVariable("SUBDL_API_KEY"))
+        .getOrElse("")
+def escapedSubdlApiKey = subdlApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+
 android {
     namespace 'com.kiduyuk.klausk.kiduyutv'
 
@@ -24,6 +29,7 @@ android {
             useSupportLibrary true
         }
         multiDexEnabled = true
+        buildConfigField "String", "SUBDL_API_KEY", "\"${escapedSubdlApiKey}\""
         manifestPlaceholders = [
             startAppAppId: "205544913",
             unityAdsGameId: "800077880",
