@@ -19,7 +19,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.bumptech.glide.Glide
-import com.kiduyuk.klausk.kiduyutv.data.model.WatchHistoryItem
+import com.kiduyuk.klausk.kiduyutv.data.local.database.DatabaseManager
 import com.kiduyuk.klausk.kiduyutv.data.repository.TmdbRepository
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -41,6 +41,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -842,53 +843,86 @@ class DirectStreamActivity : AppCompatActivity() {
         uiHandler.removeCallbacks(skipTick)
     }
 
+    private data class ResumeHistory(
+        val positionMs: Long,
+        val durationMs: Long = 0L,
+        val season: Int? = null,
+        val episode: Int? = null,
+        val updatedAt: Long = 0L,
+        val source: String
+    )
+
     private fun checkAndAddToWatchHistory() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val isTv = currentMediaType == TYPE_SERIES
-                val saved = repository.getWatchHistoryItem(
+                val localHistory = repository.getWatchHistoryItem(
                     this@DirectStreamActivity,
                     currentTmdbId,
                     isTv
                 )
-                val sameEpisode = !isTv || (
-                    saved != null &&
-                        saved.seasonNumber == currentSeason &&
-                        saved.episodeNumber == currentEpisode
+                val firebaseHistory = withTimeoutOrNull(FIREBASE_HISTORY_TIMEOUT_MS) {
+                    FirebaseManager.getWatchHistoryOnce()
+                }
+                val remoteHistory = extractFirebaseResumeHistory(firebaseHistory, isTv)
+                val localResume = localHistory?.let {
+                    ResumeHistory(
+                        positionMs = it.playbackPosition.coerceAtLeast(0L),
+                        season = it.seasonNumber,
+                        episode = it.episodeNumber,
+                        updatedAt = it.lastWatched,
+                        source = "local"
                     )
+                }
+                val selectedResume = listOfNotNull(localResume, remoteHistory)
+                    .filter { historyMatchesCurrentMedia(it, isTv) }
+                    .maxWithOrNull(
+                        compareBy<ResumeHistory> { it.updatedAt }
+                            .thenBy { it.positionMs }
+                    )
+                val resumePosition = selectedResume?.positionMs?.coerceAtLeast(0L) ?: 0L
 
-                if (saved == null) {
-                    repository.saveToWatchHistory(
-                        this@DirectStreamActivity,
-                        WatchHistoryItem(
-                            id = currentTmdbId,
-                            title = currentTitle,
-                            overview = currentOverview,
-                            posterPath = currentPosterPath,
-                            backdropPath = currentBackdropPath,
-                            voteAverage = currentVoteAverage,
-                            releaseDate = currentReleaseDate,
-                            isTv = isTv,
-                            seasonNumber = currentSeason.takeIf { isTv },
-                            episodeNumber = currentEpisode.takeIf { isTv },
-                            playbackPosition = 0L
-                        )
+                pendingStartPositionMs = resumePosition
+                Log.i(
+                    TAG,
+                    "[WatchHistory] Resume resolved from ${selectedResume?.source ?: "new history"} " +
+                        "at ${resumePosition}ms"
+                )
+
+                if (localHistory == null) {
+                    DatabaseManager.addToWatchHistoryAsync(
+                        id = currentTmdbId,
+                        mediaType = if (isTv) "tv" else "movie",
+                        title = currentTitle,
+                        overview = currentOverview,
+                        posterPath = currentPosterPath,
+                        backdropPath = currentBackdropPath,
+                        voteAverage = currentVoteAverage,
+                        releaseDate = currentReleaseDate,
+                        seasonNumber = currentSeason.takeIf { isTv },
+                        episodeNumber = currentEpisode.takeIf { isTv },
+                        playbackPosition = resumePosition
                     )
-                    syncWatchHistory(0L, 0L)
                 } else {
-                    pendingStartPositionMs =
-                        if (sameEpisode) saved.playbackPosition.coerceAtLeast(0L) else 0L
-                    if (isTv && !sameEpisode) {
-                        repository.updatePlaybackPosition(currentTmdbId, "tv", 0L)
-                        repository.updateEpisodeInfo(
+                    val mediaType = if (isTv) "tv" else "movie"
+                    DatabaseManager.watchHistoryDao().updatePlaybackPosition(
+                        currentTmdbId,
+                        mediaType,
+                        resumePosition
+                    )
+                    if (isTv) {
+                        DatabaseManager.watchHistoryDao().updateEpisodeInfo(
                             currentTmdbId,
-                            "tv",
+                            mediaType,
                             currentSeason ?: 1,
                             currentEpisode ?: 1
                         )
-                        syncWatchHistory(0L, 0L)
                     }
                 }
+                syncWatchHistory(
+                    position = resumePosition,
+                    duration = selectedResume?.durationMs ?: 0L
+                )
             } catch (error: Exception) {
                 Log.e(TAG, "[WatchHistory] Could not initialize playback progress", error)
             }
@@ -903,6 +937,49 @@ class DirectStreamActivity : AppCompatActivity() {
                     playSniffedStream(sniffedUrl)
                 }
             }
+        }
+    }
+
+    private fun extractFirebaseResumeHistory(
+        watchHistory: Map<String, Any>?,
+        isTv: Boolean
+    ): ResumeHistory? {
+        val mediaCollection = watchHistory
+            ?.get(if (isTv) "tv" else "movies") as? Map<*, *>
+            ?: return null
+        val media = mediaCollection.entries
+            .firstOrNull { it.key.toString() == currentTmdbId.toString() }
+            ?.value as? Map<*, *>
+            ?: return null
+
+        return ResumeHistory(
+            positionMs = media.longValue("playbackPosition").coerceAtLeast(0L),
+            durationMs = media.longValue("duration").coerceAtLeast(0L),
+            season = media.intValueOrNull("seasonNumber"),
+            episode = media.intValueOrNull("episodeNumber"),
+            updatedAt = media.longValue("updatedAt"),
+            source = "firebase"
+        )
+    }
+
+    private fun historyMatchesCurrentMedia(history: ResumeHistory, isTv: Boolean): Boolean {
+        return !isTv ||
+            (history.season == currentSeason && history.episode == currentEpisode)
+    }
+
+    private fun Map<*, *>.longValue(key: String): Long {
+        return when (val value = this[key]) {
+            is Number -> value.toLong()
+            is String -> value.toLongOrNull() ?: 0L
+            else -> 0L
+        }
+    }
+
+    private fun Map<*, *>.intValueOrNull(key: String): Int? {
+        return when (val value = this[key]) {
+            is Number -> value.toInt()
+            is String -> value.toIntOrNull()
+            else -> null
         }
     }
 
@@ -1111,6 +1188,7 @@ class DirectStreamActivity : AppCompatActivity() {
 
         private const val SKIP_SEC_MIN = 10
         private const val WATCH_PROGRESS_INTERVAL_MS = 15_000L
+        private const val FIREBASE_HISTORY_TIMEOUT_MS = 8_000L
         private const val SKIP_SEC_MAX = 60
         private const val SEEK_STEP_MS = 10_000L
         private const val SKIP_RAMP_DURATION_MS = 5_000L
