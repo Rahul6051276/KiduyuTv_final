@@ -626,7 +626,6 @@ class DirectStreamActivity : AppCompatActivity() {
             "Switching stream provider=${stream.provider.ifBlank { "?" }} " +
                 "quality=${stream.quality} positionMs=$positionMs"
         )
-        showStatus(getString(R.string.buffering), retry = false)
         startStreamPlayback(stream, positionMs)
     }
 
@@ -723,23 +722,37 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     /**
-     * Picks the highest-ranked stream from the list. The ranking is
-     * deliberately simple (1080p > 720p > Auto); replace this with a
-     * quality picker dialog when user choice is required.
+     * Automatically picks the best stream up to 1080p. Higher-bandwidth
+     * 1440p/2160p streams remain available in the Streams dialog so the
+     * viewer can opt into them explicitly.
      */
     private fun playBest(items: List<StreamItem>) {
-        val chosen = items.maxByOrNull { qualityRank(it.quality) } ?: items.first()
+        val automaticCandidates = items.filterNot {
+            (qualityResolution(it.quality) ?: 0) >= 1440
+        }
+        val chosen = automaticCandidates
+            .ifEmpty { items }
+            .maxByOrNull { qualityRank(it.quality) }
+            ?: items.first()
         activeStream = chosen
         val scheme = chosen.url.substringBefore(':').uppercase()
         Log.i(
             PROVIDER_TAG,
             "playBest picked provider=${chosen.provider.ifBlank { "?" }} " +
-                "quality=${chosen.quality} scheme=$scheme url=${chosen.url}"
+                "quality=${chosen.quality} scheme=$scheme " +
+                "excludedHighResolution=${items.size - automaticCandidates.size} url=${chosen.url}"
         )
         startStreamPlayback(chosen, consumePendingStartPosition())
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
+        stopWatchProgressUpdates()
+        showLoadingArtwork()
+        showStatus(getString(R.string.buffering), retry = false)
+        // A replacement MediaSource has its own buffer. Clear the old
+        // source's buffered marker so the seek bar reflects the new source
+        // as Media3 fills it.
+        binding.seekBar.secondaryProgress = 0
         engine.play(stream, startPositionMs, activeSubtitles)
     }
 
@@ -763,15 +776,18 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun qualityRank(quality: String): Int {
-        val q = quality.lowercase()
-        return when {
-            q.endsWith("2160p") || q.contains("4k") -> 5
-            q.endsWith("1440p") -> 4
-            q.endsWith("1080p") -> 3
-            q.endsWith("720p")  -> 2
-            q.endsWith("480p")  -> 1
-            else -> 0
-        }
+        return qualityResolution(quality) ?: 0
+    }
+
+    private fun qualityResolution(quality: String): Int? {
+        val normalized = quality.lowercase()
+        if (normalized.contains("4k")) return 2160
+        if (normalized.contains("2k")) return 1440
+        return Regex("""(\d{3,4})\s*p""")
+            .find(normalized)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.toIntOrNull()
     }
 
     private fun showStatus(message: String, retry: Boolean) {

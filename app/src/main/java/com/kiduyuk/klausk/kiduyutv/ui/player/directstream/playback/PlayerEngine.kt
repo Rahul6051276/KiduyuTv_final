@@ -268,6 +268,10 @@ class PlayerEngine(context: Context) {
                 BUFFER_FOR_PLAYBACK_MS,           // bufferForPlaybackMs
                 BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS // bufferForPlaybackAfterRebufferMs
             )
+            // High-bitrate 1440p/2160p streams can hit Media3's default byte
+            // target well before the requested time buffer. Keep loading
+            // until the time thresholds above are satisfied.
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
         Log.i(
             TAG,
