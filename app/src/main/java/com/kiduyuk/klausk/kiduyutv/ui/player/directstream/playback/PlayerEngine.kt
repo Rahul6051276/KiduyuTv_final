@@ -8,6 +8,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.TrackSelectionParameters
 import androidx.media3.common.util.UnstableApi
@@ -280,6 +281,8 @@ class PlayerEngine(context: Context) {
     /** Most recent URL we asked the player to load. Used to enrich error logs. */
     @Volatile
     private var currentUrl: String = ""
+    private var currentSourceIsPlaylist = false
+    private var highestVideoTrackApplied = false
 
     /** Invoked on fatal playback errors. The argument is a stable error code name. */
     var onError: ((String) -> Unit)? = null
@@ -321,6 +324,7 @@ class PlayerEngine(context: Context) {
                         "audio=${countByType(tracks, C.TRACK_TYPE_AUDIO)}, " +
                         "text=${countByType(tracks, C.TRACK_TYPE_TEXT)})"
                 )
+                selectHighestResolutionVideoTrack(tracks)
                 onTracksChanged?.invoke(tracks)
             }
         })
@@ -328,6 +332,54 @@ class PlayerEngine(context: Context) {
 
     private fun countByType(tracks: Tracks, type: Int): Int =
         tracks.groups.count { it.type == type }
+
+    /**
+     * Pins a newly loaded HLS/DASH playlist to its highest-resolution
+     * supported video rendition. This runs once per media source, leaving
+     * subsequent user choices from the Tracks dialog untouched.
+     */
+    private fun selectHighestResolutionVideoTrack(tracks: Tracks) {
+        if (!currentSourceIsPlaylist || highestVideoTrackApplied) return
+
+        val candidates = buildList {
+            tracks.groups.forEach { group ->
+                if (group.type != C.TRACK_TYPE_VIDEO) return@forEach
+                for (trackIndex in 0 until group.length) {
+                    if (!group.isTrackSupported(trackIndex)) continue
+                    val format = group.getTrackFormat(trackIndex)
+                    add(
+                        VideoCandidate(
+                            trackGroup = group.mediaTrackGroup,
+                            trackIndex = trackIndex,
+                            width = format.width.coerceAtLeast(0),
+                            height = format.height.coerceAtLeast(0),
+                            bitrate = format.bitrate.coerceAtLeast(0)
+                        )
+                    )
+                }
+            }
+        }
+        val highest = candidates.maxWithOrNull(
+            compareBy<VideoCandidate> { it.pixelCount }
+                .thenBy { it.height }
+                .thenBy { it.width }
+                .thenBy { it.bitrate }
+        ) ?: return
+
+        highestVideoTrackApplied = true
+        player.trackSelectionParameters = player.trackSelectionParameters
+            .buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+            .setOverrideForType(
+                TrackSelectionOverride(highest.trackGroup, highest.trackIndex)
+            )
+            .build()
+        Log.i(
+            TAG,
+            "Selected highest playlist video track: " +
+                "${highest.width}x${highest.height} bitrate=${highest.bitrate}"
+        )
+    }
 
     /**
      * Begin playback of [stream]. Replaces any current item. Per-stream
@@ -343,6 +395,8 @@ class PlayerEngine(context: Context) {
         currentUrl = normalizedUrl
         val scheme = normalizedUrl.substringBefore(':').uppercase()
         val isHlsStream = isHls(playbackStream)
+        currentSourceIsPlaylist = isHlsStream || isDash(playbackStream)
+        highestVideoTrackApplied = false
         val sourceType = when {
             isHlsStream -> "HlsMediaSource"
             isDash(playbackStream) -> "DashMediaSource"
@@ -504,5 +558,15 @@ class PlayerEngine(context: Context) {
          * rebuffers. Standard ExoPlayer default.
          */
         private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000
+    }
+
+    private data class VideoCandidate(
+        val trackGroup: androidx.media3.common.TrackGroup,
+        val trackIndex: Int,
+        val width: Int,
+        val height: Int,
+        val bitrate: Int
+    ) {
+        val pixelCount: Long = width.toLong() * height.toLong()
     }
 }
