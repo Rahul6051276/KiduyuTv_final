@@ -250,7 +250,7 @@ class PlayerEngine(context: Context) {
      * with stable Wi-Fi.
      *
      * Settings:
-     *  - `minBufferMs` = 30s — playback starts once 30s is buffered.
+     *  - `minBufferMs` = 10s — maintain at least 10s of buffered media.
      *  - `maxBufferMs` = 180s — the buffer fills up to 3 minutes and
      *    stops there. This is the "3 min buffer" the operator asked
      *    for.
@@ -488,11 +488,10 @@ class PlayerEngine(context: Context) {
         private const val MAX_BUFFER_MS = 3 * 60 * 1000  // 180_000
 
         /**
-         * Start playback as soon as 30 seconds is buffered. Keeps the
-         * "press play → see something" latency low while still giving
-         * the player enough headroom to ride out a brief stall.
+         * Maintain at least 10 seconds of buffered media. Initial playback
+         * is still controlled separately by BUFFER_FOR_PLAYBACK_MS.
          */
-        private const val MIN_BUFFER_MS = 30 * 1000       //  30_000
+        private const val MIN_BUFFER_MS = 10 * 1000       //  10_000
 
         /**
          * After a rebuffer event, the player resumes once 2.5s is
