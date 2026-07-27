@@ -160,7 +160,7 @@
 
                 <TextView
                     android:id="@+id/tvCurrentTime"
-                    android:layout_width="56dp"
+                    android:layout_width="35dp"
                     android:layout_height="wrap_content"
                     android:gravity="start|center_vertical"
                     android:text="00:00"
@@ -180,7 +180,7 @@
 
                 <TextView
                     android:id="@+id/tvTotalTime"
-                    android:layout_width="56dp"
+                    android:layout_width="35dp"
                     android:layout_height="wrap_content"
                     android:gravity="end|center_vertical"
                     android:text="00:00"
