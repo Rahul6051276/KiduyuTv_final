@@ -17,12 +17,68 @@ The relevant current files are:
 
 - `app/src/main/java/com/kiduyuk/klausk/kiduyutv/data/repository/ChannelScraper.kt`
 - `app/src/main/java/com/kiduyuk/klausk/kiduyutv/data/api/ScheduleApiService.kt`
+- `app/src/main/java/com/kiduyuk/klausk/kiduyutv/data/repository/IptvRepository.kt`
+- `app/src/main/java/com/kiduyuk/klausk/kiduyutv/util/LiveTvCacheManager.kt`
+- `app/src/main/java/com/kiduyuk/klausk/kiduyutv/util/ScrapedChannelsCache.kt`
+- `app/src/main/java/com/kiduyuk/klausk/kiduyutv/viewmodel/LiveTvViewModel.kt`
 - `app/src/main/java/com/kiduyuk/klausk/kiduyutv/viewmodel/SettingsViewModel.kt`
 - the phone and TV settings screens where a scraper-address editor can be exposed
 
 `StreamProviderManager` already loads movie/TV provider templates from Firebase. The live-TV
 scraper should use the same configuration principle, but it should have a separate configuration
 node because its paths, HTML selectors, health checks, and fallback behavior are different.
+
+## Current end-to-end implementation
+
+There are currently three related but disconnected Live TV data paths:
+
+| Path | Entry point | Network source | Consumer |
+|---|---|---|---|
+| IPTV channel list and EPG | `LiveTvViewModel.loadPlaylist()` | Hard-coded constants in `IptvRepository` | TV and phone Live TV screens |
+| User-entered M3U/XMLTV URLs | `SettingsViewModel.updateLiveTvData()` | Text entered in settings | Saved by `LiveTvCacheManager`, but not read by `LiveTvViewModel` |
+| Scraped 24/7 channels | `SettingsViewModel.scrapeChannels()` | Hard-coded `dlhd.pk` in `ChannelScraper` | Saved by `ScrapedChannelsCache`, but not read by either Live TV screen |
+
+The schedule tab is a fourth request path. It uses `ScheduleRepository` and
+`ScheduleApiService`, which separately hard-code the same website.
+
+The effective runtime flow displayed by the Live TV screens is:
+
+```text
+LiveTvScreen / MobileLiveTvScreen
+        |
+        v
+LiveTvViewModel.loadPlaylist()
+        |
+        v
+IptvRepository.fetchPlaylist()
+        |
+        +--> hard-coded PLAYLIST_URL
+        +--> hard-coded PLAYLIST_EPG_URL
+```
+
+The scraper button currently follows a separate path:
+
+```text
+Settings screen
+        |
+        v
+SettingsViewModel.scrapeChannels()
+        |
+        v
+ChannelScraper.fetchChannels(fetchStreamUrls = true)
+        |
+        +--> GET channel-list page
+        +--> GET every channel watch page sequentially
+        |
+        v
+ScrapedChannelsCache.saveChannels()
+        |
+        +--> no Live TV screen currently reads this cache
+```
+
+This means changing the settings playlist URL does not change what `LiveTvViewModel` loads, and a
+successful scrape does not by itself populate the current Live TV channel grid. Fixing only the
+redirect behavior would therefore leave an important integration gap.
 
 ## Why the current implementation fails
 
@@ -82,6 +138,34 @@ the same:
 - the request timed out.
 
 The UI needs a terminal error state and a reason instead of only an empty list.
+
+### 5. User-configured playlist and EPG addresses are not the active data source
+
+`LiveTvCacheManager` persists `playlist_url` and `epg_url`, but `IptvRepository` downloads:
+
+```kotlin
+const val PLAYLIST_URL =
+    "https://raw.githubusercontent.com/abusaeeidx/IPTV-Scraper-Zilla/main/combined-playlist.m3u"
+const val PLAYLIST_EPG_URL =
+    "https://raw.githubusercontent.com/JulioCesarXY/EPG-LG-Channels/refs/heads/main/lg_epg_us.xml"
+```
+
+`LiveTvViewModel` calls `IptvRepository.fetchPlaylist()` and `fetchEpg()`, not
+`LiveTvCacheManager.parsePlaylist()`. Therefore the visible Live TV list ignores the URL entered
+in settings.
+
+### 6. Scraped results are persisted but not presented
+
+`SettingsViewModel` saves scraper results using:
+
+```kotlin
+ScrapedChannelsCache.saveChannels(context, channels)
+```
+
+The only corresponding load currently occurs in
+`SettingsViewModel.refreshScrapedChannels()`, where it updates the cached count. Neither
+`LiveTvScreen` nor `MobileLiveTvScreen` loads those `ScrapedChannel` objects. This can make a
+successful scrape appear to have had no effect.
 
 ## Recommended architecture
 
@@ -514,6 +598,160 @@ TextButton(onClick = viewModel::clearScraperAddressOverride) {
 }
 ```
 
+## Step 8: Connect configured and scraped sources to the Live TV screens
+
+Use one repository as the source of truth instead of making the ViewModel choose between
+unrelated cache implementations. A minimal source model is:
+
+```kotlin
+sealed interface LiveTvSource {
+    data class RemotePlaylist(
+        val playlistUrl: HttpUrl,
+        val epgUrl: HttpUrl?
+    ) : LiveTvSource
+
+    data class ScrapedWebsite(
+        val endpoint: ResolvedScraperEndpoint
+    ) : LiveTvSource
+}
+```
+
+For playlist mode, make `IptvRepository` accept the configured URL:
+
+```kotlin
+suspend fun fetchPlaylist(
+    context: Context,
+    playlistUrl: HttpUrl,
+    forceRefresh: Boolean = false
+): Result<IptvPlaylist> = withContext(Dispatchers.IO) {
+    if (!forceRefresh) {
+        loadFromCache(context)?.let { return@withContext Result.success(it) }
+    }
+
+    val request = Request.Builder()
+        .url(playlistUrl)
+        .header("User-Agent", "KiduyuTV/1.0")
+        .build()
+
+    client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) {
+            return@withContext Result.failure(
+                IOException("Playlist request failed with HTTP ${response.code}")
+            )
+        }
+        val body = response.body
+            ?: return@withContext Result.failure(IOException("Empty playlist response"))
+        Result.success(parseAndCacheM3uPlaylist(context, body))
+    }
+}
+```
+
+Then resolve the setting before loading:
+
+```kotlin
+fun loadPlaylist(forceRefresh: Boolean = false) {
+    val context = appContext ?: return
+
+    viewModelScope.launch {
+        _uiState.update { it.copy(isLoading = true, error = null) }
+
+        val configured = LiveTvCacheManager.getSavedPlaylistUrl(context)
+        val playlistUrl = configured.toHttpUrlOrNull()
+            ?: IptvRepository.DEFAULT_PLAYLIST_URL.toHttpUrl()
+
+        repository.fetchPlaylist(context, playlistUrl, forceRefresh).fold(
+            onSuccess = ::showPlaylist,
+            onFailure = ::showPlaylistError
+        )
+    }
+}
+```
+
+For scraper mode, either convert `ScrapedChannel` into the screen's common channel model or add a
+separate `scrapedChannels` collection to `LiveTvUiState`. A common model avoids duplicating the TV
+and phone UI:
+
+```kotlin
+data class LiveChannelItem(
+    val stableId: String,
+    val name: String,
+    val logoUrl: String?,
+    val playbackUrls: List<String>,
+    val source: ChannelSource
+)
+
+enum class ChannelSource {
+    PLAYLIST,
+    SCRAPER
+}
+
+fun ScrapedChannel.toLiveChannelItem() = LiveChannelItem(
+    stableId = "scraper:$id",
+    name = name,
+    logoUrl = thumbnailUrl,
+    playbackUrls = iframeUrls,
+    source = ChannelSource.SCRAPER
+)
+```
+
+Because the recommended initialization no longer prefetches stream URLs, `playbackUrls` may
+initially be empty. On click, resolve that channel's watch page, update only that row, and then
+launch `SchedulePlayerActivity`.
+
+```kotlin
+fun playScrapedChannel(channel: ScrapedChannel) {
+    viewModelScope.launch {
+        _uiState.update { it.copy(openingChannelId = channel.id, channelOpenError = null) }
+
+        val streams = withTimeoutOrNull(15_000) {
+            channelScraper.fetchStreamUrls(channel.watchPageUrl)
+        }.orEmpty()
+
+        if (streams.isEmpty()) {
+            _uiState.update {
+                it.copy(
+                    openingChannelId = null,
+                    channelOpenError = "No working player address was found for ${channel.name}"
+                )
+            }
+        } else {
+            _events.emit(LiveTvEvent.PlayScrapedChannel(channel, streams))
+            _uiState.update { it.copy(openingChannelId = null) }
+        }
+    }
+}
+```
+
+`fetchStreamUrls()` must become public (or move behind a repository method) for lazy loading.
+The UI should disable only the selected channel while it resolves; it should not replace the
+entire Live TV page with a global loading indicator.
+
+## Recommended policy for user overrides
+
+Two reasonable policies exist when a user-entered scraper address fails:
+
+1. **Strict override:** show the failure and do not try automatic alternatives. This makes
+   testing predictable.
+2. **Preferred override with fallback:** try the user address first, then remote and bundled
+   candidates. Show which address was ultimately selected.
+
+The second policy provides better availability, but it must not silently claim that the entered
+address worked. Display both the configured override and effective resolved address.
+
+Suggested controls for both TV and phone settings:
+
+- scraper base address input;
+- **Test address**;
+- **Save and use**;
+- **Reset to automatic**;
+- **Refresh channel list**;
+- effective address and redirect destination;
+- last successful check timestamp;
+- attempted-host summary after failure.
+
+Do not tie address testing to a full scrape. Testing should perform one bounded request against
+the channel-list path and validate `div.grid a.card`.
+
 ## Error classification
 
 Return actionable errors instead of silently converting everything to an empty list:
@@ -565,7 +803,9 @@ Do not put the live-TV scraper address into an individual `StreamProvider`. Inst
 5. Change settings refresh to `fetchStreamUrls = false` and fetch streams on channel selection.
 6. Add an overall timeout and terminal failure states.
 7. Add phone/TV settings controls for testing, saving, and resetting the override.
-8. After both consumers use the shared endpoint, remove their hardcoded `BASE_URL` constants.
+8. Make `IptvRepository` consume the saved playlist/EPG URLs instead of unrelated constants.
+9. Load cached scraped channels into the common Live TV state and resolve streams lazily.
+10. After all consumers use shared configuration, remove duplicated hard-coded URL constants.
 
 ## Test matrix
 
@@ -581,6 +821,9 @@ Do not put the live-TV scraper address into an individual `StreamProvider`. Inst
 | One channel is dead | Channel-list initialization still completes; only that channel shows an error. |
 | All candidates are dead | Loading ends within the configured overall timeout. |
 | App restarts offline | Cached channels and last-known-good address remain available. |
+| User changes the M3U URL | `LiveTvViewModel` displays channels from the new playlist. |
+| Scrape succeeds | Scraped channels become visible in both TV and phone Live TV screens. |
+| Selected scraped channel is dead | Only that channel fails and the main screen remains usable. |
 
 ## Acceptance criteria
 
@@ -593,4 +836,7 @@ The migration is complete when:
 - initial channel loading performs no per-channel stream prefetch;
 - every operation has a total deadline and a terminal UI state;
 - invalid user addresses cannot target unsafe schemes or unintended local-network hosts;
-- cached channels remain usable when all scraper endpoints are temporarily unavailable.
+- cached channels remain usable when all scraper endpoints are temporarily unavailable;
+- the playlist and EPG URLs shown in settings are the URLs consumed by `IptvRepository`;
+- scraped-channel cache data is consumed by both TV and phone Live TV screens;
+- opening one scraped channel has a bounded loading state independent of global initialization.
