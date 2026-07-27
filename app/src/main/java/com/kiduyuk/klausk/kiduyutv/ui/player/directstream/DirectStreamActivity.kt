@@ -109,10 +109,13 @@ class DirectStreamActivity : AppCompatActivity() {
         override fun run() {
             if (::engine.isInitialized) {
                 val duration = engine.player.duration.takeIf { it > 0 } ?: 0L
+                val currentPosition = engine.player.currentPosition.coerceAtLeast(0L)
                 if (!userSeeking) {
                     binding.seekBar.progress =
-                        if (duration > 0) ((engine.player.currentPosition * 1000L) / duration).toInt() else 0
+                        if (duration > 0) ((currentPosition * 1000L) / duration).toInt() else 0
+                    binding.tvCurrentTime.text = formatPlaybackTime(currentPosition)
                 }
+                binding.tvTotalTime.text = formatPlaybackTime(duration)
                 binding.seekBar.secondaryProgress =
                     if (duration > 0) {
                         ((engine.player.bufferedPosition.coerceAtMost(duration) * 1000L) / duration).toInt()
@@ -251,7 +254,14 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnNextEpisode.setOnClickListener { loadAdjacentEpisode(1) }
         updateEpisodeButtons()
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) = Unit
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val duration = engine.player.duration
+                if (duration > 0L) {
+                    binding.tvCurrentTime.text =
+                        formatPlaybackTime((duration * progress) / 1000L)
+                }
+            }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
                 userSeeking = true
                 controlsLockedVisible = true
@@ -363,6 +373,18 @@ class DirectStreamActivity : AppCompatActivity() {
         }
         binding.btnFill.setText(mode.label)
         Log.i(TAG, "Player resize mode changed to ${getString(mode.label)}")
+    }
+
+    private fun formatPlaybackTime(positionMs: Long): String {
+        val totalSeconds = positionMs.coerceAtLeast(0L) / 1_000L
+        val hours = totalSeconds / 3_600L
+        val minutes = (totalSeconds % 3_600L) / 60L
+        val seconds = totalSeconds % 60L
+        return if (hours > 0L) {
+            String.format(Locale.getDefault(), "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+        }
     }
 
     private fun loadAdjacentEpisode(delta: Int) {

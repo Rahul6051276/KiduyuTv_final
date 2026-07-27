@@ -152,15 +152,41 @@
             android:paddingEnd="12dp"
             android:paddingBottom="8dp">
 
-            <SeekBar
-                android:id="@+id/seekBar"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="28dp"
-                android:focusable="false"
-                android:max="1000"
-                android:progressTint="@color/kiduyu_red"
-                android:secondaryProgressTint="#FFFFFF"
-                android:thumbTint="@color/text_primary" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvCurrentTime"
+                    android:layout_width="56dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="start|center_vertical"
+                    android:text="00:00"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/seekBar"
+                    android:layout_width="0dp"
+                    android:layout_height="28dp"
+                    android:layout_weight="1"
+                    android:focusable="false"
+                    android:max="1000"
+                    android:progressTint="@color/kiduyu_red"
+                    android:secondaryProgressTint="#FFFFFF"
+                    android:thumbTint="@color/text_primary" />
+
+                <TextView
+                    android:id="@+id/tvTotalTime"
+                    android:layout_width="56dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end|center_vertical"
+                    android:text="00:00"
+                    android:textColor="@color/text_primary"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
             <LinearLayout
                 android:layout_width="match_parent"
