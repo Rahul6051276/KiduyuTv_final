@@ -42,6 +42,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 import org.json.JSONArray
 
@@ -199,9 +200,13 @@ class DirectStreamActivity : AppCompatActivity() {
                     Player.STATE_READY -> {
                         binding.playerStatus.visibility = View.GONE
                         applyPendingReadySeek()
+                        startWatchProgressUpdates()
                     }
-                    Player.STATE_ENDED ->
+                    Player.STATE_ENDED -> {
+                        stopWatchProgressUpdates()
+                        persistWatchProgress()
                         binding.playerStatus.visibility = View.GONE
+                    }
                     // Preserve "Loading streams" and retry messages while
                     // Media3 is idle; IDLE does not mean the request failed.
                     Player.STATE_IDLE -> Unit
@@ -929,7 +934,6 @@ class DirectStreamActivity : AppCompatActivity() {
 
             withContext(Dispatchers.Main) {
                 watchHistoryReady = true
-                startWatchProgressUpdates()
                 val sniffedUrl = intent.getStringExtra(EXTRA_SNIFFED_URL)
                 if (sniffedUrl.isNullOrBlank()) {
                     loadCurrentMedia()
@@ -993,7 +997,12 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun persistWatchProgress() {
-        if (!watchHistoryReady || !::engine.isInitialized || currentTmdbId <= 0) return
+        if (
+            !watchHistoryReady ||
+            !::engine.isInitialized ||
+            engine.player.currentMediaItem == null ||
+            currentTmdbId <= 0
+        ) return
 
         val isTv = currentMediaType == TYPE_SERIES
         val mediaType = if (isTv) "tv" else "movie"
@@ -1004,9 +1013,13 @@ class DirectStreamActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                repository.updatePlaybackPosition(currentTmdbId, mediaType, position)
+                DatabaseManager.watchHistoryDao().updatePlaybackPosition(
+                    currentTmdbId,
+                    mediaType,
+                    position
+                )
                 if (isTv) {
-                    repository.updateEpisodeInfo(
+                    DatabaseManager.watchHistoryDao().updateEpisodeInfo(
                         currentTmdbId,
                         mediaType,
                         season ?: 1,
@@ -1025,13 +1038,18 @@ class DirectStreamActivity : AppCompatActivity() {
         val season = currentSeason ?: 1
         val episode = currentEpisode ?: 1
         lifecycleScope.launch(Dispatchers.IO) {
-            repository.updatePlaybackPosition(currentTmdbId, "tv", 0L)
-            repository.updateEpisodeInfo(currentTmdbId, "tv", season, episode)
+            DatabaseManager.watchHistoryDao().updatePlaybackPosition(currentTmdbId, "tv", 0L)
+            DatabaseManager.watchHistoryDao().updateEpisodeInfo(
+                currentTmdbId,
+                "tv",
+                season,
+                episode
+            )
             syncWatchHistory(0L, 0L, season, episode)
         }
     }
 
-    private fun syncWatchHistory(
+    private suspend fun syncWatchHistory(
         position: Long,
         duration: Long,
         season: Int? = currentSeason,
@@ -1051,13 +1069,19 @@ class DirectStreamActivity : AppCompatActivity() {
             backdropPath = currentBackdropPath,
             voteAverage = currentVoteAverage,
             releaseDate = currentReleaseDate
-        )
+        ).await()
     }
 
     override fun onStart() {
         super.onStart()
         if (::engine.isInitialized) engine.resume()
-        if (watchHistoryReady) startWatchProgressUpdates()
+        if (
+            watchHistoryReady &&
+            ::engine.isInitialized &&
+            engine.player.playbackState == Player.STATE_READY
+        ) {
+            startWatchProgressUpdates()
+        }
     }
 
     override fun onStop() {

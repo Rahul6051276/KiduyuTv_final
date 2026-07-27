@@ -5,6 +5,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.android.gms.tasks.Task
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -445,7 +446,7 @@ object FirebaseManager {
         voteAverage: Double? = null,
         releaseDate: String? = null,
         updatedAt: Long = System.currentTimeMillis()
-    ) {
+    ): Task<Void> {
         // For both TV shows and movies, save at path without season/episode in path
         // TV shows: watchHistory/tv/{tmdbId}
         // Movies: watchHistory/movies/{tmdbId}
@@ -472,7 +473,7 @@ object FirebaseManager {
             "updatedAt" to updatedAt
         )
         
-        database.getReference(path).setValue(item)
+        return database.getReference(path).setValue(item)
     }
     
     /**
