@@ -282,10 +282,10 @@ class SplashActivity : ComponentActivity() {
 
                 // ── ADD TEST DEVICE CONFIGURATION HERE ───────────────────────────────────
                 //val testDeviceIds = listOf("D766D45CB08288501275F03EF6344980")
-                val configuration = com.google.android.gms.ads.RequestConfiguration.Builder()
-                    .setTestDeviceIds(testDeviceIds)
-                    .build()
-                com.google.android.gms.ads.MobileAds.setRequestConfiguration(configuration)
+                // val configuration = com.google.android.gms.ads.RequestConfiguration.Builder()
+                //     .setTestDeviceIds(testDeviceIds)
+                //     .build()
+                // com.google.android.gms.ads.MobileAds.setRequestConfiguration(configuration)
 
                 // 2. Build a dummy request to verify the configuration
                 val dummyRequest = com.google.android.gms.ads.AdRequest.Builder().build()
