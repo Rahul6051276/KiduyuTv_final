@@ -264,8 +264,7 @@ fun LiveTvScreen(
                                         iframeUrls = channel.url
                                             .takeIf { it.isNotBlank() }
                                             ?.let { listOf(it) }
-                                            .orEmpty(),
-                                        forceWebSniffer = true
+                                            .orEmpty()
                                     )
                                 )
                             }

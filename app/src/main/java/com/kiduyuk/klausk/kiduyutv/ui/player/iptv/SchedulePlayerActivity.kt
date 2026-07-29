@@ -129,7 +129,6 @@ class SchedulePlayerActivity : ComponentActivity() {
         const val EXTRA_EVENT_TITLE = "EVENT_TITLE"
         const val EXTRA_SELECTED_PLAYER = "SELECTED_PLAYER"
         const val EXTRA_IFRAME_URLS = "IFRAME_URLS"
-        const val EXTRA_FORCE_WEB_SNIFFER = "FORCE_WEB_SNIFFER"
         private val STREAM_PATHS = listOf(
             "/stream/stream-%s.php",
             "/cast/stream-%s.php",
@@ -148,15 +147,13 @@ class SchedulePlayerActivity : ComponentActivity() {
             channelName: String,
             eventTitle: String,
             iframeUrls: List<String> = emptyList(),
-            selectedPlayerIndex: Int = 0,
-            forceWebSniffer: Boolean = false
+            selectedPlayerIndex: Int = 0
         ) = android.content.Intent(context, SchedulePlayerActivity::class.java).apply {
             putExtra(EXTRA_CHANNEL_ID, channelId)
             putExtra(EXTRA_CHANNEL_NAME, channelName)
             putExtra(EXTRA_EVENT_TITLE, eventTitle)
             putExtra(EXTRA_SELECTED_PLAYER, selectedPlayerIndex)
             putStringArrayListExtra(EXTRA_IFRAME_URLS, ArrayList(iframeUrls))
-            putExtra(EXTRA_FORCE_WEB_SNIFFER, forceWebSniffer)
         }
     }
 
@@ -206,9 +203,7 @@ class SchedulePlayerActivity : ComponentActivity() {
         channelName = intent.getStringExtra(EXTRA_CHANNEL_NAME) ?: "Channel"
         eventTitle = intent.getStringExtra(EXTRA_EVENT_TITLE) ?: "Event"
         selectedPlayerIndex = intent.getIntExtra(EXTRA_SELECTED_PLAYER, 0)
-        val shouldSniffStreams =
-            intent.getBooleanExtra(EXTRA_FORCE_WEB_SNIFFER, false) ||
-                SettingsManager(this).isWebSnifferEnabled()
+        val shouldSniffStreams = SettingsManager(this).isWebSnifferEnabled()
         if (shouldSniffStreams) {
             webStreamSniffer = createStreamSniffer()
         }
