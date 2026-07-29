@@ -100,6 +100,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.kiduyuk.klausk.kiduyutv.data.model.IptvChannel
+import com.kiduyuk.klausk.kiduyutv.data.model.ScrapedChannel
 import com.kiduyuk.klausk.kiduyutv.data.model.ScheduleCategory
 import com.kiduyuk.klausk.kiduyutv.data.model.ScheduleChannel
 import com.kiduyuk.klausk.kiduyutv.data.model.ScheduleDay
@@ -114,6 +115,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.theme.DarkRed
 import com.kiduyuk.klausk.kiduyutv.ui.theme.PrimaryRed
 import com.kiduyuk.klausk.kiduyutv.ui.theme.TextPrimary
 import com.kiduyuk.klausk.kiduyutv.ui.theme.TextSecondary
+import com.kiduyuk.klausk.kiduyutv.data.repository.ChannelScraper
 import com.kiduyuk.klausk.kiduyutv.util.ScrapedChannelsCache
 import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import com.kiduyuk.klausk.kiduyutv.viewmodel.CategoryItem
@@ -152,6 +154,7 @@ fun LiveTvScreen(
     val favoriteChannels by viewModel.favoriteChannels.collectAsState()
     val scheduleUiState by scheduleViewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val daddyLiveScope = rememberCoroutineScope()
     val daddyLiveEnabled = remember(context) {
         SettingsManager(context).isDaddyLiveEnabled()
     }
@@ -166,16 +169,7 @@ fun LiveTvScreen(
         if (daddyLiveEnabled) {
             scrapedChannelsLoading = true
             val cached = ScrapedChannelsCache.loadChannels(context)
-            scrapedChannels = cached.map { channel ->
-                IptvChannel(
-                    name = channel.name,
-                    logo = channel.thumbnailUrl,
-                    url = channel.primaryStreamUrl.orEmpty(),
-                    group = channel.category ?: "DaddyLive",
-                    tvgId = channel.id,
-                    tvgName = channel.name
-                )
-            }
+            scrapedChannels = cached.map { it.toIptvChannel() }
             scrapedChannelsError = if (scrapedChannels.isEmpty()) {
                 "No scraped channels are cached. Scrape channels from Settings first."
             } else {
@@ -239,6 +233,28 @@ fun LiveTvScreen(
                             channels = scrapedChannels,
                             isLoading = scrapedChannelsLoading,
                             error = scrapedChannelsError,
+                            onScrape = {
+                                daddyLiveScope.launch {
+                                    scrapedChannelsLoading = true
+                                    scrapedChannelsError = null
+                                    val result =
+                                        ChannelScraper.fetchChannels(fetchStreamUrls = true)
+                                    val scraped = result.getOrNull()
+                                    if (scraped != null) {
+                                        ScrapedChannelsCache.saveChannels(context, scraped)
+                                        scrapedChannels = scraped.map { it.toIptvChannel() }
+                                        scrapedChannelsError = if (scrapedChannels.isEmpty()) {
+                                            "No channels were found. Check the DaddyLive address and try again."
+                                        } else {
+                                            null
+                                        }
+                                    } else {
+                                        scrapedChannelsError = result.exceptionOrNull()?.message
+                                            ?: "Unable to scrape DaddyLive channels."
+                                    }
+                                    scrapedChannelsLoading = false
+                                }
+                            },
                             onChannelClick = { channel ->
                                 if (channel.url.isBlank()) {
                                     Toast.makeText(
@@ -445,6 +461,7 @@ private fun DaddyLiveTabContent(
     channels: List<IptvChannel>,
     isLoading: Boolean,
     error: String?,
+    onScrape: () -> Unit,
     onChannelClick: (IptvChannel) -> Unit
 ) {
     val firstChannelFocusRequester = remember { FocusRequester() }
@@ -458,13 +475,21 @@ private fun DaddyLiveTabContent(
         }
 
         error != null -> {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(32.dp),
-                contentAlignment = Alignment.Center
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(text = error, color = TextSecondary, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onScrape,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryRed)
+                ) {
+                    Text("Scrape Channels")
+                }
             }
         }
 
@@ -517,6 +542,15 @@ private fun DaddyLiveTabContent(
         }
     }
 }
+
+private fun ScrapedChannel.toIptvChannel() = IptvChannel(
+    name = name,
+    logo = thumbnailUrl,
+    url = primaryStreamUrl.orEmpty(),
+    group = category ?: "DaddyLive",
+    tvgId = id,
+    tvgName = name
+)
 
 @Composable
 private fun LiveTvTabContent(

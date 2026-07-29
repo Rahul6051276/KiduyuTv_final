@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +46,8 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import coil.compose.AsyncImage
 import com.kiduyuk.klausk.kiduyutv.data.model.IptvChannel
+import com.kiduyuk.klausk.kiduyutv.data.model.ScrapedChannel
+import com.kiduyuk.klausk.kiduyutv.data.repository.ChannelScraper
 import com.kiduyuk.klausk.kiduyutv.ui.components.LottieLoadingView
 import com.kiduyuk.klausk.kiduyutv.ui.components.mobile.MobileBottomNavigation
 import com.kiduyuk.klausk.kiduyutv.ui.components.mobile.MobileSearchTopBar
@@ -55,6 +58,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.theme.TextSecondary
 import com.kiduyuk.klausk.kiduyutv.util.ScrapedChannelsCache
 import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import com.kiduyuk.klausk.kiduyutv.viewmodel.LiveTvViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun MobileLiveTvScreen(
@@ -63,6 +67,7 @@ fun MobileLiveTvScreen(
     viewModel: LiveTvViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val daddyLiveScope = rememberCoroutineScope()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val uiState by viewModel.uiState.collectAsState()
     val daddyLiveEnabled = remember(context) {
@@ -78,16 +83,7 @@ fun MobileLiveTvScreen(
         if (daddyLiveEnabled) {
             scrapedChannelsLoading = true
             val cached = ScrapedChannelsCache.loadChannels(context)
-            scrapedChannels = cached.map { channel ->
-                IptvChannel(
-                    name = channel.name,
-                    logo = channel.thumbnailUrl,
-                    url = channel.primaryStreamUrl.orEmpty(),
-                    group = channel.category ?: "DaddyLive",
-                    tvgId = channel.id,
-                    tvgName = channel.name
-                )
-            }
+            scrapedChannels = cached.map { it.toMobileIptvChannel() }
             scrapedChannelsError = if (scrapedChannels.isEmpty()) {
                 "No scraped channels are cached. Scrape channels from Settings first."
             } else {
@@ -118,6 +114,27 @@ fun MobileLiveTvScreen(
                     channels = scrapedChannels,
                     isLoading = scrapedChannelsLoading,
                     error = scrapedChannelsError,
+                    onScrape = {
+                        daddyLiveScope.launch {
+                            scrapedChannelsLoading = true
+                            scrapedChannelsError = null
+                            val result = ChannelScraper.fetchChannels(fetchStreamUrls = true)
+                            val scraped = result.getOrNull()
+                            if (scraped != null) {
+                                ScrapedChannelsCache.saveChannels(context, scraped)
+                                scrapedChannels = scraped.map { it.toMobileIptvChannel() }
+                                scrapedChannelsError = if (scrapedChannels.isEmpty()) {
+                                    "No channels were found. Check the DaddyLive address and try again."
+                                } else {
+                                    null
+                                }
+                            } else {
+                                scrapedChannelsError = result.exceptionOrNull()?.message
+                                    ?: "Unable to scrape DaddyLive channels."
+                            }
+                            scrapedChannelsLoading = false
+                        }
+                    },
                     onChannelClick = { channel ->
                         if (channel.url.isBlank()) {
                             android.widget.Toast.makeText(
@@ -328,6 +345,7 @@ private fun MobileDaddyLiveContent(
     channels: List<IptvChannel>,
     isLoading: Boolean,
     error: String?,
+    onScrape: () -> Unit,
     onChannelClick: (IptvChannel) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
@@ -347,13 +365,18 @@ private fun MobileDaddyLiveContent(
         }
 
         error != null -> {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(24.dp),
-                contentAlignment = Alignment.Center
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(text = error, color = TextSecondary)
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onScrape) {
+                    Text("Scrape Channels")
+                }
             }
         }
 
@@ -406,6 +429,15 @@ private fun MobileDaddyLiveContent(
         }
     }
 }
+
+private fun ScrapedChannel.toMobileIptvChannel() = IptvChannel(
+    name = name,
+    logo = thumbnailUrl,
+    url = primaryStreamUrl.orEmpty(),
+    group = category ?: "DaddyLive",
+    tvgId = id,
+    tvgName = name
+)
 
 @Composable
 private fun CategoryRow(name: String, count: Int, onClick: () -> Unit) {
