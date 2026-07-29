@@ -135,7 +135,7 @@ private fun saveWatchedCache(
             .putInt(KEY_CACHED_PAGE, lastLoadedPage)
             .putBoolean(KEY_CACHED_HAS_MORE, hasMore)
             .apply()
-        Log.i("MyListScreen", "Saved ${items.size} watched items to cache (page=$lastLoadedPage, hasMore=$hasMore)")
+        //Log.i("MyListScreen", "Saved ${items.size} watched items to cache (page=$lastLoadedPage, hasMore=$hasMore)")
     } catch (e: Exception) {
         Log.e("MyListScreen", "Failed to save watched cache: ${e.message}")
     }
@@ -164,10 +164,10 @@ private fun loadWatchedCache(context: Context): WatchedCache? {
                     voteAverage = it.voteAverage
                 )
             }
-            Log.i("MyListScreen", "Loaded ${items.get(0).posterPath} ")
+            //Log.i("MyListScreen", "Loaded ${items.get(0).posterPath} ")
             val lastPage = prefs.getInt(KEY_CACHED_PAGE, 0)
             val hasMore = prefs.getBoolean(KEY_CACHED_HAS_MORE, true)
-            Log.i("MyListScreen", "Loaded ${items.size} watched items from cache (page=$lastPage, hasMore=$hasMore)")
+            //Log.i("MyListScreen", "Loaded ${items.size} watched items from cache (page=$lastPage, hasMore=$hasMore)")
             WatchedCache(items, lastPage, hasMore)
         }
     } catch (e: Exception) {
@@ -179,7 +179,7 @@ private fun loadWatchedCache(context: Context): WatchedCache? {
 /** Clear the watched cache (e.g. on logout). */
 private fun clearWatchedCache(context: Context) {
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
-    Log.i("MyListScreen", "Watched cache cleared")
+    //Log.i("MyListScreen", "Watched cache cleared")
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────────
@@ -319,14 +319,14 @@ fun MyListScreen(
                         result.fold(
                             onSuccess = { history ->
                                 if (history.isEmpty()) {
-                                    Log.i("MyListScreen", "Page $nextPage empty — no more watched items")
+                                    //Log.i("MyListScreen", "Page $nextPage empty — no more watched items")
                                     hasMoreWatched = false
                                 } else {
                                     val newItems = enrichHistoryPage(history)
-                                    Log.i(
+                                    /*Log.i(
                                         "MyListScreen",
                                         "Page $nextPage: fetched=${history.size}, newUnique=${newItems.size}"
-                                    )
+                                    )*/
 
                                     withContext(Dispatchers.Main) {
                                         watchedItems = watchedItems + newItems
@@ -367,10 +367,10 @@ fun MyListScreen(
 
     // ── Reset / initial-load orchestration ──────────────────────────────────
     LaunchedEffect(isTraktConnected) {
-        Log.i("MyListScreen", "isTraktConnected: $isTraktConnected")
+        //Log.i("MyListScreen", "isTraktConnected: $isTraktConnected")
 
         if (!isTraktConnected) {
-            Log.i("MyListScreen", "Trakt not connected, clearing history")
+            //Log.i("MyListScreen", "Trakt not connected, clearing history")
             watchedItems = emptyList()
             hasMoreWatched = true
             currentWatchedPage = 0
@@ -382,10 +382,10 @@ fun MyListScreen(
         // 1) Try cache first for instant display
         val cached = loadWatchedCache(context)
         if (cached != null && cached.items.isNotEmpty()) {
-            Log.i(
+            /*Log.i(
                 "MyListScreen",
                 "Cache hit — displaying ${cached.items.size} items (page=${cached.lastLoadedPage}, hasMore=${cached.hasMore})"
-            )
+            )*/
             watchedItems = cached.items
             currentWatchedPage = cached.lastLoadedPage
             hasMoreWatched = cached.hasMore
@@ -397,7 +397,7 @@ fun MyListScreen(
             coroutineScope.launch {
                 val itemsToEnrich = watchedItems.filter { it.posterPath == null || it.voteAverage == 0.0 }
                 if (itemsToEnrich.isNotEmpty()) {
-                    Log.i("MyListScreen", "Enriching ${itemsToEnrich.size} cached items with missing info")
+                    //Log.i("MyListScreen", "Enriching ${itemsToEnrich.size} cached items with missing info")
                     val enrichedItems = watchedItems.map { item ->
                         if (item.posterPath == null || item.voteAverage == 0.0) {
                             try {
@@ -438,7 +438,7 @@ fun MyListScreen(
         }
 
         // 2) No cache — fetch the first page and show a spinner
-        Log.i("MyListScreen", "No cache — fetching first page of Trakt watch history")
+        //Log.i("MyListScreen", "No cache — fetching first page of Trakt watch history")
         isInitialLoading = true
         loadNextWatchedPage()
     }
@@ -459,10 +459,10 @@ fun MyListScreen(
                 total > 0 &&
                 lastVisible >= total - WATCHED_END_THRESHOLD
             ) {
-                Log.i(
+                /*Log.i(
                     "MyListScreen",
                     "End-of-grid reached (last=$lastVisible, total=$total) — loading more"
-                )
+                )*/
                 loadNextWatchedPage()
             }
         }

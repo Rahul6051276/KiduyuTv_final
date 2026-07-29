@@ -107,14 +107,14 @@ class HomeViewModel : ViewModel() {
 
                 // Get watch history
                 val watchHistory = repository.getWatchHistory(context)
-                android.util.Log.i("HomeViewModel", "[WatchHistory] Fetched ${watchHistory.size} items from database")
+                //android.util.Log.i("HomeViewModel", "[WatchHistory] Fetched ${watchHistory.size} items from database")
                 
                 // Filter TV shows from watch history
-                val tvHistory = watchHistory.filter { it.isTv }
-                android.util.Log.i("HomeViewModel", "[WatchHistory] TV shows in watch history: ${tvHistory.size}")
-                for (item in tvHistory) {
-                    android.util.Log.i("HomeViewModel", "[WatchHistory] TV Show: id=${item.id}, title=${item.title}, season=${item.seasonNumber}, episode=${item.episodeNumber}")
-                }
+                //val tvHistory = watchHistory.filter { it.isTv }
+                //android.util.Log.i("HomeViewModel", "[WatchHistory] TV shows in watch history: ${tvHistory.size}")
+                //for (item in tvHistory) {
+                //    android.util.Log.i("HomeViewModel", "[WatchHistory] TV Show: id=${item.id}, title=${item.title}, season=${item.seasonNumber}, episode=${item.episodeNumber}")
+                //}
 
                 // Sort all content rows by vote average (highest first)
                 val sortedTrendingTv = trendingTv.sortedByDescending { it.voteAverage }
@@ -180,7 +180,7 @@ class HomeViewModel : ViewModel() {
                             // Only enrich items that are in the continue watching list
                             if (sortedWatchHistory.any { it.id == item.id && it.isTv == (item.mediaType == "tv") }) {
                                 WatchHistoryEnricher.enrichSingleItem(context, item.id, item.mediaType)
-                                android.util.Log.i("HomeViewModel", "Enriched continue watching item: ${item.id} (${item.mediaType})")
+                                //android.util.Log.i("HomeViewModel", "Enriched continue watching item: ${item.id} (${item.mediaType})")
                             }
                         }
                         // Refresh the watch history after individual enrichment
