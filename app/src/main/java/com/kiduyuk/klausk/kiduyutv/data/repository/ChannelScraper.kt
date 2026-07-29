@@ -21,7 +21,7 @@ import org.jsoup.nodes.Document
 object ChannelScraper {
 
     private const val TAG = "ChannelScraper"
-    private const val BASE_URL = "https://dlhd.pk"
+    private const val BASE_URL = "https://dlhd.st"
     private const val CHANNELS_URL = "$BASE_URL/24-7-channels.php"
     private const val TIMEOUT_MS = 15000
 
