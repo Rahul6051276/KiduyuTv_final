@@ -793,6 +793,23 @@ class SchedulePlayerActivity : ComponentActivity() {
         runOnUiThread {
             if (snifferHandoffStarted || isFinishing || isDestroyed) return@runOnUiThread
             snifferHandoffStarted = true
+            val playbackHeaders = if (SettingsManager(this).isDaddyLiveEnabled()) {
+                LinkedHashMap(stream.headers).apply {
+                    putReplacingCaseInsensitive(
+                        "User-Agent",
+                        if (::webView.isInitialized) {
+                            webView.settings.userAgentString
+                        } else {
+                            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 " +
+                                "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+                        }
+                    )
+                    putReplacingCaseInsensitive("Referer", "https://dlhd.st")
+                    putReplacingCaseInsensitive("Accept-Language", "en-US,en;q=0.5")
+                }
+            } else {
+                stream.headers
+            }
             iptvPlayerLauncher.launch(
                 IptvPlayerActivity.createIntent(
                     context = this,
@@ -800,13 +817,23 @@ class SchedulePlayerActivity : ComponentActivity() {
                     streamUrl = stream.url,
                     tvgName = eventTitle,
                     group = "Schedule",
-                    requestHeaders = stream.headers,
+                    requestHeaders = playbackHeaders,
                     cookie = stream.cookie,
                     mimeType = stream.mimeType,
                     returnToScheduleOnError = true
                 )
             )
         }
+    }
+
+    private fun MutableMap<String, String>.putReplacingCaseInsensitive(
+        name: String,
+        value: String
+    ) {
+        keys.filter { it.equals(name, ignoreCase = true) }
+            .toList()
+            .forEach(::remove)
+        put(name, value)
     }
 
     /**
