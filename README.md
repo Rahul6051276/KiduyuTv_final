@@ -15,6 +15,10 @@ KiduyuTV is a Kotlin Android application with dedicated experiences for Android 
 [![TV + Phone](https://img.shields.io/badge/Flavors-TV%20%2B%20Phone-E50914?style=flat-square)](#build-variants)
 [![Build](https://github.com/kiduyu-klaus/KiduyuTv_final/actions/workflows/kiduyu_final.yml/badge.svg)](https://github.com/kiduyu-klaus/KiduyuTv_final/actions/workflows/kiduyu_final.yml)
 
+<br>
+
+[![Buy me a coffee for $10](https://img.shields.io/badge/Buy%20me%20a%20coffee-%2410-FFDD00?style=for-the-badge&logo=paypal&logoColor=003087)](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=kiduyuklaus%40gmail.com&amount=10.00&currency_code=USD&item_name=Buy%20KiduyuTV%20a%20coffee)
+
 </div>
 
 ---
