@@ -975,91 +975,93 @@ private fun AppVersionContent(
         verticalArrangement = Arrangement.Top
     ) {
         Text(
-            text = "App Version",
+            text = "Updates",
             color = TextPrimary,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(CardDark)
-                .padding(24.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    text = "Current version: $currentVersion",
-                    color = TextSecondary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal
-                )
-
-                HorizontalDivider(
-                    color = TextTertiary.copy(alpha = 0.2f),
-                    thickness = 1.dp
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+        val appVersionCard: @Composable () -> Unit = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(CardDark)
+                    .padding(24.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
-                        text = "What's new?",
-                        color = TextPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold
+                        text = "Current version: $currentVersion",
+                        color = TextSecondary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Normal
                     )
 
-                    TextButton(onClick = onRefreshWhatsNewClick) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = null,
-                            tint = PrimaryRed,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                    HorizontalDivider(
+                        color = TextTertiary.copy(alpha = 0.2f),
+                        thickness = 1.dp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "Refresh",
-                            color = PrimaryRed,
-                            fontSize = 14.sp,
+                            text = "What's new?",
+                            color = TextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        TextButton(onClick = onRefreshWhatsNewClick) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = null,
+                                tint = PrimaryRed,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Refresh",
+                                color = PrimaryRed,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+                    if (!releaseTitle.isNullOrBlank()) {
+                        Text(
+                            text = releaseTitle,
+                            color = TextPrimary,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Medium
                         )
                     }
-                }
 
-                if (!releaseTitle.isNullOrBlank()) {
-                    Text(
-                        text = releaseTitle,
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                if (releaseNotes != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 320.dp)
-                            .verticalScroll(rememberScrollState())
-                    ) {
+                    if (releaseNotes != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 320.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = releaseNotes,
+                                color = TextSecondary,
+                                fontSize = 14.sp,
+                                lineHeight = 22.sp
+                            )
+                        }
+                    } else {
                         Text(
-                            text = releaseNotes,
+                            text = "Loading release notes...",
                             color = TextSecondary,
-                            fontSize = 14.sp,
-                            lineHeight = 22.sp
+                            fontSize = 14.sp
                         )
                     }
-                } else {
-                    Text(
-                        text = "Loading release notes...",
-                        color = TextSecondary,
-                        fontSize = 14.sp
-                    )
                 }
             }
         }
@@ -1076,7 +1078,7 @@ private fun AppVersionContent(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    text = "Updates",
+                    text = "Software updates",
                     color = TextPrimary,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold
@@ -1238,6 +1240,18 @@ Row(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Text(
+            text = "App Version",
+            color = TextPrimary,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        appVersionCard()
     }
 }
 

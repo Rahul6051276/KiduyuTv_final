@@ -281,7 +281,7 @@ class SplashActivity : ComponentActivity() {
             AdManager.initAndAwait(this@SplashActivity) {
 
                 // ── ADD TEST DEVICE CONFIGURATION HERE ───────────────────────────────────
-                val testDeviceIds = listOf("D766D45CB08288501275F03EF6344980")
+                //val testDeviceIds = listOf("D766D45CB08288501275F03EF6344980")
                 val configuration = com.google.android.gms.ads.RequestConfiguration.Builder()
                     .setTestDeviceIds(testDeviceIds)
                     .build()
