@@ -2,560 +2,300 @@
 
 <div align="center">
 
-![KiduyuTV Banner](https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/main/app/src/main/res/mipmap-xhdpi/ic_banner.png)
+<img src="app/src/main/res/mipmap-xhdpi/ic_banner.png" alt="KiduyuTV" width="520">
 
-**KiduyuTV is a dual-form-factor Android streaming app for Android TV, Fire TV, and mobile devices. The codebase uses one Android app module with `phone` and `tv` product flavors, separate Compose navigation graphs, shared data/repository layers, local Room caching, Firebase sync, Trakt integration, IPTV playback, schedule playback, and a multi-network ads stack.**
+### Movies, series, Live TV, and native playback—designed for every screen.
 
-[![Android Release CI](https://github.com/kiduyu-klaus/KiduyuTv_final/actions/workflows/kiduyu_final.yml/badge.svg)](https://github.com/kiduyu-klaus/KiduyuTv_final/actions/workflows/kiduyu_final.yml)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Android%20TV%20%7C%20Fire%20TV%20%7C%20Mobile-FF6B35?style=for-the-badge)](https://developer.android.com/tv)
-[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.24-purple?style=for-the-badge)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.12.01-61DAFB?style=for-the-badge)](https://developer.android.com/compose)
-[![Target SDK](https://img.shields.io/badge/Target%20SDK-35-red?style=for-the-badge)](https://developer.android.com/guide/topics/manifest/uses-sdk-element)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/kiduyu-klaus/KiduyuTv_final/kiduyu_final.yml?branch=main&style=for-the-badge&label=Build)](https://github.com/kiduyu-klaus/KiduyuTv_final/actions)
-[![Media3 ExoPlayer](https://img.shields.io/badge/Media3%20ExoPlayer-1.5.1-orange?style=for-the-badge)](https://developer.android.com/media/media3/exoplayer)
-[![TMDB API](https://img.shields.io/badge/TMDB%20API-01B4E4?style=for-the-badge&logo=themoviedatabase&logoColor=white)](https://www.themoviedb.org)
+KiduyuTV is a Kotlin Android application with dedicated experiences for Android TV, Fire TV, phones, and tablets. One shared codebase combines TMDB discovery, native direct streaming, WebView stream capture, IPTV, watch history, Firebase sync, Trakt, and D-pad-friendly navigation.
+
+[![Android](https://img.shields.io/badge/Android-24%2B-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com/)
+[![Kotlin](https://img.shields.io/badge/Kotlin-1.9.23-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Jetpack Compose](https://img.shields.io/badge/Jetpack-Compose-4285F4?style=flat-square&logo=jetpackcompose&logoColor=white)](https://developer.android.com/compose)
+[![Media3](https://img.shields.io/badge/Media3-ExoPlayer-FF6F00?style=flat-square)](https://developer.android.com/media/media3)
+[![TV + Phone](https://img.shields.io/badge/Flavors-TV%20%2B%20Phone-E50914?style=flat-square)](#build-variants)
+[![Build](https://github.com/kiduyu-klaus/KiduyuTv_final/actions/workflows/kiduyu_final.yml/badge.svg)](https://github.com/kiduyu-klaus/KiduyuTv_final/actions/workflows/kiduyu_final.yml)
 
 </div>
 
-## Contents
-- [Main Features](#main-features)
-- [Implementation Overview](#implementation-overview)
-- [Screens And Navigation](#screens-and-navigation)
-- [Playback](#playback)
-- [Live TV And Schedule](#live-tv-and-schedule)
-- [Data, Sync, And Storage](#data-sync-and-storage)
-- [Ads And Consent](#ads-and-consent)
-- [Network And Protection](#network-and-protection)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Build Variants](#build-variants)
-- [Configuration](#configuration)
-- [Development Notes](#development-notes)
-- [License](#license)
-
-## Main Features
-
-- Android TV, Fire TV, phone, and tablet support from one codebase.
-- Dedicated TV UI with D-pad focus handling and dedicated mobile UI with touch-first screens.
-- Home, Movies, TV Shows, My List, Live TV, Search, Settings, and Trakt profile areas.
-- TMDB-powered movie and TV metadata, details, cast, crew, genres, companies, networks, recommendations, videos, seasons, and episodes.
-- Curated GitHub-hosted content rows for themed movie and TV collections.
-- My List with local Room persistence and Firebase sync.
-- Watch history and continue-watching support with playback position tracking.
-- Trakt OAuth login, profile data, watch history, collection, watchlist, recommendations, and scrobbling helpers.
-- Live TV playlist browsing from M3U, EPG loading from XMLTV, category browsing, search, and favorite channels.
-- Schedule tab with expandable events, available channel selection, and schedule-player launch.
-- WebView streaming provider system with Firebase-configurable provider templates and local fallback providers.
-- Dedicated players for WebView streams, IPTV streams, scheduled channels, and YouTube videos.
-- WebView ad blocking, popup suppression, EasyList/EasyPrivacy assets, and schedule-player autoplay injection.
-- Multi-network ads with UMP consent and priority: `StartApp -> AdMob -> Wortise -> Unity`.
-- App-open ads through Wortise where available.
-- Network reachability checks, network state dialogs, VPN/proxy/DNS diagnostics, and ad-blocking DNS detection.
-- Firebase Auth, Analytics, Realtime Database, Firestore, and Cloud Messaging dependencies.
-- In-app update helpers for checking, downloading, and installing APK updates.
-- Notification channel support with deep links into movie and TV detail screens.
-
-## Implementation Overview
-
-The app starts in `SplashActivity`, resolves consent, initializes Firebase sync, initializes ad SDKs, checks updates/notifications, and then launches `MainActivity`. `MainActivity` chooses the TV or mobile navigation graph based on `UiModeManager`.
-
-Core app initialization happens in `KiduyuTvApp`:
-
-- Initializes Room through `DatabaseManager`.
-- Initializes `MyListManager`.
-- Creates notification channels.
-- Cleans expired Room cache.
-- Initializes Firebase Analytics and Realtime Database persistence.
-- Restores Firebase auth state through `AuthManager`.
-- Initializes `FirebaseManager` using either authenticated UID or a generated device ID.
-- Restores Trakt auth through `TraktAuthManager`.
-- Starts Firebase-backed stream-provider configuration sync.
-- Starts continuous network monitoring through `NetworkConnectivityChecker`.
-
-The main architecture is MVVM plus repositories:
-
-- Compose screens render state and dispatch UI events.
-- ViewModels expose `StateFlow` UI state.
-- Repositories handle TMDB, Trakt, IPTV, schedule, and local data operations.
-- Room stores saved media, watch history, cached movie/TV rows, cached detail records, and genres.
-- SharedPreferences stores lightweight settings, device ID, IPTV favorites, and provider preferences.
-
-## Screens And Navigation
-
-TV navigation is implemented in `ui/navigation/NavGraph.kt`.
-
-Mobile navigation is implemented in `ui/navigation/MobileNavGraph.kt`.
-
-Shared routes are declared in `ui/navigation/Screen.kt`.
-
-### TV Screens
-
-- `HomeScreen`: hero content, continue watching, trending rows, curated rows, companies/networks, and top navigation.
-- `MoviesScreen`: movie browsing.
-- `TvShowsScreen`: TV browsing.
-- `MyListScreen`: saved movies, TV shows, companies, networks, and cast shortcuts.
-- `LiveTvScreen`: Live TV, Schedule, and My Channels tabs.
-- `SearchScreen`: movie and TV search.
-- `MovieDetailScreen`: metadata, cast, crew, recommendations, company navigation, and play entry.
-- `TvShowDetailScreen`: show metadata, seasons, episodes, networks, cast, and play entry.
-- `SeasonEpisodesScreen`: episode browsing and playback entry.
-- `StreamLinksScreen`: provider selection before WebView playback.
-- `MediaListScreen`: movies by company or TV shows by network.
-- `CastDetailScreen`, `CastImagesScreen`, `ImageSliderScreen`: cast filmography and profile-image browsing.
-- `SettingsScreen`: providers, cache, sync, updates, Live TV data, ads setting, and Trakt entry.
-- `TraktProfileScreen`: Trakt profile, watch history, collection, and watchlist views.
-
-### Mobile Screens
-
-- `MobileHomeScreen`, `MobileMoviesScreen`, `MobileTvShowsScreen`, `MobileMyListScreen`.
-- `MobileLiveTvScreen`.
-- `MobileSearchScreen`.
-- `MobileMovieDetailScreen`, `MobileTvShowDetailScreen`, `MobileSeasonEpisodesScreen`, `MobileStreamLinksScreen`.
-- `MobileGenresScreen`, `MobileGenreContentScreen`, `SeeAllScreen`.
-- `MobileMediaListScreen`.
-- `MobileCastDetailScreen`.
-- `MobileSettingsScreen`, `MobileTraktProfileScreen`.
-
-## Playback
-
-### WebView Playback
+---
 
-`PlayerActivity` handles movie and TV stream playback using a WebView. It:
+## At a glance
 
-- Receives TMDB ID, media type, season/episode, metadata, and optional stream URL/iframe HTML.
-- Resolves provider HTML through `StreamProviderManager`.
-- Uses `AdBlockerWebViewClient`.
-- Blocks popups in `WebChromeClient.onCreateWindow`.
-- Tracks watch progress every 15 seconds.
-- Stores playback position in local watch history.
-- Uses a TV/Fire TV cursor overlay for D-pad navigation when appropriate.
-- Uses mobile/tablet behavior without the cursor.
+- Purpose-built TV and mobile interfaces from one application module.
+- Movies and TV shows powered by TMDB metadata, search, collections, cast, recommendations, companies, and networks.
+- Native Media3 direct-stream player with HLS, DASH, and progressive playback.
+- Provider aggregation, automatic stream ranking, manual source switching, and per-stream headers and cookies.
+- Optional Web Sniffer that captures playable media and subtitle requests from provider WebViews.
+- Video, audio, embedded subtitle, sniffed subtitle, and SubDL subtitle selection.
+- Local Room history plus Firebase synchronization and 15-second playback progress updates.
+- IPTV playlists, XMLTV EPG, favorites, schedules, and dedicated Live TV playback.
+- Trakt authentication, history, collection, watchlist, recommendations, and scrobbling.
+- Firebase authentication, sync, notifications, remote configuration, and update delivery.
 
-### Stream Providers
+## Screenshots
 
-`StreamProviderManager` contains local fallback provider templates and can load provider configuration from Firebase Realtime Database path:
+### Discover
 
-`app_config/stream_providers_Configuration`
+<p align="center">
+  <img src="app_screenshots/home_screen.png" alt="KiduyuTV home screen" width="49%">
+  <img src="app_screenshots/search_movies_or_tv_shows.png" alt="Movie and TV search" width="49%">
+</p>
 
-Providers define movie and TV URL templates, iframe attributes, provider parameters, and phone-only flags. The manager can generate iframe HTML or direct provider URLs.
+<p align="center">
+  <img src="app_screenshots/movie_details_with_collection.png" alt="Movie details and collection" width="49%">
+  <img src="app_screenshots/mylist_screen_with_tabs.png" alt="My List screen" width="49%">
+</p>
 
-### IPTV Playback
+### Explore studios and networks
 
-`IptvPlayerActivity` plays selected Live TV channels with channel metadata such as name, stream URL, logo, TVG ID/name, and group.
+<p align="center">
+  <img src="app_screenshots/popular_companies.png" alt="Popular movie companies" width="49%">
+  <img src="app_screenshots/popular_networks.png" alt="Popular TV networks" width="49%">
+</p>
 
-### Schedule Playback
+<p align="center">
+  <img src="app_screenshots/show_popular_networks_companies_list.png" alt="Company and network catalog" width="72%">
+</p>
 
-`SchedulePlayerActivity` plays scheduled channels. It:
+### Live TV and connected viewing
 
-- Receives channel ID, channel name, event title, optional direct iframe URLs, and selected player index.
-- Fetches `ChannelWatchPage` data through `ScheduleRepository`.
-- Shows a top server/source selector.
-- Uses `AdBlockerWebViewClient` as its base WebView client.
-- Adds schedule-specific autoplay/unmute HTML injection for nested frames.
-- Suppresses overlays and ad iframes that appear after page load.
-- Falls back to the next available player/server on main-frame errors.
-- Provides TV cursor support and a top bar with back/source controls.
+<p align="center">
+  <img src="app_screenshots/livetv_screen_with_tabs.png" alt="Live TV tabs" width="49%">
+  <img src="app_screenshots/trakt_tv_screen.png" alt="Trakt profile screen" width="49%">
+</p>
 
-### YouTube Playback
+<p align="center">
+  <img src="app_screenshots/trakt_tv_screen_page.png" alt="Trakt content page" width="49%">
+  <img src="app_screenshots/firebase_sync.png" alt="Firebase synchronization" width="49%">
+</p>
 
-`YouTubePlayerActivity` is available for YouTube video playback through the Android YouTube Player dependency.
+<details>
+<summary><strong>More screens</strong></summary>
 
-## Live TV And Schedule
+<br>
 
-`LiveTvScreen` contains three tabs:
+<p align="center">
+  <img src="app_screenshots/splash_activity.png" alt="Splash screen" width="49%">
+  <img src="app_screenshots/google_login.png" alt="Google sign in" width="49%">
+</p>
 
-- `Live TV`: category list, channel grid, search, and playback.
-- `Schedule`: event schedule grouped by day/category; expanding an event exposes available channel chips that open `SchedulePlayerActivity`.
-- `My Channels`: favorite IPTV channels.
+<p align="center">
+  <img src="app_screenshots/notifications.png" alt="Notifications" width="49%">
+  <img src="app_screenshots/downloading_updates.png" alt="Downloading an update" width="49%">
+</p>
 
-`LiveTvViewModel` handles:
+<p align="center">
+  <img src="app_screenshots/updates_download_complete.png" alt="Update download complete" width="72%">
+</p>
 
-- Loading and caching the M3U playlist.
-- Loading EPG data.
-- Category selection.
-- Channel search.
-- Favorite channels in local SharedPreferences.
-- Two-way favorite channel sync with Firebase.
+</details>
 
-`IptvRepository` handles:
+## Native direct-stream playback
 
-- Remote M3U playlist URL:
-  `https://raw.githubusercontent.com/abusaeeidx/IPTV-Scraper-Zilla/main/combined-playlist.m3u`
-- Remote XMLTV EPG URL:
-  `https://raw.githubusercontent.com/JulioCesarXY/EPG-LG-Channels/refs/heads/main/lg_epg_us.xml`
-- Six-hour playlist/EPG cache.
-- Streaming M3U parsing.
-- Channel-to-EPG matching by `tvg-id`, `tvg-name`, or channel name.
-
-`ScheduleRepository` handles:
-
-- Schedule fetching and cache.
-- Upcoming-event helpers.
-- Category/event filtering.
-- Channel watch-page fetching.
-- Iframe HTML generation for scheduled streams.
-
-`ChannelScraper` supports scraping `dlhd.pk` 24/7 channel pages, extracting watch-page URLs and stream iframe/server URLs.
-
-## Data, Sync, And Storage
-
-### TMDB
-
-`TmdbRepository` handles:
-
-- Trending, popular, top-rated, and now-playing movies/TV.
-- Movie, TV, season, and episode details.
-- Genres.
-- Search and multi-search.
-- Recommendations.
-- Companies and networks.
-- Collections.
-- Cast, crew, person details, person credits, and person images.
-- GitHub-hosted curated movie/TV lists.
-- Local watch history and continue-watching flows.
-- Playback position updates.
-- Expired cache cleanup.
-
-### Room
-
-`AppDatabase` version `2` contains:
-
-- `SavedMediaEntity`
-- `WatchHistoryEntity`
-- `CachedMovieEntity`
-- `CachedTvShowEntity`
-- `CachedMovieDetailEntity`
-- `CachedTvShowDetailEntity`
-- `GenreEntity`
-
-DAOs are grouped under `data/local/dao`.
-
-### My List
-
-`MyListManager` and `SavedMediaDao` provide local saved-media persistence. Detail screens use `DetailViewModel.toggleMyList(...)` to add/remove movies and TV shows.
-
-### Firebase
-
-Firebase is used for:
-
-- Analytics.
-- Auth and persisted sign-in state.
-- Realtime Database sync.
-- Firestore dependency support.
-- Cloud Messaging dependency support.
-
-`FirebaseSyncManager` syncs:
-
-- My List.
-- Companies.
-- Networks.
-- Casts.
-- Watch history.
-- Favorite Live TV channels.
-- Default stream provider.
-
-It exposes sync state, progress, and messages through `StateFlow`.
-
-### Trakt
-
-`TraktAuthManager` supports:
-
-- OAuth URL generation.
-- Code exchange.
-- Token persistence.
-- Token refresh.
-- Valid-token retrieval.
-- User settings/profile fetch.
-- Sign out.
-
-`TraktRepository` supports:
-
-- User settings.
-- Watch history.
-- Collection.
-- Watchlist.
-- Recommendations.
-- Movie and episode scrobbling.
-- Watchlist add/remove helpers.
-
-`TraktSyncManager` contains a full-sync workflow for watch history, collection, and watchlist.
-
-## Ads And Consent
-
-Ads are initialized only after UMP consent resolves in `SplashActivity`.
-
-Initialization order:
-
-1. StartApp
-2. AdMob
-3. Wortise
-4. Unity
-
-The core fallback dispatcher is `AdFallbackDispatcher`.
-
-Core ad priority:
-
-`StartApp -> AdMob -> Wortise -> Unity`
-
-Supported formats:
-
-- Banners
-- Interstitials
-- Rewarded ads
-- StartApp splash helper
-- Wortise app-open ads
-
-Important classes:
-
-- `StartAppAdManager`
-- `AdManager` for AdMob
-- `WortiseAdManager`
-- `UnityAdManager`
-- `AdFallbackDispatcher`
-- `TvInterstitialManager`
-- `AppOpenAdObserver`
-- `ConsentManager`
-
-Generic TV/mobile banner surfaces now prefer StartApp. Explicitly named banner composables such as `WortiseBannerAdView` and `UnityBannerAdView` remain network-specific.
-
-Users can disable ads through settings, and ad managers check that preference before loading or showing ads.
-
-## Network And Protection
-
-### Connectivity Monitoring
-
-`NetworkConnectivityChecker` continuously monitors connectivity using:
-
-- `ConnectivityManager.NetworkCallback`
-- Periodic reachability checks
-- Active test hosts
-- Network diagnostics
-
-Diagnostics include:
-
-- Network type
-- DNS servers
-- VPN state
-- Proxy state
-- Metered state
-
-The app detects ad-blocking DNS, VPN, and proxy conditions and can show `NetworkStateDialog` from the root UI. The explicit DNS allowlist currently permits:
-
-- `192.168.100.1`
-- `8.8.8.8`
-
-### WebView Ad Blocking
-
-`AdBlockerWebViewClient` blocks common ad domains and injects CSS/DOM cleanup after page load.
-
-Additional supporting pieces:
-
-- `AdvancedAdBlocker`
-- `FilterListUpdater`
-- `DomainTrie`
-- bundled `easylist.txt`, `easyprivacy.txt`, and `custom_filters.txt`
-
-`PlayerActivity` and `SchedulePlayerActivity` both use `AdBlockerWebViewClient`.
-
-## Tech Stack
-
-| Area | Implementation |
-| --- | --- |
-| Language | Kotlin |
-| Android Gradle Plugin | 8.13.2 |
-| Kotlin Gradle plugin | 2.1.10 |
-| Java target | 17 |
-| Compile SDK | 35 |
-| Min SDK | 24 |
-| Target SDK | 35 |
-| UI | Jetpack Compose, Material 3 |
-| Navigation | Navigation Compose |
-| Async | Kotlin Coroutines, StateFlow |
-| Local DB | Room 2.6.1 |
-| Networking | Retrofit 2.11.0, OkHttp 4.12.0, Volley |
-| DNS | OkHttp DNS-over-HTTPS dependency |
-| Image loading | Coil Compose, Glide |
-| Media | Media3 ExoPlayer 1.5.1 |
-| Web playback | Android WebView, AndroidX WebKit |
-| HTML parsing | Jsoup 1.18.1 |
-| Firebase | Analytics, Auth, Realtime Database, Firestore, Messaging |
-| Ads | StartApp, AdMob, Wortise, Unity, UMP |
-| Animations | Lottie Compose |
-| YouTube | Android YouTube Player |
-
-## Project Structure
+`DirectStreamActivity` is the preferred native playback path when **Direct Stream** is enabled in Settings. Movie and episode actions bypass provider-selection screens and request aggregate streams from:
 
 ```text
-KiduyuTv_final_room/
-|-- app/
-|   |-- build.gradle
-|   |-- google-services.json
-|   |-- proguard-rules.pro
-|   `-- src/main/
-|       |-- AndroidManifest.xml
-|       |-- assets/
-|       |   |-- custom_filters.txt
-|       |   |-- easylist.txt
-|       |   `-- easyprivacy.txt
-|       |-- java/com/kiduyuk/klausk/kiduyutv/
-|       |   |-- activity/
-|       |   |   |-- mainactivity/
-|       |   |   `-- splashactivity/
-|       |   |-- application/
-|       |   |-- data/
-|       |   |   |-- api/
-|       |   |   |-- local/
-|       |   |   |-- model/
-|       |   |   |-- remote/
-|       |   |   |-- repository/
-|       |   |   `-- sync/
-|       |   |-- network/
-|       |   |-- ui/
-|       |   |   |-- components/
-|       |   |   |-- navigation/
-|       |   |   |-- player/
-|       |   |   |-- screens/
-|       |   |   `-- theme/
-|       |   |-- util/
-|       |   `-- viewmodel/
-|       `-- res/
-|-- lists/
-|-- build.gradle
-|-- settings.gradle
-|-- gradle/
-|-- VERSION
-`-- README.md
+https://sflatransport.com/kiduyuTv_providers/api/streams/{movie|series}/{tmdbId}
 ```
 
-## Build Variants
+Series requests append `season` and `episode`; movie requests do not.
 
-The app uses one flavor dimension: `formfactor`.
+The player supports:
 
-### Phone flavor
+- HLS, DASH, and direct/progressive sources.
+- Provider-specific request headers and cookies on manifests, segments, and byte-range requests.
+- Automatic selection of the best stream up to **1080p**.
+- Manual 1440p and 2160p selection through the Streams dialog.
+- A visible buffered range and time-based buffering tuned for high-bitrate media.
+- Stream switching while retaining the current playback position.
+- Video, audio, and subtitle track dialogs with active-track state.
+- SubDL subtitle search by TMDB ID, download, and ExoPlayer loading.
+- Sniffed WebVTT and SRT subtitle handoff.
+- Fit, fill, zoom, fixed-width, and fixed-height resize modes.
+- Play/pause, seek, volume, media-key input, and TV-focusable controls.
+- Previous and next episode navigation.
+- Backdrop/loading state while streams are fetched or playback buffers.
+- Retry and exit behavior when fetching or playback fails.
 
-- Application ID suffix: `.phone`
-- Version name suffix: `-phone`
-- Touch-first mobile navigation graph.
-- Mobile bottom navigation and mobile detail/search/settings screens.
+Playback history is checked locally and in Firebase before media starts. The newest saved position is restored, progress is persisted every 15 seconds, and episode metadata is updated when the viewer moves between episodes.
 
-### TV flavor
+### Web Sniffer
 
-- Application ID suffix: `.tv`
-- Version name suffix: `-tv`
-- TV navigation graph.
-- D-pad-first focus handling.
-- TV banner overlay support.
-- Leanback/touchscreen-optional manifest support.
+**Try Web Sniffer** is enabled by default. When the normal WebView flow is used, `WebViewStreamSniffer` watches network requests for playable HLS, DASH, and direct media URLs. It collects the request headers, cookies, and detected SRT/VTT subtitles, then hands the result to `DirectStreamActivity`.
 
-Common default config:
+Obvious placeholder media such as `demo-video.mp4` is ignored. If no usable media request is captured, the existing WebView playback flow remains available.
 
-- `applicationId`: `com.kiduyuk.klausk.kiduyutv`
-- `versionCode`: `4`
-- `versionName`: `1.1.71`
-- `minSdk`: `24`
-- `targetSdk`: `35`
-- `compileSdk`: `35`
-- `multiDexEnabled`: `true`
+### WebView playback
 
-## Configuration
+`PlayerActivity` remains the provider-page player when Direct Stream is disabled. It resolves Firebase-configurable provider templates, blocks common ads and popups, and provides TV cursor navigation where required.
 
-### Firebase
+## Browse and organize
 
-The app expects `app/google-services.json`.
+### Movies and television
 
-Firebase-related initialization happens in:
+- Trending, popular, top-rated, and now-playing catalogs.
+- Movie and TV detail pages with trailers, cast, crew, genres, recommendations, seasons, and episodes.
+- Collections, production companies, networks, and curated themed rows.
+- Search across movies and television.
+- Continue Watching and synchronized watch history.
+- My List for movies, shows, companies, networks, and cast shortcuts.
 
-- `KiduyuTvApp`
-- `AuthManager`
-- `FirebaseManager`
-- `FirebaseSyncManager`
-- `StreamProviderManager`
+### Live TV
 
-### TMDB
+The Live TV area provides:
 
-TMDB API access is implemented under:
+- M3U playlist loading and streaming parsing.
+- XMLTV program-guide data.
+- Category browsing and channel search.
+- Local and Firebase-synchronized favorite channels.
+- Live TV, Schedule, and My Channels tabs.
+- Dedicated IPTV and schedule players.
+- Configurable scraper addresses for providers whose domains change.
 
-- `data/api/ApiClient.kt`
-- `data/api/TmdbApiService.kt`
-- `data/repository/TmdbRepository.kt`
+For scraper maintenance and redirect strategies, see [DYNAMIC_SCRAPER_ENDPOINT_GUIDE.md](DYNAMIC_SCRAPER_ENDPOINT_GUIDE.md).
 
 ### Trakt
 
-Trakt auth and API access are implemented under:
+Trakt integration includes OAuth sign-in, profile details, history, collection, watchlist, recommendations, token refresh, synchronization helpers, and movie/episode scrobbling.
 
-- `util/TraktAuthManager.kt`
-- `data/remote/TraktApiClient.kt`
-- `data/remote/TraktApiService.kt`
-- `data/repository/TraktRepository.kt`
-- `data/sync/TraktSyncManager.kt`
+## Architecture
 
-### Ads
+```text
+Compose UI (TV / Phone)
+        │
+        ├── ViewModels + StateFlow
+        │       ├── TMDB / Trakt repositories
+        │       ├── IPTV / schedule repositories
+        │       └── Firebase synchronization
+        │
+        ├── Room cache + watch history
+        │
+        └── Playback
+                ├── DirectStreamActivity
+                │       ├── Provider stream API
+                │       ├── Media3 PlayerEngine
+                │       ├── Stream / track dialogs
+                │       └── SubDL subtitles
+                ├── WebViewStreamSniffer
+                ├── PlayerActivity
+                ├── IptvPlayerActivity
+                └── SchedulePlayerActivity
+```
 
-Ad IDs and manifest placeholders are configured in `app/build.gradle` and `AndroidManifest.xml`.
+The application follows an MVVM-style structure:
 
-Current ad managers:
+- Compose screens render immutable state and dispatch user actions.
+- ViewModels expose asynchronous state through coroutines and `StateFlow`.
+- Repositories coordinate remote services, caching, and domain logic.
+- Room stores saved media, history, catalog caches, detail caches, and genres.
+- SharedPreferences stores lightweight playback and application settings.
+- Firebase synchronizes user data and remote provider configuration.
 
-- StartApp: `StartAppAdManager`
-- AdMob: `AdManager`
-- Wortise: `WortiseAdManager`
-- Unity: `UnityAdManager`
+## Technology
 
-### Curated Lists
+| Area | Technology |
+| --- | --- |
+| Language | Kotlin |
+| UI | Jetpack Compose, Material 3, XML player layouts |
+| Navigation | Navigation Compose |
+| Playback | Media3 ExoPlayer 1.5.1, HLS, DASH |
+| Networking | Retrofit 2.11.0, OkHttp 4.12.0, Volley |
+| Async state | Coroutines, Flow, StateFlow |
+| Local storage | Room 2.6.1, SharedPreferences |
+| Images | Coil, Glide |
+| Web content | Android WebView, AndroidX WebKit, Jsoup |
+| Cloud | Firebase Auth, Analytics, Realtime Database, Firestore, Messaging |
+| Integrations | TMDB, Trakt, SubDL |
+| Advertising | StartApp, AdMob, Wortise, Unity, UMP |
+| Android | minSdk 24, targetSdk 35, compileSdk 35, Java 17 |
 
-Curated lists live in `/lists` and are fetched from GitHub raw URLs by `HomeViewModel`.
+## Project map
 
-Current list files include:
+```text
+app/src/main/
+├── java/com/kiduyuk/klausk/kiduyutv/
+│   ├── activity/                 # Main and splash activities
+│   ├── application/              # Application initialization
+│   ├── data/
+│   │   ├── api/                  # TMDB and remote APIs
+│   │   ├── local/                # Room database and DAOs
+│   │   ├── repository/           # Domain repositories
+│   │   └── sync/                 # Firebase and Trakt sync
+│   ├── ui/
+│   │   ├── navigation/           # TV and phone graphs
+│   │   ├── player/
+│   │   │   ├── directstream/     # Native player, APIs, dialogs, models
+│   │   │   ├── webviewsniffer/   # WebView media capture
+│   │   │   └── webview/          # Provider WebView player
+│   │   ├── screens/              # TV and mobile Compose screens
+│   │   └── theme/
+│   ├── network/
+│   ├── util/
+│   └── viewmodel/
+├── res/                          # Layouts, drawables, strings, themes
+└── assets/                       # WebView filtering rules
+```
 
-- `oscar_winners_2026.json`
-- `hallmark_movies.json`
-- `true_story_movies.json`
-- `best_sitcoms.json`
-- `best_classics.json`
-- `cia_mossad_spies.json`
-- `jason_statham_movies.json`
-- `time_travel_movies.json`
-- `christian_movies.json`
-- `movies_from_the_bible.json`
-- `christian_tv_shows.json`
-- `doctor_who_specials.json`
-- `companies_networks.json`
+## Build variants
 
-## Development Notes
+The `formfactor` flavor dimension produces two applications:
 
-Common Gradle tasks:
+| Flavor | Application ID | Experience |
+| --- | --- | --- |
+| `phone` | `com.kiduyuk.klausk.kiduyutv.phone` | Touch-first phone and tablet navigation |
+| `tv` | `com.kiduyuk.klausk.kiduyutv.tv` | D-pad-first Android TV and Fire TV navigation |
+
+Common build values:
+
+```text
+versionName  1.1.71
+versionCode  4
+minSdk       24
+targetSdk    35
+compileSdk   35
+```
+
+### Local builds
 
 ```bash
 ./gradlew assemblePhoneDebug
 ./gradlew assembleTvDebug
-./gradlew assemblePhoneRelease
-./gradlew assembleTvRelease
 ```
 
-Debug APK outputs:
+Generated debug APKs are written under:
 
 ```text
 app/build/outputs/apk/phone/debug/
 app/build/outputs/apk/tv/debug/
 ```
 
-Release APK outputs:
+Release variants are available as `assemblePhoneRelease` and `assembleTvRelease`. Production builds require the project's signing configuration.
 
-```text
-app/build/outputs/apk/phone/release/
-app/build/outputs/apk/tv/release/
-```
+## Configuration
 
-Notes:
+Before building, configure the services used by your selected features:
 
-- Release signing is configured in Gradle; use project-specific signing material for production.
-- R8 minification and resource shrinking are enabled for release.
-- The app allows cleartext traffic and uses `network_security_config.xml`.
-- The manifest declares storage/media permissions, notification permission, ad ID permission, install-packages permission, TV leanback support, and touchscreen as optional.
-- Gradle wrapper files are included.
+| Service | Location |
+| --- | --- |
+| Firebase | `app/google-services.json` and Firebase console configuration |
+| TMDB | `data/api/ApiClient.kt` / the project's secure build configuration |
+| Trakt | Trakt client configuration used by `TraktAuthManager` |
+| SubDL | Secure API-key configuration consumed by `SubdlSubtitleClient` |
+| Stream providers | Firebase `app_config/stream_providers_Configuration` |
+| Ads | Manifest placeholders and `app/build.gradle` |
+
+Do not commit production API keys, signing keys, service-account credentials, or private configuration exports.
+
+## Reliability and privacy
+
+- Network monitoring reports connectivity, metered state, VPN, proxy, and DNS conditions.
+- WebView filtering uses bundled EasyList, EasyPrivacy, and custom rules.
+- Stream failures stay within native playback with retry/exit controls instead of silently changing playback modes.
+- Release builds enable code shrinking and resource shrinking.
+- Users control Direct Stream, Web Sniffer, synchronization, Trakt, and advertising-related settings.
 
 ## License
 
-This project is proprietary and all rights are reserved. No part of this codebase, documentation, or associated assets may be used, copied, modified, merged, published, distributed, sublicensed, leased, sold, or otherwise exploited without prior written permission from the copyright holder.
+Copyright © 2026 KiduyuTv. All rights reserved.
 
-See [LICENSE](LICENSE) for details.
+This repository and its documentation are proprietary. No permission is granted to use, copy, modify, publish, distribute, sublicense, lease, or sell the software without prior written authorization from the copyright holder. See [LICENSE](LICENSE) for the complete terms.
