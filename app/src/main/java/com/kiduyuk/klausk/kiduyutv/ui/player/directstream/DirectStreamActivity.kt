@@ -80,7 +80,6 @@ class DirectStreamActivity : AppCompatActivity() {
     private var availableStreams: List<StreamItem> = emptyList()
     private var activeStream: StreamItem? = null
     private var activeSubtitles: List<SubtitleItem> = emptyList()
-    private val failedStreamUrls: MutableSet<String> = linkedSetOf()
     private val uiHandler = Handler(Looper.getMainLooper())
     private var controlsLockedVisible = false
     private var userSeeking = false
@@ -100,7 +99,7 @@ class DirectStreamActivity : AppCompatActivity() {
     private val repository = TmdbRepository()
     private var pendingStartPositionMs = 0L
     private var pendingReadySeekPositionMs = 0L
-    private var retriedWithoutExternalSubtitles = false
+    private var handlingPlaybackError = false
     private var watchHistoryReady = false
     private val controlsClock = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     private val controlsTime = SimpleDateFormat("h:mm a", Locale.getDefault())
@@ -331,7 +330,6 @@ class DirectStreamActivity : AppCompatActivity() {
         // external subtitle timelines can trigger ERROR_CODE_FAILED_RUNTIME_CHECK.
         // Prepare the merged source first, then restore progress at STATE_READY.
         pendingReadySeekPositionMs = consumePendingStartPosition()
-        retriedWithoutExternalSubtitles = false
         engine.play(stream, 0L, activeSubtitles)
     }
 
@@ -611,14 +609,12 @@ class DirectStreamActivity : AppCompatActivity() {
                 "language=${subtitle.language.orEmpty()} mimeType=${subtitle.mimeType}"
         )
         pendingReadySeekPositionMs = positionMs
-        retriedWithoutExternalSubtitles = false
         showStatus(getString(R.string.buffering), retry = false)
         engine.play(stream, 0L, activeSubtitles)
     }
 
     private fun switchStream(stream: StreamItem) {
         if (stream.url == activeStream?.url) return
-        failedStreamUrls.remove(stream.url)
         val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
         activeStream = stream
         Log.i(
@@ -630,53 +626,20 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun handlePlaybackError(code: String) {
-        if (code == "ERROR_CODE_FAILED_RUNTIME_CHECK") {
-            val stream = activeStream
-            if (
-                stream != null &&
-                stream.provider.equals("WebSniffer", ignoreCase = true) &&
-                activeSubtitles.isNotEmpty() &&
-                !retriedWithoutExternalSubtitles
-            ) {
-                retriedWithoutExternalSubtitles = true
-                activeSubtitles = emptyList()
-                val resumePosition = pendingReadySeekPositionMs
-                    .takeIf { it > 0L }
-                    ?: engine.player.currentPosition.coerceAtLeast(0L)
-                pendingReadySeekPositionMs = resumePosition
-                Log.w(
-                    TAG,
-                    "Retrying sniffed stream without incompatible external subtitle merge"
-                )
-                showStatus(getString(R.string.buffering), retry = false)
-                engine.play(stream, 0L, emptyList())
-                return
-            }
-        }
-
-        activeStream?.url?.let { failedStreamUrls.add(it) }
-        val currentIndex = availableStreams.indexOfFirst { it.url == activeStream?.url }
-        val orderedCandidates = if (currentIndex >= 0) {
-            availableStreams.drop(currentIndex + 1) + availableStreams.take(currentIndex)
-        } else {
-            availableStreams
-        }
-        val next = orderedCandidates.firstOrNull { it.url !in failedStreamUrls }
-        if (next == null) {
-            showPlaybackError(code)
-            return
-        }
-
-        val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
-        activeStream = next
-        activeSubtitles = emptyList()
-        Log.w(
-            PROVIDER_TAG,
-            "Playback failed code=$code; trying next stream " +
-                "provider=${next.provider.ifBlank { "?" }} quality=${next.quality}"
+        if (handlingPlaybackError || isFinishing || isDestroyed) return
+        handlingPlaybackError = true
+        Log.e(
+            TAG,
+            "Playback failed code=$code; closing DirectStreamActivity"
         )
-        showStatus(getString(R.string.buffering), retry = false)
-        startStreamPlayback(next, positionMs)
+        stopWatchProgressUpdates()
+        engine.pause()
+        Toast.makeText(
+            this,
+            getString(R.string.player_error, code),
+            Toast.LENGTH_LONG
+        ).show()
+        finish()
     }
 
     private fun loadAndPlay(
@@ -691,8 +654,7 @@ class DirectStreamActivity : AppCompatActivity() {
         activeStream = null
         activeSubtitles = emptyList()
         pendingReadySeekPositionMs = 0L
-        retriedWithoutExternalSubtitles = false
-        failedStreamUrls.clear()
+        handlingPlaybackError = false
         binding.btnPlayerStreams.visibility = View.GONE
         updateBottomFocusChain()
         showStatus(getString(R.string.streams_loading), retry = false)
@@ -815,22 +777,6 @@ class DirectStreamActivity : AppCompatActivity() {
                 binding.loadingArtwork.alpha = 1f
             }
             .start()
-    }
-
-    private fun showPlaybackError(code: String) {
-        Toast.makeText(this, getString(R.string.player_error, code), Toast.LENGTH_LONG).show()
-        binding.playerStatus.text = getString(R.string.playback_failed_retry, code)
-        binding.playerStatus.visibility = View.VISIBLE
-        binding.playerStatus.setOnClickListener {
-            val stream = activeStream
-            if (stream == null) {
-                loadCurrentMedia()
-            } else {
-                failedStreamUrls.remove(stream.url)
-                showStatus(getString(R.string.buffering), retry = false)
-                startStreamPlayback(stream, engine.player.currentPosition.coerceAtLeast(0L))
-            }
-        }
     }
 
     private fun showExitConfirmationDialog() {

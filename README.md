@@ -99,7 +99,7 @@ KiduyuTV is a Kotlin Android application with dedicated experiences for Android 
 `DirectStreamActivity` is the preferred native playback path when **Direct Stream** is enabled in Settings. Movie and episode actions bypass provider-selection screens and request aggregate streams from:
 
 ```text
-https://sflatransport.com/kiduyuTv_providers/api/streams/{movie|series}/{tmdbId}
+kiduyuTv_providers/api/streams/{movie|series}/{tmdbId}
 ```
 
 Series requests append `season` and `episode`; movie requests do not.
