@@ -126,6 +126,25 @@ object LogcatManager {
         logFiles.forEach { it.delete() }
         return logFiles.size
     }
+
+    /**
+     * Deletes completed logcat files whose last modification time is older
+     * than [maxAgeMillis]. Files outside the `logcat_*.txt` naming contract
+     * and the active capture file are never touched.
+     *
+     * @return Number of files successfully deleted.
+     */
+    fun deleteLogsOlderThan(context: Context, maxAgeMillis: Long): Int {
+        require(maxAgeMillis >= 0L) { "maxAgeMillis must not be negative" }
+        val cutoffMillis = System.currentTimeMillis() - maxAgeMillis
+        val activeLogPath = currentLogFile?.absolutePath
+
+        return getAllLogFiles(context).count { file ->
+            file.absolutePath != activeLogPath &&
+                file.lastModified() < cutoffMillis &&
+                runCatching { file.delete() }.getOrDefault(false)
+        }
+    }
     
     /**
      * Reads the content of the current or most recent log file.

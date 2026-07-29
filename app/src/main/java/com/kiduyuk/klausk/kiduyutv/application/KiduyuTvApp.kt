@@ -26,6 +26,7 @@ import com.kiduyuk.klausk.kiduyutv.util.LogcatManager
 import com.kiduyuk.klausk.kiduyutv.util.NotificationHelper
 import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import com.kiduyuk.klausk.kiduyutv.util.TraktAuthManager
+import java.util.concurrent.TimeUnit
 
 /**
  * A Custom Application class for KiduyuTv.
@@ -139,6 +140,7 @@ class KiduyuTvApp : MultiDexApplication(), ImageLoaderFactory {
         NetworkConnectivityChecker.startMonitoring(this)
 
         // Start logcat capture for debugging purposes
+        LogcatManager.deleteLogsOlderThan(this, TimeUnit.HOURS.toMillis(1))
         LogcatManager.start(this)
     }
 
