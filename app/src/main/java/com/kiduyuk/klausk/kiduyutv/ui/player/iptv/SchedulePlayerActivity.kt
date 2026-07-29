@@ -75,6 +75,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.WebViewStreamSniffer
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
 import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -1227,8 +1228,11 @@ fun PlayerSourceTopBar(
                     val focusRequester = remember { FocusRequester() }
 
                     // Request focus on the button when it becomes selected
-                    LaunchedEffect(isSelected) {
+                    LaunchedEffect(isSelected, playerOptions.size) {
                         if (isSelected) {
+                            // The surrounding Android root requests focus shortly after layout.
+                            // Wait for that pass, then place focus on the active server chip.
+                            delay(150)
                             try {
                                 focusRequester.requestFocus()
                             } catch (e: Exception) {
@@ -1257,8 +1261,8 @@ private fun BackButton(
 
     Surface(
         modifier = Modifier
-            .focusable()
             .onFocusChanged { focusState -> isFocused = focusState.isFocused }
+            .focusable()
             .clickable { onBackPressed() },
         shape = RoundedCornerShape(8.dp),
         color = if (isFocused) Color(0xFF424242) else Color.Transparent,
@@ -1285,8 +1289,8 @@ private fun PlayerOptionButton(
     var isFocused by remember { mutableStateOf(false) }
 
     val backgroundColor = when {
+        isFocused  -> Color(0xFF37474F)
         isSelected -> Color(0xFF2196F3)
-        isFocused  -> Color(0xFF2D2D2D)
         else       -> Color(0xFF1A1A1A)
     }
 
@@ -1297,15 +1301,15 @@ private fun PlayerOptionButton(
     }
 
     val borderColor = when {
+        isFocused  -> Color.White
         isSelected -> Color(0xFFFF1744)
-        isFocused  -> Color(0xFF448AFF)
         else       -> Color(0xFF404040)
     }
 
     Surface(
         modifier = modifier
-            .focusable()
             .onFocusChanged { focusState -> isFocused = focusState.isFocused }
+            .focusable()
             .clickable { onClick() },
         shape = RoundedCornerShape(8.dp),
         color = backgroundColor,
