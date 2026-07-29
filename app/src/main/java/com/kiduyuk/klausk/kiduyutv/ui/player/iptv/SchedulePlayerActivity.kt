@@ -16,6 +16,7 @@ import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -101,6 +102,9 @@ class SchedulePlayerActivity : ComponentActivity() {
     private var eventTitle: String = "Channel"
     private var webStreamSniffer: WebViewStreamSniffer? = null
     private var snifferHandoffStarted = false
+    private var channelId: String = ""
+    private val failedPlayerUrls = mutableSetOf<String>()
+    private val failedStreamUrls = mutableSetOf<String>()
 
     // FIX: playerOptions and selectedPlayerIndex backed by mutableStateOf so
     // the Compose top bar recomposes automatically when these change.
@@ -126,6 +130,14 @@ class SchedulePlayerActivity : ComponentActivity() {
         const val EXTRA_SELECTED_PLAYER = "SELECTED_PLAYER"
         const val EXTRA_IFRAME_URLS = "IFRAME_URLS"
         const val EXTRA_FORCE_WEB_SNIFFER = "FORCE_WEB_SNIFFER"
+        private val STREAM_PATHS = listOf(
+            "/stream/stream-%s.php",
+            "/cast/stream-%s.php",
+            "/player/stream-%s.php",
+            "/plus/stream-%s.php",
+            "/watch/stream-%s.php",
+            "/casting/stream-%s.php"
+        )
 
         /**
          * Creates an intent to launch the SchedulePlayerActivity
@@ -145,6 +157,24 @@ class SchedulePlayerActivity : ComponentActivity() {
             putExtra(EXTRA_SELECTED_PLAYER, selectedPlayerIndex)
             putStringArrayListExtra(EXTRA_IFRAME_URLS, ArrayList(iframeUrls))
             putExtra(EXTRA_FORCE_WEB_SNIFFER, forceWebSniffer)
+        }
+    }
+
+    private val iptvPlayerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == IptvPlayerActivity.RESULT_PLAYBACK_FAILED) {
+            result.data?.getStringExtra(IptvPlayerActivity.EXTRA_FAILED_STREAM_URL)
+                ?.let(failedStreamUrls::add)
+            playerOptions.getOrNull(selectedPlayerIndex)?.url?.let(failedPlayerUrls::add)
+            snifferHandoffStarted = false
+            if (::webView.isInitialized) webView.stopLoading()
+            webStreamSniffer = createStreamSniffer()
+            if (!tryNextPlayer()) {
+                Toast.makeText(this, "All available stream servers failed", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            finish()
         }
     }
 
@@ -172,7 +202,7 @@ class SchedulePlayerActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val channelId = intent.getStringExtra(EXTRA_CHANNEL_ID) ?: ""
+        channelId = intent.getStringExtra(EXTRA_CHANNEL_ID) ?: ""
         channelName = intent.getStringExtra(EXTRA_CHANNEL_NAME) ?: "Channel"
         eventTitle = intent.getStringExtra(EXTRA_EVENT_TITLE) ?: "Event"
         selectedPlayerIndex = intent.getIntExtra(EXTRA_SELECTED_PLAYER, 0)
@@ -180,10 +210,7 @@ class SchedulePlayerActivity : ComponentActivity() {
             intent.getBooleanExtra(EXTRA_FORCE_WEB_SNIFFER, false) ||
                 SettingsManager(this).isWebSnifferEnabled()
         if (shouldSniffStreams) {
-            webStreamSniffer = WebViewStreamSniffer(
-                onStreamCaptured = ::openSniffedStream,
-                onSubtitleCaptured = {}
-            )
+            webStreamSniffer = createStreamSniffer()
         }
 
         val passedIframeUrls = intent.getStringArrayListExtra(EXTRA_IFRAME_URLS)
@@ -228,7 +255,7 @@ class SchedulePlayerActivity : ComponentActivity() {
                     channelWatchPage = watchPage
 
                     // FIX: assign to mutableStateOf-backed property so Compose reacts
-                    playerOptions = watchPage.playerOptions
+                    playerOptions = withFallbackPlayerOptions(watchPage.playerOptions)
 
                     if (playerOptions.isEmpty()) {
                         currentIframeHtml = generateIframeHtml(watchPage.defaultIframeUrl)
@@ -284,20 +311,22 @@ class SchedulePlayerActivity : ComponentActivity() {
         ).show()
 
         // FIX: assign to mutableStateOf-backed property
-        playerOptions = iframeUrls.mapIndexed { index, url ->
+        playerOptions = withFallbackPlayerOptions(
+            iframeUrls.mapIndexed { index, url ->
             PlayerOption(
                 playerNumber = index + 1,
                 url = url,
                 isActive = index == selectedPlayerIndex
             )
-        }
+            }
+        )
 
         if (selectedPlayerIndex >= playerOptions.size) {
             selectedPlayerIndex = 0
         }
 
-        if (iframeUrls.isNotEmpty()) {
-            currentIframeHtml = generateIframeHtml(iframeUrls[selectedPlayerIndex])
+        if (playerOptions.isNotEmpty()) {
+            currentIframeHtml = generateIframeHtml(playerOptions[selectedPlayerIndex].url)
             loadCurrentStream()
         }
 
@@ -769,7 +798,7 @@ class SchedulePlayerActivity : ComponentActivity() {
         runOnUiThread {
             if (snifferHandoffStarted || isFinishing || isDestroyed) return@runOnUiThread
             snifferHandoffStarted = true
-            startActivity(
+            iptvPlayerLauncher.launch(
                 IptvPlayerActivity.createIntent(
                     context = this,
                     channelName = channelName,
@@ -778,10 +807,10 @@ class SchedulePlayerActivity : ComponentActivity() {
                     group = "Schedule",
                     requestHeaders = stream.headers,
                     cookie = stream.cookie,
-                    mimeType = stream.mimeType
+                    mimeType = stream.mimeType,
+                    returnToScheduleOnError = true
                 )
             )
-            finish()
         }
     }
 
@@ -808,9 +837,12 @@ class SchedulePlayerActivity : ComponentActivity() {
         }
     }
 
-    private fun tryNextPlayer() {
+    private fun tryNextPlayer(): Boolean {
         if (playerOptions.size > 1) {
-            val nextIndex = (selectedPlayerIndex + 1) % playerOptions.size
+            val nextIndex = (1 until playerOptions.size)
+                .map { (selectedPlayerIndex + it) % playerOptions.size }
+                .firstOrNull { playerOptions[it].url !in failedPlayerUrls }
+                ?: return false
             val player = playerOptions[nextIndex]
             Toast.makeText(
                 this,
@@ -819,12 +851,37 @@ class SchedulePlayerActivity : ComponentActivity() {
             ).show()
             switchToPlayer(nextIndex)
             updateTopBar()
+            return true
         }
+        return false
     }
 
     private fun tryNextStreamUrl() {
         // Uniform logic for both direct iframe URLs and scraped ones
+        playerOptions.getOrNull(selectedPlayerIndex)?.url?.let(failedPlayerUrls::add)
         tryNextPlayer()
+    }
+
+    private fun createStreamSniffer() = WebViewStreamSniffer(
+        onStreamCaptured = ::openSniffedStream,
+        onSubtitleCaptured = {},
+        shouldIgnoreStream = { candidate -> candidate in failedStreamUrls }
+    )
+
+    private fun withFallbackPlayerOptions(discovered: List<PlayerOption>): List<PlayerOption> {
+        val fallbackUrls = STREAM_PATHS.map { path ->
+            "https://dlhd.st${path.format(channelId)}"
+        }
+        return (discovered.map { it.url } + fallbackUrls)
+            .filter { it.isNotBlank() }
+            .distinct()
+            .mapIndexed { index, url ->
+                PlayerOption(
+                    playerNumber = index + 1,
+                    url = url,
+                    isActive = index == selectedPlayerIndex
+                )
+            }
     }
 
     private fun detectDeviceType() {

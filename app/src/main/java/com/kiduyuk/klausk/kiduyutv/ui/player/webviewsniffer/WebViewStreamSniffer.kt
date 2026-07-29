@@ -26,7 +26,8 @@ data class SniffedSubtitle(
  */
 class WebViewStreamSniffer(
     private val onStreamCaptured: (SniffedStream) -> Unit,
-    private val onSubtitleCaptured: (SniffedSubtitle) -> Unit
+    private val onSubtitleCaptured: (SniffedSubtitle) -> Unit,
+    private val shouldIgnoreStream: (String) -> Boolean = { false }
 ) {
     private val captured = AtomicBoolean(false)
     private val capturedSubtitles = mutableSetOf<String>()
@@ -46,6 +47,7 @@ class WebViewStreamSniffer(
             return
         }
         val mediaType = detectMediaType(url) ?: return
+        if (shouldIgnoreStream(url)) return
         if (!captured.compareAndSet(false, true)) return
 
         onStreamCaptured(

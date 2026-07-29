@@ -118,6 +118,9 @@ class IptvPlayerActivity : AppCompatActivity() {
         const val EXTRA_REQUEST_HEADERS = "request_headers"
         const val EXTRA_STREAM_COOKIE = "stream_cookie"
         const val EXTRA_STREAM_MIME_TYPE = "stream_mime_type"
+        const val EXTRA_RETURN_TO_SCHEDULE_ON_ERROR = "return_to_schedule_on_error"
+        const val EXTRA_FAILED_STREAM_URL = "failed_stream_url"
+        const val RESULT_PLAYBACK_FAILED = android.app.Activity.RESULT_FIRST_USER + 41
 
         private const val OVERLAY_HIDE_DELAY_MS = 5_000L //
         private const val SEEK_POLL_MS          =   500L
@@ -134,7 +137,8 @@ class IptvPlayerActivity : AppCompatActivity() {
             group: String? = null,
             requestHeaders: Map<String, String> = emptyMap(),
             cookie: String? = null,
-            mimeType: String? = null
+            mimeType: String? = null,
+            returnToScheduleOnError: Boolean = false
         ) = Intent(context, IptvPlayerActivity::class.java).apply {
             putExtra(EXTRA_CHANNEL_NAME, channelName)
             putExtra(EXTRA_STREAM_URL,   streamUrl)
@@ -145,6 +149,7 @@ class IptvPlayerActivity : AppCompatActivity() {
             putExtra(EXTRA_REQUEST_HEADERS, JSONObject(requestHeaders).toString())
             putExtra(EXTRA_STREAM_COOKIE, cookie)
             putExtra(EXTRA_STREAM_MIME_TYPE, mimeType)
+            putExtra(EXTRA_RETURN_TO_SCHEDULE_ON_ERROR, returnToScheduleOnError)
         }
     }
 
@@ -1140,7 +1145,20 @@ class IptvPlayerActivity : AppCompatActivity() {
                 }
             }
 
-            showPlaybackErrorDialog(fullDetailedMessage, causeMessage)
+            if (intent.getBooleanExtra(EXTRA_RETURN_TO_SCHEDULE_ON_ERROR, false)) {
+                Toast.makeText(
+                    this@IptvPlayerActivity,
+                    "Playback failed. Trying another server…",
+                    Toast.LENGTH_SHORT
+                ).show()
+                setResult(
+                    RESULT_PLAYBACK_FAILED,
+                    Intent().putExtra(EXTRA_FAILED_STREAM_URL, streamUrl)
+                )
+                finish()
+            } else {
+                showPlaybackErrorDialog(fullDetailedMessage, causeMessage)
+            }
         }
     }
 
