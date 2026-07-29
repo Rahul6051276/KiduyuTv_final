@@ -107,7 +107,6 @@ import com.kiduyuk.klausk.kiduyutv.data.model.ScheduleDay
 import com.kiduyuk.klausk.kiduyutv.data.model.ScheduleEvent
 import com.kiduyuk.klausk.kiduyutv.ui.components.LottieLoadingView
 import com.kiduyuk.klausk.kiduyutv.ui.components.TopBar
-import com.kiduyuk.klausk.kiduyutv.ui.player.iptv.IptvPlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.iptv.SchedulePlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.theme.BackgroundDark
 import com.kiduyuk.klausk.kiduyutv.ui.theme.CardDark
@@ -256,25 +255,19 @@ fun LiveTvScreen(
                                 }
                             },
                             onChannelClick = { channel ->
-                                if (channel.url.isBlank()) {
-                                    Toast.makeText(
-                                        context,
-                                        "No playable stream was scraped for ${channel.name}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                } else {
-                                    context.startActivity(
-                                        IptvPlayerActivity.createIntent(
-                                            context = context,
-                                            channelName = channel.name,
-                                            streamUrl = channel.url,
-                                            channelLogo = channel.logo,
-                                            tvgId = channel.tvgId,
-                                            tvgName = channel.tvgName,
-                                            group = channel.group
-                                        )
+                                context.startActivity(
+                                    SchedulePlayerActivity.createIntent(
+                                        context = context,
+                                        channelId = channel.id,
+                                        channelName = channel.name,
+                                        eventTitle = channel.name,
+                                        iframeUrls = channel.url
+                                            .takeIf { it.isNotBlank() }
+                                            ?.let { listOf(it) }
+                                            .orEmpty(),
+                                        forceWebSniffer = true
                                     )
-                                }
+                                )
                             }
                         )
                     } else {

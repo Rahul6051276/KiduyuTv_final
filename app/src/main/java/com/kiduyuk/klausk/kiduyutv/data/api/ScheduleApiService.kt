@@ -16,13 +16,13 @@ import org.jsoup.nodes.Document
 import java.util.concurrent.TimeUnit
 
 /**
- * API service for fetching schedule data from dlhd.pk using Jsoup for robust parsing
+ * API service for fetching schedule data from dlhd.st using Jsoup for robust parsing
  */
 class ScheduleApiService {
 
     companion object {
         private const val TAG = "ScheduleApi"
-        const val BASE_URL = "https://dlhd.pk"
+        const val BASE_URL = "https://dlhd.st"
         private const val SCHEDULE_URL = BASE_URL
         private const val TIMEOUT_SECONDS = 30L
     }
@@ -36,7 +36,7 @@ class ScheduleApiService {
         .build()
 
     /**
-     * Fetches the schedule page from dlhd.pk
+     * Fetches the schedule page from dlhd.st
      *
      * @return HTML content of the schedule page
      */

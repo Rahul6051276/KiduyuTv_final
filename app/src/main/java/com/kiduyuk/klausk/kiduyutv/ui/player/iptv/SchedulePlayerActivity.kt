@@ -78,7 +78,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Schedule Player Activity for playing scheduled channels from dlhd.pk
+ * Schedule Player Activity for playing scheduled channels from dlhd.st
  * Extends the existing PlayerActivity functionality with schedule-specific features
  * Takes an iframe HTML as intent extra and plays the scheduled channel in WebView
  * Includes a focusable row of player source options at the top for easy stream switching
@@ -125,6 +125,7 @@ class SchedulePlayerActivity : ComponentActivity() {
         const val EXTRA_EVENT_TITLE = "EVENT_TITLE"
         const val EXTRA_SELECTED_PLAYER = "SELECTED_PLAYER"
         const val EXTRA_IFRAME_URLS = "IFRAME_URLS"
+        const val EXTRA_FORCE_WEB_SNIFFER = "FORCE_WEB_SNIFFER"
 
         /**
          * Creates an intent to launch the SchedulePlayerActivity
@@ -135,13 +136,15 @@ class SchedulePlayerActivity : ComponentActivity() {
             channelName: String,
             eventTitle: String,
             iframeUrls: List<String> = emptyList(),
-            selectedPlayerIndex: Int = 0
+            selectedPlayerIndex: Int = 0,
+            forceWebSniffer: Boolean = false
         ) = android.content.Intent(context, SchedulePlayerActivity::class.java).apply {
             putExtra(EXTRA_CHANNEL_ID, channelId)
             putExtra(EXTRA_CHANNEL_NAME, channelName)
             putExtra(EXTRA_EVENT_TITLE, eventTitle)
             putExtra(EXTRA_SELECTED_PLAYER, selectedPlayerIndex)
             putStringArrayListExtra(EXTRA_IFRAME_URLS, ArrayList(iframeUrls))
+            putExtra(EXTRA_FORCE_WEB_SNIFFER, forceWebSniffer)
         }
     }
 
@@ -173,7 +176,10 @@ class SchedulePlayerActivity : ComponentActivity() {
         channelName = intent.getStringExtra(EXTRA_CHANNEL_NAME) ?: "Channel"
         eventTitle = intent.getStringExtra(EXTRA_EVENT_TITLE) ?: "Event"
         selectedPlayerIndex = intent.getIntExtra(EXTRA_SELECTED_PLAYER, 0)
-        if (SettingsManager(this).isWebSnifferEnabled()) {
+        val shouldSniffStreams =
+            intent.getBooleanExtra(EXTRA_FORCE_WEB_SNIFFER, false) ||
+                SettingsManager(this).isWebSnifferEnabled()
+        if (shouldSniffStreams) {
             webStreamSniffer = WebViewStreamSniffer(
                 onStreamCaptured = ::openSniffedStream,
                 onSubtitleCaptured = {}
@@ -241,7 +247,7 @@ class SchedulePlayerActivity : ComponentActivity() {
                 onFailure = { error ->
                     android.util.Log.e(TAG, "Failed to fetch watch page: ${error.message}")
                     currentIframeHtml = generateIframeHtml(
-                        "https://dlhd.pk/player/stream-$channelId.php"
+                        "https://dlhd.st/player/stream-$channelId.php"
                     )
                     loadCurrentStream()
                 }
@@ -253,7 +259,7 @@ class SchedulePlayerActivity : ComponentActivity() {
         currentIframeHtml?.let { html ->
             if (::webView.isInitialized) {
                 webView.loadDataWithBaseURL(
-                    "https://dlhd.pk",
+                    "https://dlhd.st",
                     html,
                     "text/html",
                     "UTF-8",
