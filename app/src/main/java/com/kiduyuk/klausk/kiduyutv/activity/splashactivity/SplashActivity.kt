@@ -1,18 +1,19 @@
 package com.kiduyuk.klausk.kiduyutv.activity.splashactivity
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
+import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
-import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import android.view.Window
+import android.view.WindowManager
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.activity.ComponentActivity
@@ -724,60 +725,43 @@ class SplashActivity : ComponentActivity() {
     }
 
     private fun downloadAndInstallApk(apkInfo: ApkInfo) {
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(72, 40, 72, 24)
-            setBackgroundColor(android.graphics.Color.parseColor("#1A1A1A"))
+        val progressDialog = Dialog(this).apply {
+            requestWindowFeature(Window.FEATURE_NO_TITLE)
+            setContentView(R.layout.dialog_update_download)
+            setCancelable(false)
+            window?.apply {
+                setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+                addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                attributes = attributes.apply { dimAmount = 0.72f }
+            }
         }
+        val statusText = progressDialog.findViewById<TextView>(R.id.updateStatus)
+        val percentageText = progressDialog.findViewById<TextView>(R.id.updatePercentage)
+        val fileNameText = progressDialog.findViewById<TextView>(R.id.updateFileName)
+        val versionInfoText = progressDialog.findViewById<TextView>(R.id.updateVersionInfo)
+        val progressBar = progressDialog.findViewById<ProgressBar>(R.id.updateProgress)
 
-        val statusText = TextView(this).apply {
-            text = "Starting download..."
-            textSize = 13f
-            setTextColor(android.graphics.Color.WHITE)
+        fileNameText.text = apkInfo.fileName
+        versionInfoText.text = if (apkInfo.buildNumber > 0) {
+            "${getDeviceTypeString()} version • Build ${apkInfo.buildNumber}"
+        } else {
+            "${getDeviceTypeString()} version • Latest build"
         }
-
-        val fileNameText = TextView(this).apply {
-            text = apkInfo.fileName
-            textSize = 11f
-            setTextColor(android.graphics.Color.GRAY)
-            maxLines = 2
+        progressDialog.setOnShowListener {
+            val maxWidth = (560 * resources.displayMetrics.density).toInt()
+            val availableWidth = (resources.displayMetrics.widthPixels * 0.92f).toInt()
+            progressDialog.window?.setLayout(
+                minOf(maxWidth, availableWidth),
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
         }
-
-        val progressBar = ProgressBar(
-            this, null, android.R.attr.progressBarStyleHorizontal
-        ).apply {
-            isIndeterminate = false
-            max = 100
-            progress = 0
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = 20 }
-        }
-
-        val versionInfoText = TextView(this).apply {
-            text = "${getDeviceTypeString()} version | Build ${apkInfo.buildNumber}"
-            textSize = 10f
-            setTextColor(android.graphics.Color.DKGRAY)
-        }
-
-        layout.addView(statusText)
-        layout.addView(fileNameText)
-        layout.addView(progressBar)
-        layout.addView(versionInfoText)
-
-        val progressDialog = AlertDialog.Builder(this)
-            .setTitle("Downloading Update")
-            .setView(layout)
-            .setCancelable(false)
-            .create()
-            .also { activeDialogs.add(it) }
-        progressDialog.show()
+        progressDialog.showTracked()
 
         lifecycleScope.launch {
             val apkFile = UpdateUtil.downloadApk(this@SplashActivity, apkInfo) { pct, fileName ->
                 progressBar.progress = pct
-                statusText.text = "Downloading... $pct%"
+                statusText.text = if (pct < 100) "Downloading update…" else "Download complete"
+                percentageText.text = "$pct%"
                 if (fileNameText.text != fileName) fileNameText.text = fileName
             }
 
