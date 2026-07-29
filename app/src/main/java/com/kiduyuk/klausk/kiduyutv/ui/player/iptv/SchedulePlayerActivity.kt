@@ -69,7 +69,10 @@ import com.kiduyuk.klausk.kiduyutv.data.model.PlayerOption
 import com.kiduyuk.klausk.kiduyutv.data.repository.ScheduleRepository
 import com.kiduyuk.klausk.kiduyutv.ui.player.webview.AdBlockerWebViewClient
 import com.kiduyuk.klausk.kiduyutv.ui.player.webview.MouseCursorView
+import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedStream
+import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.WebViewStreamSniffer
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
+import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -96,6 +99,8 @@ class SchedulePlayerActivity : ComponentActivity() {
     private var currentIframeHtml: String? = null
     private var channelName: String = "Channel"
     private var eventTitle: String = "Channel"
+    private var webStreamSniffer: WebViewStreamSniffer? = null
+    private var snifferHandoffStarted = false
 
     // FIX: playerOptions and selectedPlayerIndex backed by mutableStateOf so
     // the Compose top bar recomposes automatically when these change.
@@ -168,6 +173,12 @@ class SchedulePlayerActivity : ComponentActivity() {
         channelName = intent.getStringExtra(EXTRA_CHANNEL_NAME) ?: "Channel"
         eventTitle = intent.getStringExtra(EXTRA_EVENT_TITLE) ?: "Event"
         selectedPlayerIndex = intent.getIntExtra(EXTRA_SELECTED_PLAYER, 0)
+        if (SettingsManager(this).isWebSnifferEnabled()) {
+            webStreamSniffer = WebViewStreamSniffer(
+                onStreamCaptured = ::openSniffedStream,
+                onSubtitleCaptured = {}
+            )
+        }
 
         val passedIframeUrls = intent.getStringArrayListExtra(EXTRA_IFRAME_URLS)
         if (!passedIframeUrls.isNullOrEmpty()) {
@@ -580,7 +591,8 @@ class SchedulePlayerActivity : ComponentActivity() {
                     } else {
                         tryNextPlayer()
                     }
-                }
+                },
+                onRequest = { request -> webStreamSniffer?.inspect(request) }
             ) {
 
                 override fun shouldInterceptRequest(
@@ -745,6 +757,26 @@ class SchedulePlayerActivity : ComponentActivity() {
         }
 
         scheduleTopBarHide()
+    }
+
+    private fun openSniffedStream(stream: SniffedStream) {
+        runOnUiThread {
+            if (snifferHandoffStarted || isFinishing || isDestroyed) return@runOnUiThread
+            snifferHandoffStarted = true
+            startActivity(
+                IptvPlayerActivity.createIntent(
+                    context = this,
+                    channelName = channelName,
+                    streamUrl = stream.url,
+                    tvgName = eventTitle,
+                    group = "Schedule",
+                    requestHeaders = stream.headers,
+                    cookie = stream.cookie,
+                    mimeType = stream.mimeType
+                )
+            )
+            finish()
+        }
     }
 
     /**

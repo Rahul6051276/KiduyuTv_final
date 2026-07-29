@@ -87,6 +87,7 @@ import com.kiduyuk.klausk.kiduyutv.viewmodel.LiveTvViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 
 /**
  * IPTV Player Activity — uses activity_player.xml layout.
@@ -113,6 +114,9 @@ class IptvPlayerActivity : AppCompatActivity() {
         const val EXTRA_TVG_ID = "tvg_id"
         const val EXTRA_TVG_NAME = "tvg_name"
         const val EXTRA_GROUP = "group"
+        const val EXTRA_REQUEST_HEADERS = "request_headers"
+        const val EXTRA_STREAM_COOKIE = "stream_cookie"
+        const val EXTRA_STREAM_MIME_TYPE = "stream_mime_type"
 
         private const val OVERLAY_HIDE_DELAY_MS = 5_000L //
         private const val SEEK_POLL_MS          =   500L
@@ -126,7 +130,10 @@ class IptvPlayerActivity : AppCompatActivity() {
             channelLogo: String? = null,
             tvgId: String? = null,
             tvgName: String? = null,
-            group: String? = null
+            group: String? = null,
+            requestHeaders: Map<String, String> = emptyMap(),
+            cookie: String? = null,
+            mimeType: String? = null
         ) = Intent(context, IptvPlayerActivity::class.java).apply {
             putExtra(EXTRA_CHANNEL_NAME, channelName)
             putExtra(EXTRA_STREAM_URL,   streamUrl)
@@ -134,6 +141,9 @@ class IptvPlayerActivity : AppCompatActivity() {
             putExtra(EXTRA_TVG_ID, tvgId)
             putExtra(EXTRA_TVG_NAME, tvgName)
             putExtra(EXTRA_GROUP, group)
+            putExtra(EXTRA_REQUEST_HEADERS, JSONObject(requestHeaders).toString())
+            putExtra(EXTRA_STREAM_COOKIE, cookie)
+            putExtra(EXTRA_STREAM_MIME_TYPE, mimeType)
         }
     }
 
@@ -192,6 +202,9 @@ class IptvPlayerActivity : AppCompatActivity() {
     private var tvgId: String? = null
     private var tvgName: String? = null
     private var channelGroup: String? = null
+    private var requestHeaders: Map<String, String> = emptyMap()
+    private var streamCookie: String? = null
+    private var streamMimeType: String? = null
 
     // EPG Program info
     private var currentProgramTitle: String? = null
@@ -249,6 +262,9 @@ class IptvPlayerActivity : AppCompatActivity() {
         tvgId = intent.getStringExtra(EXTRA_TVG_ID)
         tvgName = intent.getStringExtra(EXTRA_TVG_NAME)
         channelGroup = intent.getStringExtra(EXTRA_GROUP)
+        requestHeaders = parseRequestHeaders(intent.getStringExtra(EXTRA_REQUEST_HEADERS))
+        streamCookie = intent.getStringExtra(EXTRA_STREAM_COOKIE)
+        streamMimeType = intent.getStringExtra(EXTRA_STREAM_MIME_TYPE)
 
         if (streamUrl.isBlank()) { finish(); return }
 
@@ -272,6 +288,22 @@ class IptvPlayerActivity : AppCompatActivity() {
 
         // Load initial EPG program info
         loadEpgProgram()
+    }
+
+    private fun parseRequestHeaders(encodedHeaders: String?): Map<String, String> {
+        if (encodedHeaders.isNullOrBlank()) return emptyMap()
+        return runCatching {
+            val json = JSONObject(encodedHeaders)
+            val headers = linkedMapOf<String, String>()
+            val keys = json.keys()
+            while (keys.hasNext()) {
+                val key = keys.next()
+                json.optString(key).takeIf { it.isNotBlank() }?.let { value ->
+                    headers[key] = value
+                }
+            }
+            headers
+        }.getOrDefault(emptyMap())
     }
 
     override fun onStart() {
@@ -980,6 +1012,16 @@ class IptvPlayerActivity : AppCompatActivity() {
             .setConnectTimeoutMs(15_000) // Increase to 15 seconds for slow headers
             .setReadTimeoutMs(15_000)
             .setAllowCrossProtocolRedirects(true) // Crucial if your M3U references redirect across http/https
+            .setDefaultRequestProperties(
+                LinkedHashMap(requestHeaders).apply {
+                    if (
+                        !streamCookie.isNullOrBlank() &&
+                        keys.none { it.equals("Cookie", ignoreCase = true) }
+                    ) {
+                        put("Cookie", streamCookie.orEmpty())
+                    }
+                }
+            )
 
         // 2. Wrap it inside the MediaSource Factory
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
@@ -1003,7 +1045,13 @@ class IptvPlayerActivity : AppCompatActivity() {
 
                 configureSubtitleStyling()
 
-                exo.setMediaItem(MediaItem.fromUri(Uri.parse(streamUrl)))
+                val mediaItem = MediaItem.Builder()
+                    .setUri(Uri.parse(streamUrl))
+                    .apply {
+                        streamMimeType?.takeIf { it.isNotBlank() }?.let { setMimeType(it) }
+                    }
+                    .build()
+                exo.setMediaItem(mediaItem)
                 exo.playWhenReady = true
                 exo.addListener(playerListener)
                 exo.prepare()
