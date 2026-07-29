@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.util.Rational
 import android.view.KeyEvent
 import android.view.View
@@ -266,7 +267,18 @@ class IptvPlayerActivity : AppCompatActivity() {
         streamCookie = intent.getStringExtra(EXTRA_STREAM_COOKIE)
         streamMimeType = intent.getStringExtra(EXTRA_STREAM_MIME_TYPE)
 
-        if (streamUrl.isBlank()) { finish(); return }
+        Log.i(
+            TAG,
+            "Opening channel=${channelName.take(80)} source=${safeStreamDescription(streamUrl)} " +
+                "mime=${streamMimeType ?: "auto"} headers=${requestHeaders.keys.sorted()} " +
+                "hasCookie=${!streamCookie.isNullOrBlank()}"
+        )
+
+        if (streamUrl.isBlank()) {
+            Log.i(TAG, "Closing player because the stream URL is empty")
+            finish()
+            return
+        }
 
         // Keep screen on during playback
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -987,6 +999,11 @@ class IptvPlayerActivity : AppCompatActivity() {
     // ── ExoPlayer ────────────────────────────────────────────────────────────
 
     private fun initPlayer() {
+        Log.i(
+            TAG,
+            "Initializing Media3 source=${safeStreamDescription(streamUrl)} " +
+                "mime=${streamMimeType ?: "auto"}"
+        )
         trackSelector = DefaultTrackSelector(this).apply {
             setParameters(
                 buildUponParameters()
@@ -1055,11 +1072,16 @@ class IptvPlayerActivity : AppCompatActivity() {
                 exo.playWhenReady = true
                 exo.addListener(playerListener)
                 exo.prepare()
+                Log.i(TAG, "Media item prepared; waiting for playback")
             }
     }
 
     private val playerListener = object : Player.Listener {
         override fun onTracksChanged(tracks: Tracks) {
+            Log.i(
+                TAG,
+                "Tracks changed groups=${tracks.groups.size} initialized=$trackSelectionInitialized"
+            )
             if (!trackSelectionInitialized) {
                 trackSelectionInitialized = true
                 selectHighestQualityVideoTrack(tracks)
@@ -1067,10 +1089,39 @@ class IptvPlayerActivity : AppCompatActivity() {
             }
         }
 
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            val stateName = when (playbackState) {
+                Player.STATE_IDLE -> "IDLE"
+                Player.STATE_BUFFERING -> "BUFFERING"
+                Player.STATE_READY -> "READY"
+                Player.STATE_ENDED -> "ENDED"
+                else -> playbackState.toString()
+            }
+            Log.i(
+                TAG,
+                "Playback state=$stateName playWhenReady=${player?.playWhenReady} " +
+                    "isPlaying=${player?.isPlaying}"
+            )
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            Log.i(TAG, "isPlaying=$isPlaying")
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             // Extract the underlying system cause if it exists
             val cause = error.cause
             val causeMessage = cause?.localizedMessage ?: cause?.message
+            val responseCode =
+                (cause as? androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException)
+                    ?.responseCode
+
+            Log.i(
+                TAG,
+                "Playback failed code=${error.errorCodeName}(${error.errorCode}) " +
+                    "cause=${cause?.javaClass?.simpleName ?: "none"} http=${responseCode ?: "none"} " +
+                    "source=${safeStreamDescription(streamUrl)} message=${causeMessage?.take(240)}"
+            )
 
             val fullDetailedMessage = buildString {
                 appendLine("Error Code: ${error.errorCodeName} (${error.errorCode})")
@@ -1091,6 +1142,20 @@ class IptvPlayerActivity : AppCompatActivity() {
 
             showPlaybackErrorDialog(fullDetailedMessage, causeMessage)
         }
+    }
+
+    private fun safeStreamDescription(url: String): String {
+        if (url.isBlank()) return "<empty>"
+        return runCatching {
+            val uri = Uri.parse(url)
+            buildString {
+                append(uri.scheme ?: "?")
+                append("://")
+                append(uri.host ?: "?")
+                append(uri.path.orEmpty().take(160))
+                if (!uri.query.isNullOrBlank()) append("?<redacted>")
+            }
+        }.getOrDefault("<invalid-url>")
     }
 
     private fun showPlaybackErrorDialog(fullMessage: String, shortMessage: String?) {
