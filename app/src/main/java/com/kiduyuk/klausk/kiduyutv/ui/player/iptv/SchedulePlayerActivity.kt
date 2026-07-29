@@ -923,24 +923,24 @@ class SchedulePlayerActivity : ComponentActivity() {
         super.onDestroy()
     }
 
-    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (isDpadKey(event)) {
-            isDpadNavigating = true
-            showCursorAndResetTimer()
-        }
+    // override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+    //     if (isDpadKey(event)) {
+    //         isDpadNavigating = true
+    //         showCursorAndResetTimer()
+    //     }
 
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_DPAD_UP,
-                KeyEvent.KEYCODE_DPAD_DOWN,
-                KeyEvent.KEYCODE_DPAD_LEFT,
-                KeyEvent.KEYCODE_DPAD_RIGHT,
-                KeyEvent.KEYCODE_DPAD_CENTER,
-                KeyEvent.KEYCODE_ENTER -> return onKeyDown(event.keyCode, event)
-            }
-        }
-        return super.dispatchKeyEvent(event)
-    }
+    //     if (event.action == KeyEvent.ACTION_DOWN) {
+    //         when (event.keyCode) {
+    //             KeyEvent.KEYCODE_DPAD_UP,
+    //             KeyEvent.KEYCODE_DPAD_DOWN,
+    //             KeyEvent.KEYCODE_DPAD_LEFT,
+    //             KeyEvent.KEYCODE_DPAD_RIGHT,
+    //             KeyEvent.KEYCODE_DPAD_CENTER,
+    //             KeyEvent.KEYCODE_ENTER -> return onKeyDown(event.keyCode, event)
+    //         }
+    //     }
+    //     return super.dispatchKeyEvent(event)
+    // }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (isDpadKeyCode(keyCode)) {
