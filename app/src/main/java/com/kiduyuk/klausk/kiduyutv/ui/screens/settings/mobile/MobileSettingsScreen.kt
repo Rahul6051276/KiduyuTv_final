@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.PlaylistRemove
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -146,6 +147,9 @@ fun MobileSettingsScreen(
     }
     var webSnifferEnabled by remember {
         mutableStateOf(settingsManager.isWebSnifferEnabled())
+    }
+    var daddyLiveEnabled by remember {
+        mutableStateOf(settingsManager.isDaddyLiveEnabled())
     }
     var showWhatsNewDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -703,6 +707,31 @@ fun MobileSettingsScreen(
                             onCheckedChange = {
                                 webSnifferEnabled = it
                                 settingsManager.setWebSnifferEnabled(it)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryRed
+                            )
+                        )
+                    }
+                )
+                SettingsItem(
+                    icon = Icons.Default.Tv,
+                    title = "Use DaddyLive",
+                    subtitle = if (daddyLiveEnabled)
+                        "Show scraped DaddyLive channels in Live TV"
+                    else
+                        "Use the configured IPTV playlist",
+                    onClick = {
+                        daddyLiveEnabled = !daddyLiveEnabled
+                        settingsManager.setDaddyLiveEnabled(daddyLiveEnabled)
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = daddyLiveEnabled,
+                            onCheckedChange = {
+                                daddyLiveEnabled = it
+                                settingsManager.setDaddyLiveEnabled(it)
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = Color.White,

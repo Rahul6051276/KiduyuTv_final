@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -51,6 +52,8 @@ import com.kiduyuk.klausk.kiduyutv.ui.navigation.Screen
 import com.kiduyuk.klausk.kiduyutv.ui.player.iptv.IptvPlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.theme.PrimaryRed
 import com.kiduyuk.klausk.kiduyutv.ui.theme.TextSecondary
+import com.kiduyuk.klausk.kiduyutv.util.ScrapedChannelsCache
+import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import com.kiduyuk.klausk.kiduyutv.viewmodel.LiveTvViewModel
 
 @Composable
@@ -62,11 +65,38 @@ fun MobileLiveTvScreen(
     val context = LocalContext.current
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val uiState by viewModel.uiState.collectAsState()
+    val daddyLiveEnabled = remember(context) {
+        SettingsManager(context).isDaddyLiveEnabled()
+    }
+    var scrapedChannels by remember { mutableStateOf<List<IptvChannel>>(emptyList()) }
+    var scrapedChannelsLoading by remember { mutableStateOf(daddyLiveEnabled) }
+    var scrapedChannelsError by remember { mutableStateOf<String?>(null) }
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(daddyLiveEnabled) {
         viewModel.initialize(context)
-        viewModel.loadPlaylist()
+        if (daddyLiveEnabled) {
+            scrapedChannelsLoading = true
+            val cached = ScrapedChannelsCache.loadChannels(context)
+            scrapedChannels = cached.map { channel ->
+                IptvChannel(
+                    name = channel.name,
+                    logo = channel.thumbnailUrl,
+                    url = channel.primaryStreamUrl.orEmpty(),
+                    group = channel.category ?: "DaddyLive",
+                    tvgId = channel.id,
+                    tvgName = channel.name
+                )
+            }
+            scrapedChannelsError = if (scrapedChannels.isEmpty()) {
+                "No scraped channels are cached. Scrape channels from Settings first."
+            } else {
+                null
+            }
+            scrapedChannelsLoading = false
+        } else {
+            viewModel.loadPlaylist()
+        }
     }
 
     Scaffold(
@@ -82,6 +112,36 @@ fun MobileLiveTvScreen(
         Box(modifier = Modifier
             .fillMaxSize()
             .padding(innerPadding)) {
+
+            if (daddyLiveEnabled) {
+                MobileDaddyLiveContent(
+                    channels = scrapedChannels,
+                    isLoading = scrapedChannelsLoading,
+                    error = scrapedChannelsError,
+                    onChannelClick = { channel ->
+                        if (channel.url.isBlank()) {
+                            android.widget.Toast.makeText(
+                                context,
+                                "No playable stream was scraped for ${channel.name}",
+                                android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            context.startActivity(
+                                IptvPlayerActivity.createIntent(
+                                    context = context,
+                                    channelName = channel.name,
+                                    streamUrl = channel.url,
+                                    channelLogo = channel.logo,
+                                    tvgId = channel.tvgId,
+                                    tvgName = channel.tvgName,
+                                    group = channel.group
+                                )
+                            )
+                        }
+                    }
+                )
+                return@Box
+            }
 
             if (uiState.isLoading && selectedTab == 0) {
                 Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -255,6 +315,90 @@ fun MobileLiveTvScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                 }
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MobileDaddyLiveContent(
+    channels: List<IptvChannel>,
+    isLoading: Boolean,
+    error: String?,
+    onChannelClick: (IptvChannel) -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    val filteredChannels = remember(channels, query) {
+        if (query.isBlank()) {
+            channels
+        } else {
+            channels.filter { it.name.contains(query, ignoreCase = true) }
+        }
+    }
+
+    when {
+        isLoading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LottieLoadingView(size = 200.dp)
+            }
+        }
+
+        error != null -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = error, color = TextSecondary)
+            }
+        }
+
+        else -> {
+            Column(modifier = Modifier.fillMaxSize()) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    placeholder = { Text("Search DaddyLive channels...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                    trailingIcon = {
+                        if (query.isNotBlank()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                            }
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF121212),
+                        unfocusedContainerColor = Color(0xFF121212),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedPlaceholderColor = Color.LightGray,
+                        unfocusedPlaceholderColor = Color.LightGray,
+                        focusedBorderColor = PrimaryRed,
+                        unfocusedBorderColor = TextSecondary
+                    ),
+                    singleLine = true
+                )
+
+                if (filteredChannels.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No DaddyLive channels found", color = TextSecondary)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(12.dp)
+                    ) {
+                        items(filteredChannels, key = { "daddylive_${it.id}" }) { channel ->
+                            ChannelRow(channel = channel, onPlay = onChannelClick)
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
                     }
                 }

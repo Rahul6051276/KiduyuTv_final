@@ -1277,6 +1277,9 @@ private fun PlaybackContent(
     var webSnifferEnabled by remember {
         mutableStateOf(settingsManager.isWebSnifferEnabled())
     }
+    var daddyLiveEnabled by remember {
+        mutableStateOf(settingsManager.isDaddyLiveEnabled())
+    }
     val options = listOf(SettingsManager.AUTO) + StreamProviderManager.getProviderNamesForDevice(isTvDevice = true)
 
     Column(
@@ -1376,6 +1379,50 @@ private fun PlaybackContent(
                 onCheckedChange = {
                     webSnifferEnabled = it
                     settingsManager.setWebSnifferEnabled(it)
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = PrimaryRed)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+        SettingsSectionLabel(text = "Use DaddyLive")
+
+        val daddyLiveInteraction = remember { MutableInteractionSource() }
+        val daddyLiveFocused by daddyLiveInteraction.collectIsFocusedAsState()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CardDark)
+                .border(
+                    if (daddyLiveFocused) 2.dp else 0.dp,
+                    if (daddyLiveFocused) PrimaryRed else Color.Transparent,
+                    RoundedCornerShape(16.dp)
+                )
+                .clickable(
+                    interactionSource = daddyLiveInteraction,
+                    indication = null
+                ) {
+                    daddyLiveEnabled = !daddyLiveEnabled
+                    settingsManager.setDaddyLiveEnabled(daddyLiveEnabled)
+                }
+                .focusable(interactionSource = daddyLiveInteraction)
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Use DaddyLive channels", color = TextPrimary, fontSize = 16.sp)
+                Text(
+                    "Replace the Live TV playlist with cached scraped channels.",
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+            }
+            Switch(
+                checked = daddyLiveEnabled,
+                onCheckedChange = {
+                    daddyLiveEnabled = it
+                    settingsManager.setDaddyLiveEnabled(it)
                 },
                 colors = SwitchDefaults.colors(checkedTrackColor = PrimaryRed)
             )

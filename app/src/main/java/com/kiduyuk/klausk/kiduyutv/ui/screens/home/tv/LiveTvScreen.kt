@@ -106,6 +106,7 @@ import com.kiduyuk.klausk.kiduyutv.data.model.ScheduleDay
 import com.kiduyuk.klausk.kiduyutv.data.model.ScheduleEvent
 import com.kiduyuk.klausk.kiduyutv.ui.components.LottieLoadingView
 import com.kiduyuk.klausk.kiduyutv.ui.components.TopBar
+import com.kiduyuk.klausk.kiduyutv.ui.player.iptv.IptvPlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.iptv.SchedulePlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.theme.BackgroundDark
 import com.kiduyuk.klausk.kiduyutv.ui.theme.CardDark
@@ -113,6 +114,8 @@ import com.kiduyuk.klausk.kiduyutv.ui.theme.DarkRed
 import com.kiduyuk.klausk.kiduyutv.ui.theme.PrimaryRed
 import com.kiduyuk.klausk.kiduyutv.ui.theme.TextPrimary
 import com.kiduyuk.klausk.kiduyutv.ui.theme.TextSecondary
+import com.kiduyuk.klausk.kiduyutv.util.ScrapedChannelsCache
+import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
 import com.kiduyuk.klausk.kiduyutv.viewmodel.CategoryItem
 import com.kiduyuk.klausk.kiduyutv.viewmodel.LiveTvViewModel
 import com.kiduyuk.klausk.kiduyutv.viewmodel.ScheduleUiState
@@ -149,14 +152,41 @@ fun LiveTvScreen(
     val favoriteChannels by viewModel.favoriteChannels.collectAsState()
     val scheduleUiState by scheduleViewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val daddyLiveEnabled = remember(context) {
+        SettingsManager(context).isDaddyLiveEnabled()
+    }
+    var scrapedChannels by remember { mutableStateOf<List<IptvChannel>>(emptyList()) }
+    var scrapedChannelsLoading by remember { mutableStateOf(daddyLiveEnabled) }
+    var scrapedChannelsError by remember { mutableStateOf<String?>(null) }
     var favoriteChannelToConfirm by remember { mutableStateOf<IptvChannel?>(null) }
 
     // Initialize ViewModels with context
-    LaunchedEffect(Unit) {
+    LaunchedEffect(daddyLiveEnabled) {
         viewModel.initialize(context)
-        viewModel.loadPlaylist()
-        // Pre-load EPG data for program info
-        viewModel.loadEpg()
+        if (daddyLiveEnabled) {
+            scrapedChannelsLoading = true
+            val cached = ScrapedChannelsCache.loadChannels(context)
+            scrapedChannels = cached.map { channel ->
+                IptvChannel(
+                    name = channel.name,
+                    logo = channel.thumbnailUrl,
+                    url = channel.primaryStreamUrl.orEmpty(),
+                    group = channel.category ?: "DaddyLive",
+                    tvgId = channel.id,
+                    tvgName = channel.name
+                )
+            }
+            scrapedChannelsError = if (scrapedChannels.isEmpty()) {
+                "No scraped channels are cached. Scrape channels from Settings first."
+            } else {
+                null
+            }
+            scrapedChannelsLoading = false
+        } else {
+            viewModel.loadPlaylist()
+            // Pre-load EPG data for program info
+            viewModel.loadEpg()
+        }
 
         scheduleViewModel.initialize(context)
         scheduleViewModel.loadSchedule()
@@ -204,11 +234,40 @@ fun LiveTvScreen(
 
             when (selectedTabIndex) {
                 0 -> { // Live TV Tab
-                    LiveTvTabContent(
-                        uiState = uiState,
-                        viewModel = viewModel,
-                        onChannelLongPress = { channel -> favoriteChannelToConfirm = channel }
-                    )
+                    if (daddyLiveEnabled) {
+                        DaddyLiveTabContent(
+                            channels = scrapedChannels,
+                            isLoading = scrapedChannelsLoading,
+                            error = scrapedChannelsError,
+                            onChannelClick = { channel ->
+                                if (channel.url.isBlank()) {
+                                    Toast.makeText(
+                                        context,
+                                        "No playable stream was scraped for ${channel.name}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    context.startActivity(
+                                        IptvPlayerActivity.createIntent(
+                                            context = context,
+                                            channelName = channel.name,
+                                            streamUrl = channel.url,
+                                            channelLogo = channel.logo,
+                                            tvgId = channel.tvgId,
+                                            tvgName = channel.tvgName,
+                                            group = channel.group
+                                        )
+                                    )
+                                }
+                            }
+                        )
+                    } else {
+                        LiveTvTabContent(
+                            uiState = uiState,
+                            viewModel = viewModel,
+                            onChannelLongPress = { channel -> favoriteChannelToConfirm = channel }
+                        )
+                    }
                 }
                 1 -> { // Schedule Tab
                     // If the Live playlist is still loading, show the loading state
@@ -381,6 +440,84 @@ private fun LiveTvTopBar(
 /**
  * Live TV specific content (extracted from original LiveTvScreen)
  */
+@Composable
+private fun DaddyLiveTabContent(
+    channels: List<IptvChannel>,
+    isLoading: Boolean,
+    error: String?,
+    onChannelClick: (IptvChannel) -> Unit
+) {
+    val firstChannelFocusRequester = remember { FocusRequester() }
+    val gridState = rememberLazyGridState()
+
+    when {
+        isLoading -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LottieLoadingView(size = 300.dp)
+            }
+        }
+
+        error != null -> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = error, color = TextSecondary, fontSize = 16.sp)
+            }
+        }
+
+        else -> {
+            LaunchedEffect(channels) {
+                if (channels.isNotEmpty()) firstChannelFocusRequester.requestFocus()
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                Text(
+                    text = "DaddyLive",
+                    color = TextPrimary,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${channels.size} scraped channels",
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Fixed(4),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    itemsIndexed(
+                        items = channels,
+                        key = { index, channel -> "daddylive_${channel.id}_$index" }
+                    ) { index, channel ->
+                        ChannelCard(
+                            channel = channel,
+                            modifier = if (index == 0) {
+                                Modifier.focusRequester(firstChannelFocusRequester)
+                            } else {
+                                Modifier
+                            },
+                            onClick = { onChannelClick(channel) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun LiveTvTabContent(
     uiState: com.kiduyuk.klausk.kiduyutv.viewmodel.LiveTvUiState,
