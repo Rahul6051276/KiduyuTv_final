@@ -961,6 +961,23 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
+        // Pre-load guard: the oogachaka CDN reliably 403s fresh clients, so
+        // route every load to the bypass activity before handing the stream
+        // to ExoPlayer. Catches streams that bypass the playBest() check
+        // (e.g. switchStream, loadExternalSubtitle, sniffed playback).
+        if (needsOogachakaBypass(stream)) {
+            Log.w(
+                TAG,
+                "startStreamPlayback intercepted oogachaka stream without " +
+                    "saved cookies; launching CloudflareBypassActivity"
+            )
+            pendingCloudflareStream = stream
+            pendingCloudflareResumeMs = startPositionMs
+            showStatus(getString(R.string.cloudflare_blocked_checking), retry = false)
+            showLoadingArtwork()
+            launchCloudflareBypass(stream)
+            return
+        }
         handlingPlaybackError = false
         stopWatchProgressUpdates()
         showLoadingArtwork()
