@@ -3,9 +3,8 @@
     One row in the track list. ListView owns focus and click handling so
     D-pad center and touch clicks both reach onItemClick. The check icon
     is shown for the currently-selected track. The right-side validation
-    badge ("stream ok" / "checking…") is attached programmatically by
-    StreamSelectionDialog at bind time so the layout does not need to
-    declare a dedicated TextView or background drawable.
+    badge ("stream ok" / "checking…") is bound by StreamSelectionDialog
+    at bind time using the trackStatus TextView declared below.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -53,4 +52,19 @@
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/trackStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:background="@android:color/transparent"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:textColor="@color/text_primary"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
 </LinearLayout>
