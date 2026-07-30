@@ -219,8 +219,10 @@ class CloudflareBypassActivity : AppCompatActivity() {
                     // setCookie expects "name=value; Domain=...; Path=...; ..."
                     // We re-emit the full entry, which is already in that shape
                     // (the Android WebView accepted it when it wrote the cookie).
-                    val ok = cm.setCookie(domain, entry.trim())
-                    if (ok) count++
+                    // CookieManager.setCookie returns Unit (void) on Android, not
+                    // a Boolean — the return value tells you nothing about success.
+                    cm.setCookie(domain, entry.trim())
+                    count++
                 }
             }
             cm.flush()
@@ -311,9 +313,16 @@ class CloudflareBypassActivity : AppCompatActivity() {
 
     /** Fires once after [timeoutMs] if the challenge is still unsolved. */
     private val timeoutRunnable = Runnable {
-        if (isFinishing || isDestroyed || isSolved) return
-        Log.w(TAG, "Challenge did not solve within ${timeoutMs}ms")
-        setStatus("Cloudflare challenge timed out. Tap retry or close.", isError = true)
+        // Bare `return` is illegal from a Runnable lambda (not inline).
+        // Use a labelled `return@Runnable` … but Runnables are SAM
+        // lambdas, so the idiomatic fix is to use the labelled
+        // continuation explicitly. We just guard the body with an
+        // `if/else` so there's no need for an early exit.
+        run {
+            if (isFinishing || isDestroyed || isSolved) return@run
+            Log.w(TAG, "Challenge did not solve within ${timeoutMs}ms")
+            setStatus("Cloudflare challenge timed out. Tap retry or close.", isError = true)
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -685,8 +694,14 @@ class CloudflareBypassActivity : AppCompatActivity() {
     private fun detectTvDevice(): Boolean {
         return try {
             val uiModeManager = getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
-            val configType = resources.configuration.uiMode and Configuration.UI_MODE_MASK
-            val isTvFromConfig = configType == Configuration.UI_MODE_TYPE_TELEVISION
+            // Configuration.UI_MODE_MASK was removed in API 30; the `uiMode`
+            // field is now stored pre-masked, so we can compare it directly
+            // against the type constants. UI_MODE_TYPE_TELEVISION is still
+            // public on the platform for source/binary compatibility, even
+            // though it's deprecated — we suppress the warning here.
+            @Suppress("DEPRECATION")
+            val isTvFromConfig = resources.configuration.uiMode == Configuration.UI_MODE_TYPE_TELEVISION
+            @Suppress("DEPRECATION")
             val isTvFromService = uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
             val isLeanback = packageManager.hasSystemFeature("android.software.leanback")
             isTvFromConfig || isTvFromService || isLeanback

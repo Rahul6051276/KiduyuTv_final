@@ -24,6 +24,12 @@
     <string name="player_error">Playback error: %1$s</string>
     <string name="playback_failed_try_another_stream">Playback failed. Please try another stream.</string>
     <string name="playback_failed_retry">Playback failed (%1$s). Select to retry.</string>
+    <string name="cloudflare_blocked_title">Verification required</string>
+    <string name="cloudflare_blocked_message">This stream is protected by Cloudflare (HTTP 403). Open the verification page to solve the challenge and unlock the stream?</string>
+    <string name="cloudflare_blocked_solve">Solve</string>
+    <string name="cloudflare_blocked_skip">Skip</string>
+    <string name="cloudflare_blocked_checking">Checking stream…</string>
+    <string name="cloudflare_bypass_retried">Retrying stream with saved cookies…</string>
     <string name="title_activity_cloudflare_bypass">Cloudflare Verification</string>
     <string name="cloudflare_bypass_loading">Verifying your connection…</string>
     <string name="cloudflare_bypass_waiting">Please complete the verification in the WebView. Cookies will be saved automatically.</string>
