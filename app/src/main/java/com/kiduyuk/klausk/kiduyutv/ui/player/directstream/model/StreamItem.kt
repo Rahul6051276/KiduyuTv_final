@@ -35,6 +35,15 @@ data class StreamItem(
     /** `true` while a background validity check is in progress for this stream. */
     var isChecking: Boolean = false,
     /**
+     * Set to `true` when the probe completed (either 2xx or non-2xx) but the
+     * response did not contain a valid video stream Content-Type header. The
+     * `StreamSelectionDialog` renders a "stream failed" badge for these entries.
+     * A stream can be both `isFailed` and `isValid` is `false` — they are not
+     * mutually exclusive; `isFailed` is `true` only when the HTTP probe itself
+     * succeeded but the response body is not a recognized video stream.
+     */
+    var isFailed: Boolean = false,
+    /**
      * Last observed HTTP status code from a [com.kiduyuk.klausk.kiduyutv.ui.player
      * .directstream.playback.StreamValidator] probe. Used by the player to
      * detect Cloudflare-style 403 challenges before launching ExoPlayer.

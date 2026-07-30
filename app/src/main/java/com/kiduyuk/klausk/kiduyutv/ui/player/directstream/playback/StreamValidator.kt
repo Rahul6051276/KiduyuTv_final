@@ -59,7 +59,10 @@ object StreamValidator {
             if (streams.isEmpty()) return@withContext streams
             // Mark every entry as "currently being checked" before fanning out
             // so the UI can render a pending state if it happens to be open.
-            streams.forEach { it.isChecking = true }
+            streams.forEach {
+                it.isChecking = true
+                it.isFailed = false
+            }
             try {
                 coroutineScope {
                     streams.map { stream ->
@@ -92,6 +95,10 @@ object StreamValidator {
      * The most recent HTTP response code is written back to
      * [StreamItem.httpStatusCode] so callers can distinguish 403 (Cloudflare
      * challenge) from other 4xx/5xx failures without re-issuing the request.
+     *
+     * [StreamItem.isFailed] is set to `true` when the server replied 2xx but
+     * the response headers do not indicate a playable video stream (no
+     * recognized Content-Type, no Accept-Ranges, and zero Content-Length).
      */
     private suspend fun probe(stream: StreamItem): Boolean {
         if (stream.url.isBlank()) {
@@ -107,7 +114,20 @@ object StreamValidator {
             head.use { response ->
                 stream.httpStatusCode = response.code
                 when {
-                    response.isSuccessful -> return true
+                    response.isSuccessful -> {
+                        if (!hasVideoStreamHeaders(response)) {
+                            Log.w(
+                                TAG,
+                                "probe 2xx but no video stream headers for ${stream.url} " +
+                                    "contentType=${response.header("Content-Type")} " +
+                                    "contentLength=${response.header("Content-Length")} " +
+                                    "acceptRanges=${response.header("Accept-Ranges")}"
+                            )
+                            stream.isFailed = true
+                            return false
+                        }
+                        return true
+                    }
                     response.code == 405 || response.code == 501 -> {
                         // Method not allowed/implemented — retry with a Range GET.
                     }
@@ -128,9 +148,58 @@ object StreamValidator {
         return runCatching {
             client.newCall(getRequest).execute().use { response ->
                 stream.httpStatusCode = response.code
+                if (response.isSuccessful && !hasVideoStreamHeaders(response)) {
+                    Log.w(
+                        TAG,
+                        "probe Range-GET 2xx but no video stream headers for ${stream.url} " +
+                            "contentType=${response.header("Content-Type")} " +
+                            "contentLength=${response.header("Content-Length")} " +
+                            "acceptRanges=${response.header("Accept-Ranges")}"
+                    )
+                    stream.isFailed = true
+                    return@use false
+                }
                 response.isSuccessful
             }
         }.getOrDefault(false)
+    }
+
+    /**
+     * Returns `true` when [response] carries at least one signal that it is a
+     * playable video stream (as opposed to an HTML error page or redirect body):
+     *   - Content-Type matching video/*, application/x-mpegurl, or
+     *     application/vnd.apple.mpegurl
+     *   - Accept-Ranges: bytes  (indicates a seekable binary stream)
+     *   - Content-Length > 0  (body is not empty)
+     *
+     * A 2xx response that matches none of these signals is likely a
+     * provider-level error page that happens to return HTTP 200.
+     */
+    private fun hasVideoStreamHeaders(response: okhttp3.Response): Boolean {
+        val contentType = response.header("Content-Type", "")
+            ?.substringBefore(";")
+            ?.trim()
+            ?.lowercase()
+            ?: ""
+        val isVideoMime = contentType.startsWith("video/") ||
+            contentType == "application/x-mpegurl" ||
+            contentType == "application/vnd.apple.mpegurl" ||
+            contentType == "application/x-mpeg-url"
+        if (isVideoMime) return true
+
+        // Accept-Ranges: bytes signals a seekable binary stream even when
+        // Content-Type is absent or generic (e.g. application/octet-stream).
+        val acceptRanges = response.header("Accept-Ranges", "")
+            ?.trim()
+            ?.lowercase()
+            ?: ""
+        if (acceptRanges == "bytes") return true
+
+        // Non-empty body is a positive signal for progressive streams.
+        val contentLength = response.header("Content-Length", "0")?.trim()?.toLongOrNull() ?: 0L
+        if (contentLength > 0L) return true
+
+        return false
     }
 
     /**

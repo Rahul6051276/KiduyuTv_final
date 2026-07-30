@@ -123,11 +123,14 @@ class StreamSelectionDialog(
             view.isActivated = active
 
             // Render the validation status badge. We only show "stream ok"
-            // when the upstream probe reported 2xx; otherwise the row stays
-            // neutral and the user can still try it manually.
+            // when the upstream probe reported 2xx with valid video stream
+            // headers; we show "stream failed" when the probe reached the
+            // server (2xx) but the response did not carry video stream signals.
+            // When neither flag is set the row stays neutral so the user can
+            // still try it manually.
             val statusView = view.findViewById<TextView>(R.id.trackStatus)
             when {
-                stream.isValid -> {
+                stream.isValid && !stream.isFailed -> {
                     statusView.text = context.getString(R.string.stream_ok)
                     statusView.setBackgroundResource(R.drawable.bg_stream_status_ok)
                     statusView.visibility = View.VISIBLE
@@ -135,6 +138,11 @@ class StreamSelectionDialog(
                 stream.isChecking -> {
                     statusView.text = context.getString(R.string.stream_checking)
                     statusView.setBackgroundResource(R.drawable.bg_stream_status_pending)
+                    statusView.visibility = View.VISIBLE
+                }
+                stream.isFailed -> {
+                    statusView.text = context.getString(R.string.stream_failed)
+                    statusView.setBackgroundResource(R.drawable.bg_stream_status_failed)
                     statusView.visibility = View.VISIBLE
                 }
                 else -> {
