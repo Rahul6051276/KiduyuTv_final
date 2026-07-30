@@ -167,8 +167,8 @@ object StreamValidator {
     /**
      * Returns `true` when [response] carries at least one signal that it is a
      * playable video stream (as opposed to an HTML error page or redirect body):
-     *   - Content-Type matching video/*, application/x-mpegurl, or
-     *     application/vnd.apple.mpegurl
+     *   - Content-Type starting with "video/" (e.g. video/mp4), or matching
+     *     application/x-mpegurl or application/vnd.apple.mpegurl
      *   - Accept-Ranges: bytes  (indicates a seekable binary stream)
      *   - Content-Length > 0  (body is not empty)
      *
