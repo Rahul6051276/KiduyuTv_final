@@ -101,6 +101,19 @@ class CloudflareBypassActivity : AppCompatActivity() {
         /** Optional: max wait in ms. Default 60 s. */
         const val EXTRA_TIMEOUT_MS = "timeout_ms"
 
+        /**
+         * Result extra: the raw `Cookie:` header that contains the freshly
+         * captured `cf_clearance`. The caller can use this to set the
+         * cookie directly without re-reading the SharedPreferences mirror.
+         */
+        const val EXTRA_COOKIES = "cookies"
+
+        /**
+         * Result extra: the host (registered domain) that the cookies apply
+         * to. Matches the key used by [saveCookies] / [loadCookies].
+         */
+        const val EXTRA_DOMAIN = "domain"
+
         const val DEFAULT_TIMEOUT_MS = 60_000L
         const val POLL_INTERVAL_MS = 1_000L
 
@@ -646,8 +659,8 @@ class CloudflareBypassActivity : AppCompatActivity() {
         isFinishingForResult = true
         val data = Intent().apply {
             putExtra(EXTRA_URL, targetUrl)
-            putExtra("cookies", cookies)
-            putExtra("domain", targetHost)
+            putExtra(EXTRA_COOKIES, cookies)
+            putExtra(EXTRA_DOMAIN, targetHost)
         }
         setResult(RESULT_OK, data)
         finish()

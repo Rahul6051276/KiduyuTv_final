@@ -33,7 +33,14 @@ data class StreamItem(
      */
     var isValid: Boolean = false,
     /** `true` while a background validity check is in progress for this stream. */
-    var isChecking: Boolean = false
+    var isChecking: Boolean = false,
+    /**
+     * Last observed HTTP status code from a [com.kiduyuk.klausk.kiduyutv.ui.player
+     * .directstream.playback.StreamValidator] probe. Used by the player to
+     * detect Cloudflare-style 403 challenges before launching ExoPlayer.
+     * `null` until the first probe completes.
+     */
+    var httpStatusCode: Int? = null
 )
 
 /**

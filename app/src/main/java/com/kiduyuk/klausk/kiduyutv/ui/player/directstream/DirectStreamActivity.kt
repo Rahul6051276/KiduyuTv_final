@@ -2,6 +2,7 @@ package com.kiduyuk.klausk.kiduyutv.ui.player.directstream
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -12,6 +13,7 @@ import android.view.WindowManager
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -27,6 +29,7 @@ import java.util.Date
 import java.util.Locale
 import com.kiduyuk.klausk.kiduyutv.R
 import com.kiduyuk.klausk.kiduyutv.databinding.ActivityDirectStreamBinding
+import com.kiduyuk.klausk.kiduyutv.ui.player.cloudflareBypass.CloudflareBypassActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.SubtitleItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api.SubdlSubtitleClient
@@ -77,6 +80,8 @@ class DirectStreamActivity : AppCompatActivity() {
     private var streamDialog: StreamSelectionDialog? = null
     private var subtitleDialog: AlertDialog? = null
     private var quitDialog: QuitDialog? = null
+    private var cloudflareDialog: AlertDialog? = null
+    private var cloudflareProbeJob: Job? = null
     private var subtitleJob: Job? = null
     private var availableStreams: List<StreamItem> = emptyList()
     private var activeStream: StreamItem? = null
@@ -104,6 +109,67 @@ class DirectStreamActivity : AppCompatActivity() {
     private var watchHistoryReady = false
     private val controlsClock = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
     private val controlsTime = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+    /**
+     * Stream that the most recent 403 dialog was offered for. Held so the
+     * [cloudflareBypassLauncher] callback knows which stream to retry after
+     * the CloudflareBypassActivity reports success.
+     */
+    private var pendingCloudflareStream: StreamItem? = null
+
+    /**
+     * Position (in ms) the user was at when the 403 was detected. The retry
+     * after a successful Cloudflare bypass resumes from the same point.
+     */
+    private var pendingCloudflareResumeMs: Long = 0L
+
+    /**
+     * Receives the result from [CloudflareBypassActivity]. When the user
+     * returns with `RESULT_OK` we re-issue playback of the stream that was
+     * blocked; the new `cf_clearance` cookie is automatically picked up by
+     * [PlayerEngine] via [CloudflareBypassActivity.loadCookies].
+     */
+    private val cloudflareBypassLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (isFinishing || isDestroyed) return@registerForActivityResult
+        val stream = pendingCloudflareStream
+        pendingCloudflareStream = null
+        val resumeMs = pendingCloudflareResumeMs
+        pendingCloudflareResumeMs = 0L
+        if (stream == null) {
+            Log.w(TAG, "CloudflareBypass returned but no pending stream to retry")
+            return@registerForActivityResult
+        }
+        if (result.resultCode != RESULT_OK) {
+            Log.i(
+                TAG,
+                "CloudflareBypass cancelled by user; keeping stream selection open"
+            )
+            showStatus(
+                getString(R.string.playback_failed_try_another_stream),
+                retry = true
+            )
+            return@registerForActivityResult
+        }
+        val savedCookies = result.data?.getStringExtra(CloudflareBypassActivity.EXTRA_COOKIES)
+        val domain = result.data?.getStringExtra(CloudflareBypassActivity.EXTRA_DOMAIN)
+        Log.i(
+            TAG,
+            "CloudflareBypass solved; cookies=${savedCookies?.length ?: 0} chars " +
+                "domain=$domain stream=${stream.provider} ${stream.quality} " +
+                "url=${stream.url}"
+        )
+        Toast.makeText(
+            this,
+            R.string.cloudflare_bypass_retried,
+            Toast.LENGTH_SHORT
+        ).show()
+        // Active stream may have changed while the bypass activity was on
+        // top; only retry the stream we promised the user we'd retry.
+        activeStream = stream
+        startStreamPlayback(stream, resumeMs)
+    }
 
     private val watchProgressTick = object : Runnable {
         override fun run() {
@@ -638,6 +704,49 @@ class DirectStreamActivity : AppCompatActivity() {
         hideLoadingArtwork()
         binding.playerStatus.visibility = View.GONE
         showControls()
+        // The ExoPlayer error name doesn't carry the underlying HTTP
+        // status code, but Cloudflare-style 403 challenges are by far the
+        // most common reason playback fails after a successful stream
+        // load. Probe the active stream and, if it's actually a 403, swap
+        // the generic "Playback failed" toast for the bypass dialog so
+        // the user can solve the challenge instead of picking a
+        // (probably identical) alternative source.
+        val active = activeStream
+        if (active != null) {
+            cloudflareProbeJob?.cancel()
+            cloudflareProbeJob = lifecycleScope.launch {
+                val statusCode = withContext(Dispatchers.IO) {
+                    StreamValidator.probeStatus(active)
+                }
+                if (isFinishing || isDestroyed) return@launch
+                if (
+                    statusCode == 403 &&
+                    cloudflareDialog?.isShowing != true &&
+                    CloudflareBypassActivity.loadCookies(
+                        applicationContext,
+                        runCatching { Uri.parse(active.url).host.orEmpty() }
+                            .getOrNull().orEmpty()
+                    ).isNullOrBlank()
+                ) {
+                    Log.w(
+                        TAG,
+                        "Playback error mapped to HTTP 403; offering Cloudflare bypass"
+                    )
+                    val resumeMs = engine.player.currentPosition.coerceAtLeast(0L)
+                    showCloudflareBypassDialog(active, resumeMs)
+                    return@launch
+                }
+                if (binding.btnPlayerStreams.visibility == View.VISIBLE) {
+                    binding.btnPlayerStreams.requestFocus()
+                }
+                Toast.makeText(
+                    this@DirectStreamActivity,
+                    R.string.playback_failed_try_another_stream,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            return
+        }
         if (binding.btnPlayerStreams.visibility == View.VISIBLE) {
             binding.btnPlayerStreams.requestFocus()
         }
@@ -693,8 +802,14 @@ class DirectStreamActivity : AppCompatActivity() {
     /**
      * Probe every loaded [StreamItem] in the background to confirm the
      * upstream CDN is reachable. Each result is written back to the item
-     * (`isValid`, `isChecking`) and the open [StreamSelectionDialog] — if
-     * any — is refreshed so the "stream ok" badge can render.
+     * (`isValid`, `isChecking`, `httpStatusCode`) and the open
+     * [StreamSelectionDialog] — if any — is refreshed so the "stream ok"
+     * badge can render.
+     *
+     * If the *currently playing* stream turns out to be a 403 (typically
+     * because the user picked a stream that was already 403'ing at fetch
+     * time, and the pre-flight 403 check raced the actual playback), the
+     * user is offered the Cloudflare bypass via [offerCloudflareBypass].
      */
     private fun validateStreamsInBackground(items: List<StreamItem>) {
         lifecycleScope.launch {
@@ -703,10 +818,33 @@ class DirectStreamActivity : AppCompatActivity() {
                 availableStreams = validated
                 streamDialog?.updateStreams(validated)
                 val okCount = validated.count { it.isValid }
+                val blockedCount = validated.count { it.httpStatusCode == 403 }
                 Log.i(
                     PROVIDER_TAG,
-                    "stream ok: $okCount/${validated.size} candidates validated"
+                    "stream ok: $okCount/${validated.size} candidates validated " +
+                        "(cloudflare-blocked=$blockedCount)"
                 )
+                val active = activeStream
+                if (
+                    active != null &&
+                    !handlingPlaybackError &&
+                    cloudflareDialog?.isShowing != true &&
+                    active.httpStatusCode == 403 &&
+                    CloudflareBypassActivity.loadCookies(
+                        applicationContext,
+                        runCatching { Uri.parse(active.url).host.orEmpty() }
+                            .getOrNull().orEmpty()
+                    ).isNullOrBlank()
+                ) {
+                    Log.w(
+                        TAG,
+                        "Background validation flagged active stream as 403; " +
+                            "offering Cloudflare bypass"
+                    )
+                    engine.pause()
+                    val resumeMs = engine.player.currentPosition.coerceAtLeast(0L)
+                    showCloudflareBypassDialog(active, resumeMs)
+                }
             }
         }
     }
@@ -715,6 +853,11 @@ class DirectStreamActivity : AppCompatActivity() {
      * Automatically picks the best stream up to 1080p. Higher-bandwidth
      * 1440p/2160p streams remain available in the Streams dialog so the
      * viewer can opt into them explicitly.
+     *
+     * Before calling [startStreamPlayback] the chosen stream is probed
+     * synchronously. A 403 response (typically a Cloudflare "Verify you
+     * are human" challenge) is offered to the user as a Cloudflare bypass
+     * flow instead of just failing playback.
      */
     private fun playBest(items: List<StreamItem>) {
         val automaticCandidates = items.filterNot {
@@ -732,7 +875,48 @@ class DirectStreamActivity : AppCompatActivity() {
                 "quality=${chosen.quality} scheme=$scheme " +
                 "excludedHighResolution=${items.size - automaticCandidates.size} url=${chosen.url}"
         )
-        startStreamPlayback(chosen, consumePendingStartPosition())
+        val resumeMs = consumePendingStartPosition()
+        // Pre-flight 403 detection. If the manifest URL is gated by
+        // Cloudflare, give the user the option to open the bypass screen
+        // *before* ExoPlayer emits a generic "Playback failed" toast.
+        if (needsCloudflareBypass(chosen)) {
+            offerCloudflareBypass(chosen, resumeMs)
+        } else {
+            startStreamPlayback(chosen, resumeMs)
+        }
+    }
+
+    /**
+     * Quick check for a Cloudflare-style 403 on [stream]. Returns `true`
+     * when the upstream replied with HTTP 403 (a "Verify you are human"
+     * challenge) and the host does not already have a saved `cf_clearance`
+     * cookie. When a saved cookie is present, the player will use it
+     * automatically and the user does not need to be re-prompted.
+     */
+    private fun needsCloudflareBypass(stream: StreamItem): Boolean {
+        if (stream.url.isBlank()) return false
+        val host = runCatching { Uri.parse(stream.url).host }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?: return false
+        // Skip the probe if we already have a saved cf_clearance for the
+        // host — the bypass has been done before and the cookie should
+        // already let the request through.
+        val saved = CloudflareBypassActivity.loadCookies(applicationContext, host)
+        if (!saved.isNullOrBlank()) {
+            Log.i(
+                TAG,
+                "playBest skipping 403 probe for $host — saved Cloudflare " +
+                    "cookie present (${saved.length} chars)"
+            )
+            return false
+        }
+        // Use the existing in-memory probe result if validateStreamsInBackground
+        // has already classified this stream.
+        stream.httpStatusCode?.let { code ->
+            if (code == 403) return true
+        }
+        return false
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
@@ -745,6 +929,142 @@ class DirectStreamActivity : AppCompatActivity() {
         // as Media3 fills it.
         binding.seekBar.secondaryProgress = 0
         engine.play(stream, startPositionMs, activeSubtitles)
+    }
+
+    /**
+     * Run a synchronous 403 probe on [stream] and, if the upstream is gated
+     * by Cloudflare, display the bypass dialog. A non-403 failure falls
+     * through to plain playback so the user still gets a chance to retry.
+     */
+    private fun offerCloudflareBypass(stream: StreamItem, resumeMs: Long) {
+        if (isFinishing || isDestroyed) return
+        showStatus(getString(R.string.cloudflare_blocked_checking), retry = false)
+        showLoadingArtwork()
+        cloudflareProbeJob?.cancel()
+        cloudflareProbeJob = lifecycleScope.launch {
+            val code = withContext(Dispatchers.IO) {
+                StreamValidator.probeStatus(stream)
+            }
+            if (isFinishing || isDestroyed) return@launch
+            Log.i(
+                TAG,
+                "Cloudflare probe for ${stream.provider} ${stream.quality} " +
+                    "url=${stream.url} -> HTTP $code"
+            )
+            if (code == 403) {
+                showCloudflareBypassDialog(stream, resumeMs)
+            } else {
+                // 2xx, 4xx-other, 5xx, or null (network error): play
+                // normally so the user gets a normal failure UI.
+                startStreamPlayback(stream, resumeMs)
+            }
+        }
+    }
+
+    /**
+     * Show an [AlertDialog] asking the user whether to open the
+     * [CloudflareBypassActivity] to solve a 403 challenge. On accept we
+     * stash [stream] / [resumeMs] into pending fields so the
+     * [cloudflareBypassLauncher] callback can resume playback when the
+     * bypass completes. On cancel we fall through to plain playback so
+     * the user can pick a different stream from the dialog.
+     */
+    private fun showCloudflareBypassDialog(stream: StreamItem, resumeMs: Long) {
+        if (isFinishing || isDestroyed) return
+        cloudflareDialog?.takeIf { it.isShowing }?.dismiss()
+        engine.pause()
+        hideLoadingArtwork()
+        showStatus(getString(R.string.cloudflare_blocked_message), retry = false)
+        pendingCloudflareStream = stream
+        pendingCloudflareResumeMs = resumeMs
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.cloudflare_blocked_title)
+            .setMessage(R.string.cloudflare_blocked_message)
+            .setCancelable(true)
+            .setPositiveButton(R.string.cloudflare_blocked_solve) { dialog, _ ->
+                dialog.dismiss()
+                launchCloudflareBypass(stream)
+            }
+            .setNegativeButton(R.string.cloudflare_blocked_skip) { dialog, _ ->
+                dialog.dismiss()
+                pendingCloudflareStream = null
+                pendingCloudflareResumeMs = 0L
+                // Move to the next best stream instead of starting this one
+                // (which would just 403 again). Fall back to the existing
+                // "playback failed" UI so the user can pick a different
+                // source from the Streams dialog.
+                skipToNextAvailableStream()
+            }
+            .create()
+        dialog.setOnDismissListener {
+            if (cloudflareDialog === dialog) cloudflareDialog = null
+        }
+        cloudflareDialog = dialog
+        dialog.show()
+    }
+
+    /**
+     * Launches [CloudflareBypassActivity] in front of the user. The
+     * activity loads the gated URL in a WebView and, on success, writes
+     * the `cf_clearance` cookie to SharedPreferences and finishes with
+     * `RESULT_OK`. Our [cloudflareBypassLauncher] picks that result up and
+     * retries [stream].
+     */
+    private fun launchCloudflareBypass(stream: StreamItem) {
+        val intent = Intent(this, CloudflareBypassActivity::class.java).apply {
+            putExtra(CloudflareBypassActivity.EXTRA_URL, stream.url)
+            putExtra(
+                CloudflareBypassActivity.EXTRA_TITLE,
+                if (stream.provider.isNotBlank()) {
+                    "Verifying ${stream.provider}"
+                } else {
+                    "Verifying stream"
+                }
+            )
+        }
+        Log.i(
+            TAG,
+            "Launching CloudflareBypassActivity for ${stream.provider} " +
+                "${stream.quality} url=${stream.url}"
+        )
+        runCatching {
+            cloudflareBypassLauncher.launch(intent)
+        }.onFailure { error ->
+            Log.e(TAG, "Failed to launch CloudflareBypassActivity", error)
+            Toast.makeText(
+                this,
+                R.string.cloudflare_bypass_open_failed,
+                Toast.LENGTH_LONG
+            ).show()
+            pendingCloudflareStream = null
+            pendingCloudflareResumeMs = 0L
+        }
+    }
+
+    /**
+     * Skip the gated stream and try the next one in [availableStreams].
+     * Used when the user dismisses the 403 dialog with "Skip". Falls back
+     * to the "playback failed" UI when no alternative is available.
+     */
+    private fun skipToNextAvailableStream() {
+        val candidates = availableStreams
+            .filter { it.url != activeStream?.url }
+            .sortedByDescending { qualityRank(it.quality) }
+        val next = candidates.firstOrNull()
+        if (next == null) {
+            showStatus(
+                getString(R.string.playback_failed_try_another_stream),
+                retry = true
+            )
+            return
+        }
+        Log.i(
+            PROVIDER_TAG,
+            "Skipping Cloudflare-gated stream; trying next best " +
+                "provider=${next.provider} quality=${next.quality}"
+        )
+        activeStream = next
+        startStreamPlayback(next, consumePendingStartPosition())
     }
 
     private fun consumePendingStartPosition(): Long {
@@ -1212,6 +1532,8 @@ class DirectStreamActivity : AppCompatActivity() {
     override fun onDestroy() {
         streamJob?.cancel()
         subtitleJob?.cancel()
+        cloudflareProbeJob?.cancel()
+        cloudflareProbeJob = null
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()
@@ -1220,6 +1542,10 @@ class DirectStreamActivity : AppCompatActivity() {
         subtitleDialog = null
         quitDialog?.takeIf { it.isShowing }?.dismiss()
         quitDialog = null
+        cloudflareDialog?.takeIf { it.isShowing }?.dismiss()
+        cloudflareDialog = null
+        pendingCloudflareStream = null
+        pendingCloudflareResumeMs = 0L
         uiHandler.removeCallbacksAndMessages(null)
         if (::engine.isInitialized) engine.release()
         super.onDestroy()

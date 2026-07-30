@@ -88,9 +88,16 @@ object StreamValidator {
      * request (cheap: no body transfer) and, if the server rejects HEAD with
      * 405/501, falls back to a tiny Range GET so we still see a real status
      * code without downloading the entire media.
+     *
+     * The most recent HTTP response code is written back to
+     * [StreamItem.httpStatusCode] so callers can distinguish 403 (Cloudflare
+     * challenge) from other 4xx/5xx failures without re-issuing the request.
      */
     private suspend fun probe(stream: StreamItem): Boolean {
-        if (stream.url.isBlank()) return false
+        if (stream.url.isBlank()) {
+            stream.httpStatusCode = -1
+            return false
+        }
         val baseBuilder = Request.Builder().url(stream.url)
         stream.headers.forEach { (key, value) ->
             runCatching { baseBuilder.header(key, value) }
@@ -98,6 +105,7 @@ object StreamValidator {
         val head = runCatching { client.newCall(baseBuilder.head().build()).execute() }.getOrNull()
         if (head != null) {
             head.use { response ->
+                stream.httpStatusCode = response.code
                 when {
                     response.isSuccessful -> return true
                     response.code == 405 || response.code == 501 -> {
@@ -119,8 +127,46 @@ object StreamValidator {
             .build()
         return runCatching {
             client.newCall(getRequest).execute().use { response ->
+                stream.httpStatusCode = response.code
                 response.isSuccessful
             }
         }.getOrDefault(false)
+    }
+
+    /**
+     * Issue a one-shot probe of [stream] and return the raw HTTP status code
+     * that the server replied with. `null` is returned when the probe cannot
+     * complete (DNS failure, connection refused, timeout, etc.).
+     *
+     * This is a lighter-weight alternative to [validateAll]: it does not
+     * mutate [stream.isValid] / [stream.isChecking] because it's intended to
+     * be used as a quick pre-flight check on a single candidate (e.g. "is
+     * this stream gated by Cloudflare?") right before playback starts.
+     */
+    suspend fun probeStatus(stream: StreamItem): Int? {
+        if (stream.url.isBlank()) return null
+        val baseBuilder = Request.Builder().url(stream.url)
+        stream.headers.forEach { (key, value) ->
+            runCatching { baseBuilder.header(key, value) }
+        }
+        val head = runCatching { client.newCall(baseBuilder.head().build()).execute() }.getOrNull()
+        if (head != null) {
+            head.use { response ->
+                if (response.code != 405 && response.code != 501) {
+                    stream.httpStatusCode = response.code
+                    return response.code
+                }
+            }
+        }
+        val getRequest = baseBuilder
+            .get()
+            .header("Range", "bytes=0-${RANGE_FALLBACK_BYTES.toInt() - 1}")
+            .build()
+        return runCatching {
+            client.newCall(getRequest).execute().use { response ->
+                stream.httpStatusCode = response.code
+                response.code
+            }
+        }.getOrNull()
     }
 }

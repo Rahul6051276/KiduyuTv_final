@@ -25,6 +25,7 @@ import androidx.media3.exoplayer.source.SingleSampleMediaSource
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.SubtitleItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api.HttpCookieStore
+import com.kiduyuk.klausk.kiduyutv.ui.player.cloudflareBypass.CloudflareBypassActivity
 
 /**
  * Thin wrapper around [ExoPlayer] that:
@@ -83,6 +84,27 @@ class PlayerEngine(context: Context) {
         } else {
             sanitizeUserAgent(stream.headers)
         }
+        // Reuse a Cloudflare `cf_clearance` cookie captured by
+        // [CloudflareBypassActivity] for the same host so the next playback
+        // attempt can pass through the Cloudflare gate without re-solving
+        // the challenge. Only applied when the stream did not already ship
+        // its own `Cookie` header and no in-memory cookie is available.
+        if (headers.keys.none { it.equals("Cookie", ignoreCase = true) }) {
+            val cfCookie = loadSavedCloudflareCookie(stream.url)
+            if (!cfCookie.isNullOrBlank()) {
+                val merged = LinkedHashMap(headers)
+                merged["Cookie"] = cfCookie
+                Log.i(
+                    TAG,
+                    "Attaching saved Cloudflare cookie (${cfCookie.length} chars) " +
+                        "to playback for ${stream.url}"
+                )
+                // Skip the in-memory HttpCookieStore path: cf_clearance takes
+                // priority and we don't want the platform cookie jar to
+                // shadow it.
+                return merged
+            }
+        }
         val storedCookie = HttpCookieStore.cookieHeader(stream.url)
         if (
             storedCookie.isNullOrBlank() ||
@@ -91,6 +113,17 @@ class PlayerEngine(context: Context) {
             return headers
         }
         return LinkedHashMap(headers).apply { put("Cookie", storedCookie) }
+    }
+
+    /**
+     * Reads the Cloudflare cookie blob previously stored by
+     * [CloudflareBypassActivity] for [url]'s host. Returns `null` when no
+     * cookie is saved or the URL is unparseable.
+     */
+    private fun loadSavedCloudflareCookie(url: String): String? {
+        val host = runCatching { Uri.parse(url).host }.getOrNull()?.takeIf { it.isNotBlank() }
+            ?: return null
+        return CloudflareBypassActivity.loadCookies(appContext, host)
     }
 
     /**
