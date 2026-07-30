@@ -24,7 +24,16 @@ data class StreamItem(
     /** Optional MIME type, for example `application/vnd.apple.mpegurl`. */
     val mimeType: String = "",
     /** HTTP headers to attach when fetching the manifest and segments. */
-    val headers: Map<String, String> = emptyMap()
+    val headers: Map<String, String> = emptyMap(),
+    /**
+     * Mutable validation status. Set to `true` after a successful HEAD/Range
+     * probe confirms the upstream is reachable and returns 2xx. The
+     * `StreamSelectionDialog` reads this flag to render the "stream ok"
+     * badge for working sources.
+     */
+    var isValid: Boolean = false,
+    /** `true` while a background validity check is in progress for this stream. */
+    var isChecking: Boolean = false
 )
 
 /**

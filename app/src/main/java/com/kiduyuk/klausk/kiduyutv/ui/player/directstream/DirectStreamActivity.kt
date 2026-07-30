@@ -37,6 +37,7 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamCatalog
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamProviderChoice
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamResolver
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamSelectionDialog
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.StreamValidator
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.playback.TrackSelectionDialog
 import com.kiduyuk.klausk.kiduyutv.util.FirebaseManager
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
@@ -679,11 +680,33 @@ class DirectStreamActivity : AppCompatActivity() {
                     updateBottomFocusChain()
                     binding.playerStatus.visibility = View.GONE
                     playBest(items)
+                    validateStreamsInBackground(items)
                 }
             }.onFailure { error ->
                 Log.w(TAG, "Stream fetch failed: ${error.message}")
                 Log.w(PROVIDER_TAG, "Stream fetch failed for provider=${provider.displayName}: ${error.message}")
                 showStatus(getString(R.string.streams_failed), retry = true)
+            }
+        }
+    }
+
+    /**
+     * Probe every loaded [StreamItem] in the background to confirm the
+     * upstream CDN is reachable. Each result is written back to the item
+     * (`isValid`, `isChecking`) and the open [StreamSelectionDialog] — if
+     * any — is refreshed so the "stream ok" badge can render.
+     */
+    private fun validateStreamsInBackground(items: List<StreamItem>) {
+        lifecycleScope.launch {
+            val validated = StreamValidator.validateAll(items)
+            withContext(Dispatchers.Main) {
+                availableStreams = validated
+                streamDialog?.updateStreams(validated)
+                val okCount = validated.count { it.isValid }
+                Log.i(
+                    PROVIDER_TAG,
+                    "stream ok: $okCount/${validated.size} candidates validated"
+                )
             }
         }
     }

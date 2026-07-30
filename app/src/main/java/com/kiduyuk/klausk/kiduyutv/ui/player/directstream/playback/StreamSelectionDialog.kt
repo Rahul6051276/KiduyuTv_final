@@ -20,13 +20,14 @@ import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 
 class StreamSelectionDialog(
     context: Context,
-    private val streams: List<StreamItem>,
-    private val activeUrl: String?,
+    private var streams: List<StreamItem>,
+    private var activeUrl: String?,
     private val onStreamSelected: (StreamItem) -> Unit
 ) : Dialog(context) {
 
     private val list: ListView
     private val close: TextView
+    private val streamAdapter: StreamAdapter
 
     init {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -42,7 +43,8 @@ class StreamSelectionDialog(
 
         list = view.findViewById(R.id.listStreams)
         close = view.findViewById(R.id.btnCloseStreams)
-        list.adapter = StreamAdapter(context, streams, activeUrl)
+        streamAdapter = StreamAdapter(context, streams, activeUrl)
+        list.adapter = streamAdapter
         list.setOnItemClickListener { _, _, position, _ ->
             streams.getOrNull(position)?.let {
                 onStreamSelected(it)
@@ -75,14 +77,33 @@ class StreamSelectionDialog(
         dismiss()
     }
 
+    /**
+     * Refresh the dialog with an updated stream list. Called by
+     * [com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity]
+     * once the [StreamValidator] finishes probing each entry, so the
+     * "stream ok" badge appears without the user having to reopen the
+     * dialog.
+     */
+    fun updateStreams(updated: List<StreamItem>) {
+        if (!isShowing) return
+        streams = updated
+        streamAdapter.replace(updated, activeUrl)
+    }
+
     private class StreamAdapter(
         private val context: Context,
-        private val streams: List<StreamItem>,
-        private val activeUrl: String?
+        private var streams: List<StreamItem>,
+        private var activeUrl: String?
     ) : BaseAdapter() {
         override fun getCount(): Int = streams.size
         override fun getItem(position: Int): StreamItem = streams[position]
         override fun getItemId(position: Int): Long = position.toLong()
+
+        fun replace(newStreams: List<StreamItem>, newActiveUrl: String?) {
+            streams = newStreams
+            activeUrl = newActiveUrl
+            notifyDataSetChanged()
+        }
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val stream = getItem(position)
@@ -100,6 +121,26 @@ class StreamSelectionDialog(
             view.findViewById<View>(R.id.trackCheck).visibility =
                 if (active) View.VISIBLE else View.INVISIBLE
             view.isActivated = active
+
+            // Render the validation status badge. We only show "stream ok"
+            // when the upstream probe reported 2xx; otherwise the row stays
+            // neutral and the user can still try it manually.
+            val statusView = view.findViewById<TextView>(R.id.trackStatus)
+            when {
+                stream.isValid -> {
+                    statusView.text = context.getString(R.string.stream_ok)
+                    statusView.setBackgroundResource(R.drawable.bg_stream_status_ok)
+                    statusView.visibility = View.VISIBLE
+                }
+                stream.isChecking -> {
+                    statusView.text = context.getString(R.string.stream_checking)
+                    statusView.setBackgroundResource(R.drawable.bg_stream_status_pending)
+                    statusView.visibility = View.VISIBLE
+                }
+                else -> {
+                    statusView.visibility = View.GONE
+                }
+            }
             return view
         }
     }
