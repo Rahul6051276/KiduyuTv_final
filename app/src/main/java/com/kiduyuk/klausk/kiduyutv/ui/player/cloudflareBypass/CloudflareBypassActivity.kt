@@ -866,7 +866,7 @@ class CloudflareBypassActivity : AppCompatActivity() {
         try {
             loadingDialog = ProgressDialog(this).apply {
                 setMessage("Opening $targetHost…")
-                setCancelable(false)
+                setCancelable(true)
                 setCanceledOnTouchOutside(false)
                 show()
             }
