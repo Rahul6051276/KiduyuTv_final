@@ -630,16 +630,21 @@ class DirectStreamActivity : AppCompatActivity() {
         handlingPlaybackError = true
         Log.e(
             TAG,
-            "Playback failed code=$code; closing DirectStreamActivity"
+            "Playback failed code=$code; keeping DirectStreamActivity open for stream selection"
         )
         stopWatchProgressUpdates()
         engine.pause()
+        hideLoadingArtwork()
+        binding.playerStatus.visibility = View.GONE
+        showControls()
+        if (binding.btnPlayerStreams.visibility == View.VISIBLE) {
+            binding.btnPlayerStreams.requestFocus()
+        }
         Toast.makeText(
             this,
-            getString(R.string.player_error, code),
+            R.string.playback_failed_try_another_stream,
             Toast.LENGTH_LONG
         ).show()
-        finish()
     }
 
     private fun loadAndPlay(
@@ -708,6 +713,7 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
+        handlingPlaybackError = false
         stopWatchProgressUpdates()
         showLoadingArtwork()
         showStatus(getString(R.string.buffering), retry = false)
