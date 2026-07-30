@@ -24,6 +24,13 @@
     <string name="player_error">Playback error: %1$s</string>
     <string name="playback_failed_try_another_stream">Playback failed. Please try another stream.</string>
     <string name="playback_failed_retry">Playback failed (%1$s). Select to retry.</string>
+    <string name="title_activity_cloudflare_bypass">Cloudflare Verification</string>
+    <string name="cloudflare_bypass_loading">Verifying your connection…</string>
+    <string name="cloudflare_bypass_waiting">Please complete the verification in the WebView. Cookies will be saved automatically.</string>
+    <string name="cloudflare_bypass_error">Verification failed. Please try again.</string>
+    <string name="cloudflare_bypass_invalid_url">Invalid URL provided for Cloudflare verification.</string>
+    <string name="cloudflare_bypass_missing_url">Verification URL is missing.</string>
+    <string name="cloudflare_bypass_open_failed">Unable to open verification page.</string>
     <string name="back">← Back</string>
     <string name="playback_link_unavailable">Playback link is unavailable</string>
     <string name="track_settings">Tracks</string>

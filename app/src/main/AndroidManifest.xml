@@ -86,6 +86,14 @@
             android:theme="@style/Theme.KiduyuTv.Player" />
 
         <activity
+            android:name=".ui.player.cloudflareBypass.CloudflareBypassActivity"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:exported="false"
+            android:hardwareAccelerated="true"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.KiduyuTv.Player" />
+
+        <activity
             android:name=".ui.player.directstream.DirectStreamActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:exported="false"
