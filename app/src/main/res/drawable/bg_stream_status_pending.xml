@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Rounded amber pill shown while a stream is being probed. The user sees
+    this transient state from the moment the dialog opens until the HEAD
+    (or fallback Range GET) request completes.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#7A5A12" />
+    <corners android:radius="12dp" />
+    <stroke
+        android:width="1dp"
+        android:color="#C28E1E" />
+</shape>

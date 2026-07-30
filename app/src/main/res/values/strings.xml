@@ -49,6 +49,8 @@
     <string name="stream_sources_cd">Choose playback stream</string>
     <string name="stream_choose">Choose Stream</string>
     <string name="stream_choose_hint">Select another playback source</string>
+    <string name="stream_ok">stream ok</string>
+    <string name="stream_checking">checking…</string>
     <string name="skip_back">Rewind</string>
     <string name="skip_forward">Fast forward</string>
     <string name="player_fit">Fit</string>
