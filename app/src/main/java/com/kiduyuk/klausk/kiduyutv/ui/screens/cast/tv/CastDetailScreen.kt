@@ -169,8 +169,14 @@ class CastDetailViewModel : ViewModel() {
                     )
                 }
 
-                // Combine and sort by popularity (highest first)
+                // Combine, deduplicate by (mediaType, id), and sort by rating
+                // (highest first). TMDB can legitimately return the same
+                // production more than once for a person (e.g. multiple roles
+                // in the same title, or appearing in both the cast and crew
+                // arrays), so we collapse those duplicates here so the
+                // filmography grid does not render the same card twice.
                 val combinedMedia = (movieItems + tvShowItems)
+                    .distinctBy { it.id to it.mediaType }
                     .sortedByDescending { it.voteAverage ?: 0.0 }
 
                 _uiState.value = _uiState.value.copy(
