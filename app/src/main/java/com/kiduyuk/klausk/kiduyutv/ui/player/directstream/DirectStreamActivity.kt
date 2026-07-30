@@ -876,6 +876,21 @@ class DirectStreamActivity : AppCompatActivity() {
                 "excludedHighResolution=${items.size - automaticCandidates.size} url=${chosen.url}"
         )
         val resumeMs = consumePendingStartPosition()
+        // Proactive Cloudflare bypass for the oogachaka CDN: if the stream
+        // comes from serve.oogachakacdn.store and we don't already have a
+        // saved cf_clearance cookie, open the bypass activity immediately
+        // instead of waiting for ExoPlayer to surface a generic 403 error.
+        if (needsOogachakaBypass(chosen)) {
+            Log.w(
+                TAG,
+                "Oogachaka CDN stream detected without saved cookies; " +
+                    "launching CloudflareBypassActivity directly"
+            )
+            pendingCloudflareStream = chosen
+            pendingCloudflareResumeMs = resumeMs
+            launchCloudflareBypass(chosen)
+            return
+        }
         // Pre-flight 403 detection. If the manifest URL is gated by
         // Cloudflare, give the user the option to open the bypass screen
         // *before* ExoPlayer emits a generic "Playback failed" toast.
@@ -884,6 +899,32 @@ class DirectStreamActivity : AppCompatActivity() {
         } else {
             startStreamPlayback(chosen, resumeMs)
         }
+    }
+
+    /**
+     * Detects streams hosted on the oogachaka CDN
+     * (https://serve.oogachakacdn.store) that do not have a saved
+     * `cf_clearance` cookie yet. The oogachaka CDN reliably responds with
+     * a 403 challenge to fresh clients, so we short-circuit the
+     * probe-and-prompt flow and launch the bypass activity directly.
+     */
+    private fun needsOogachakaBypass(stream: StreamItem): Boolean {
+        if (stream.url.isBlank()) return false
+        if (!stream.url.startsWith(OOGACHAKA_STREAM_PREFIX)) return false
+        val host = runCatching { Uri.parse(stream.url).host }
+            .getOrNull()
+            ?.takeIf { it.isNotBlank() }
+            ?: return false
+        val saved = CloudflareBypassActivity.loadCookies(applicationContext, host)
+        if (!saved.isNullOrBlank()) {
+            Log.i(
+                TAG,
+                "Oogachaka bypass skipped for $host — saved Cloudflare " +
+                    "cookie present (${saved.length} chars)"
+            )
+            return false
+        }
+        return true
     }
 
     /**
@@ -1654,6 +1695,8 @@ class DirectStreamActivity : AppCompatActivity() {
 
         const val TYPE_MOVIE  = "movie"
         const val TYPE_SERIES = "series"
+
+        private const val OOGACHAKA_STREAM_PREFIX = "https://serve.oogachakacdn.store"
 
         private const val SKIP_SEC_MIN = 10
         private const val WATCH_PROGRESS_INTERVAL_MS = 15_000L
