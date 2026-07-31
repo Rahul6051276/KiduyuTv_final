@@ -311,8 +311,8 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnPlayerSubtitles.setOnClickListener { searchSubdlSubtitles() }
         binding.playerView.setOnClickListener { showControls() }
         binding.overlayControls.setOnClickListener { showControls() }
-        binding.btnRewind.setOnClickListener { engine.seekBy(-10_000L); showControls() }
-        binding.btnForward.setOnClickListener { engine.seekBy(10_000L); showControls() }
+        binding.btnRewind.setOnClickListener { engine.seekBy(-30_000L); showControls() }
+        binding.btnForward.setOnClickListener { engine.seekBy(30_000L); showControls() }
         binding.btnPlayPause.setOnClickListener {
             if (engine.player.isPlaying) engine.pause() else engine.resume()
             showControls()
