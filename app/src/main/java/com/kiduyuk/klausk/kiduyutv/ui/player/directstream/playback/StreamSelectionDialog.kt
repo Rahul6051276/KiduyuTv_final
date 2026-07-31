@@ -139,7 +139,7 @@ class StreamSelectionDialog(
                     statusView.setBackgroundResource(R.drawable.bg_stream_status_pending)
                     statusView.visibility = View.VISIBLE
                 }
-                stream.isFailed, stream.httpStatusCode == 0 || stream.httpStatusCode >= 400 -> {
+                stream.isFailed || stream.httpStatusCode == 0 || (stream.httpStatusCode ?: 0) >= 400 -> {
                     // Show failed badge for explicitly failed streams or streams
                     // with HTTP error codes (4xx/5xx) or unknown status (0)
                     statusView.text = context.getString(R.string.stream_failed)
