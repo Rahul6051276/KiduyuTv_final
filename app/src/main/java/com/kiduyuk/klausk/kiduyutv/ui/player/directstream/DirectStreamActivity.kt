@@ -1200,6 +1200,11 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun showStatus(message: String, retry: Boolean) {
+        if (::engine.isInitialized && engine.player.isPlaying) {
+            binding.playerStatus.setOnClickListener(null)
+            binding.playerStatus.visibility = View.GONE
+            return
+        }
         binding.playerStatus.text = message
         binding.playerStatus.visibility = View.VISIBLE
         if (retry) {
