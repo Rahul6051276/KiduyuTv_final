@@ -868,6 +868,7 @@ class DirectStreamActivity : AppCompatActivity() {
                 if (
                     active != null &&
                     !handlingPlaybackError &&
+                    !engine.player.isPlaying &&
                     cloudflareDialog?.isShowing != true &&
                     active.httpStatusCode == 403 &&
                     CloudflareBypassActivity.loadCookies(
@@ -881,7 +882,6 @@ class DirectStreamActivity : AppCompatActivity() {
                         "Background validation flagged active stream as 403; " +
                             "offering Cloudflare bypass"
                     )
-                    engine.pause()
                     val resumeMs = engine.player.currentPosition.coerceAtLeast(0L)
                     showCloudflareBypassDialog(active, resumeMs)
                 }
@@ -1005,7 +1005,7 @@ class DirectStreamActivity : AppCompatActivity() {
         // route every load to the bypass activity before handing the stream
         // to ExoPlayer. Catches streams that bypass the playBest() check
         // (e.g. switchStream, loadExternalSubtitle, sniffed playback).
-        if (needsOogachakaBypass(stream)) {
+        if (!engine.player.isPlaying && needsOogachakaBypass(stream)) {
             Log.w(
                 TAG,
                 "startStreamPlayback intercepted oogachaka stream without " +
@@ -1035,7 +1035,7 @@ class DirectStreamActivity : AppCompatActivity() {
      * through to plain playback so the user still gets a chance to retry.
      */
     private fun offerCloudflareBypass(stream: StreamItem, resumeMs: Long) {
-        if (isFinishing || isDestroyed) return
+        if (isFinishing || isDestroyed || engine.player.isPlaying) return
         showStatus(getString(R.string.cloudflare_blocked_checking), retry = false)
         showLoadingArtwork()
         cloudflareProbeJob?.cancel()
@@ -1043,7 +1043,7 @@ class DirectStreamActivity : AppCompatActivity() {
             val code = withContext(Dispatchers.IO) {
                 StreamValidator.probeStatus(stream)
             }
-            if (isFinishing || isDestroyed) return@launch
+            if (isFinishing || isDestroyed || engine.player.isPlaying) return@launch
             Log.i(
                 TAG,
                 "Cloudflare probe for ${stream.provider} ${stream.quality} " +
@@ -1068,7 +1068,7 @@ class DirectStreamActivity : AppCompatActivity() {
      * the user can pick a different stream from the dialog.
      */
     private fun showCloudflareBypassDialog(stream: StreamItem, resumeMs: Long) {
-        if (isFinishing || isDestroyed) return
+        if (isFinishing || isDestroyed || engine.player.isPlaying) return
         cloudflareDialog?.takeIf { it.isShowing }?.dismiss()
         engine.pause()
         hideLoadingArtwork()
