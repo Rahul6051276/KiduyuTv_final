@@ -208,7 +208,7 @@ class TrackSelectionDialog(
                 groupIndex = -1,
                 trackIndex = -1,
                 title = autoLabel,
-                subtitle = "Default",
+                subtitle = if (type == C.TRACK_TYPE_TEXT) "" else "Default",
                 isAuto = true,
                 isSelected = false
             )
@@ -217,14 +217,26 @@ class TrackSelectionDialog(
             if (group.type != type || group.length == 0) return@forEachIndexed
             for (trackIndex in 0 until group.length) {
                 val format = group.getTrackFormat(trackIndex)
+                val isDefaultSubtitle = type == C.TRACK_TYPE_TEXT &&
+                    format.label.isNullOrBlank() &&
+                    (format.language.isNullOrBlank() ||
+                        format.language.equals("und", ignoreCase = true))
                 rows.add(
                     TrackRow(
                         type = type,
                         groupIndex = groupIndex,
                         trackIndex = trackIndex,
-                        title = TrackFormatter.titleOf(format),
-                        subtitle = TrackFormatter.describe(format)
-                            .ifBlank { TrackFormatter.languageDisplay(format.language ?: "") },
+                        title = if (isDefaultSubtitle) {
+                            "Default"
+                        } else {
+                            TrackFormatter.titleOf(format)
+                        },
+                        subtitle = if (isDefaultSubtitle) {
+                            ""
+                        } else {
+                            TrackFormatter.describe(format)
+                                .ifBlank { TrackFormatter.languageDisplay(format.language ?: "") }
+                        },
                         isAuto = false,
                         isSelected = false
                     )
