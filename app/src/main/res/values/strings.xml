@@ -67,6 +67,8 @@
     <string name="stream_failed">stream failed</string>
     <string name="skip_back">Rewind</string>
     <string name="skip_forward">Fast forward</string>
+    <string name="direct_stream_rewind_30">−30</string>
+    <string name="direct_stream_forward_30">+30</string>
     <string name="player_fit">Fit</string>
     <string name="player_fill">Fill</string>
     <string name="player_zoom">Zoom</string>

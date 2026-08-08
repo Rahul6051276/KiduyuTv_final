@@ -204,7 +204,7 @@ class DirectStreamActivity : AppCompatActivity() {
         }
     }
 
-    // D-pad left/right ramp seeking: 10s on press, repeating every 600ms
+    // D-pad left/right ramp seeking: 30s on press, repeating every 600ms
     // and ramping up to 60s after 5 seconds of holding.
     private var skipDirection = 0
     private var skipHoldStart = 0L
@@ -275,8 +275,16 @@ class DirectStreamActivity : AppCompatActivity() {
                     }
                     Player.STATE_ENDED -> {
                         stopWatchProgressUpdates()
-                        persistWatchProgress()
                         binding.playerStatus.visibility = View.GONE
+                        if (currentMediaType == TYPE_SERIES && currentEpisode != null) {
+                            Log.i(
+                                TAG,
+                                "Episode playback ended; loading the next episode automatically"
+                            )
+                            loadAdjacentEpisode(1)
+                        } else {
+                            persistWatchProgress()
+                        }
                     }
                     // Preserve "Loading streams" and retry messages while
                     // Media3 is idle; IDLE does not mean the request failed.
@@ -1715,11 +1723,11 @@ class DirectStreamActivity : AppCompatActivity() {
 
         private const val OOGACHAKA_STREAM_PREFIX = "https://serve.oogachakacdn.store"
 
-        private const val SKIP_SEC_MIN = 10
+        private const val SKIP_SEC_MIN = 30
         private const val WATCH_PROGRESS_INTERVAL_MS = 15_000L
         private const val FIREBASE_HISTORY_TIMEOUT_MS = 8_000L
         private const val SKIP_SEC_MAX = 60
-        private const val SEEK_STEP_MS = 10_000L
+        private const val SEEK_STEP_MS = 30_000L
         private const val SKIP_RAMP_DURATION_MS = 5_000L
         private const val SKIP_REPEAT_MS = 600L
     }

@@ -111,7 +111,7 @@
             android:nextFocusDown="@id/btnFill"
             android:nextFocusRight="@id/btnPlayPause"
             android:nextFocusUp="@id/btnPlayerBack"
-            android:text="−10" />
+            android:text="@string/direct_stream_rewind_30" />
 
         <TextView
             android:id="@+id/btnForward"
@@ -124,7 +124,7 @@
             android:nextFocusDown="@id/btnVolume"
             android:nextFocusLeft="@id/btnPlayPause"
             android:nextFocusUp="@id/btnPlayerBack"
-            android:text="+10" />
+            android:text="@string/direct_stream_forward_30" />
 
         <TextView
             android:id="@+id/btnPlayPause"
