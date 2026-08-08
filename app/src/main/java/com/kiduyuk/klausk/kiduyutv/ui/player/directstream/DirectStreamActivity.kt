@@ -79,6 +79,7 @@ class DirectStreamActivity : AppCompatActivity() {
     private var trackDialog: TrackSelectionDialog? = null
     private var streamDialog: StreamSelectionDialog? = null
     private var subtitleDialog: AlertDialog? = null
+    private var noStreamsDialog: AlertDialog? = null
     private var quitDialog: QuitDialog? = null
     private var cloudflareDialog: AlertDialog? = null
     private var cloudflareProbeJob: Job? = null
@@ -773,6 +774,8 @@ class DirectStreamActivity : AppCompatActivity() {
         provider: StreamProviderChoice
     ) {
         streamJob?.cancel()
+        noStreamsDialog?.takeIf { it.isShowing }?.dismiss()
+        noStreamsDialog = null
         availableStreams = emptyList()
         activeStream = null
         activeSubtitles = emptyList()
@@ -789,7 +792,8 @@ class DirectStreamActivity : AppCompatActivity() {
                 Log.i(PROVIDER_TAG, "loadAndPlay received ${items.size} streams for provider=${provider.displayName}")
                 if (items.isEmpty()) {
                     Log.w(PROVIDER_TAG, "Empty stream list for provider=${provider.displayName}")
-                    showStatus(getString(R.string.streams_empty), retry = true)
+                    showStatus(getString(R.string.streams_empty), retry = false)
+                    showNoStreamsDialog()
                 } else {
                     availableStreams = items
                     binding.btnPlayerStreams.visibility =
@@ -805,6 +809,33 @@ class DirectStreamActivity : AppCompatActivity() {
                 showStatus(getString(R.string.streams_failed), retry = true)
             }
         }
+    }
+
+    private fun showNoStreamsDialog() {
+        if (isFinishing || isDestroyed || noStreamsDialog?.isShowing == true) return
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.no_streams_dialog_title)
+            .setMessage(R.string.no_streams_dialog_message)
+            .setCancelable(false)
+            .setPositiveButton(R.string.no_streams_retry) { currentDialog, _ ->
+                currentDialog.dismiss()
+                loadCurrentMedia()
+            }
+            .setNegativeButton(R.string.no_streams_exit) { currentDialog, _ ->
+                currentDialog.dismiss()
+                finish()
+            }
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.requestFocus()
+        }
+        dialog.setOnDismissListener {
+            if (noStreamsDialog === dialog) noStreamsDialog = null
+        }
+        noStreamsDialog = dialog
+        dialog.show()
     }
 
     /**
@@ -1606,6 +1637,8 @@ class DirectStreamActivity : AppCompatActivity() {
         streamDialog = null
         subtitleDialog?.takeIf { it.isShowing }?.dismiss()
         subtitleDialog = null
+        noStreamsDialog?.takeIf { it.isShowing }?.dismiss()
+        noStreamsDialog = null
         quitDialog?.takeIf { it.isShowing }?.dismiss()
         quitDialog = null
         cloudflareDialog?.takeIf { it.isShowing }?.dismiss()

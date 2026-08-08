@@ -19,6 +19,10 @@
     <string name="others_also_watched">Others Also Watched</string>
     <string name="streams_loading">Loading streams…</string>
     <string name="streams_empty">No streams returned by the server.</string>
+    <string name="no_streams_dialog_title">No streams found</string>
+    <string name="no_streams_dialog_message">No playable streams were found for this media. Would you like to try again or exit the player?</string>
+    <string name="no_streams_retry">Retry</string>
+    <string name="no_streams_exit">Exit</string>
     <string name="streams_failed">Could not load streams. Select to retry.</string>
     <string name="buffering">Buffering…</string>
     <string name="player_error">Playback error: %1$s</string>
