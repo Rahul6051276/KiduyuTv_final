@@ -806,7 +806,8 @@ class DirectStreamActivity : AppCompatActivity() {
             }.onFailure { error ->
                 Log.w(TAG, "Stream fetch failed: ${error.message}")
                 Log.w(PROVIDER_TAG, "Stream fetch failed for provider=${provider.displayName}: ${error.message}")
-                showStatus(getString(R.string.streams_failed), retry = true)
+                showStatus(getString(R.string.streams_failed), retry = false)
+                showNoStreamsDialog()
             }
         }
     }
