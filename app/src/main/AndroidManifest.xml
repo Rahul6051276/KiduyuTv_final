@@ -39,16 +39,23 @@
         
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713" />
-        <meta-data
-            android:name="com.startapp.sdk.APPLICATION_ID"
-            android:value="${startAppAppId}"/>
+            android:value="${admobAppId}" />
         <meta-data
             android:name="com.startapp.sdk.DISABLE_APP_WALL"
             android:value="true"/>
         <meta-data
-            android:name="com.startapp.sdk.DISABLE_SPLASH"
-            android:value="true"/>
+            android:name="com.startapp.sdk.SPLASH_ENABLED"
+            android:value="false"/>
+        <meta-data
+            android:name="com.startapp.sdk.RETURN_ADS_ENABLED"
+            android:value="false"/>
+
+        <!-- Use code initialization after UMP resolves so Start.io receives the
+             same consent choice as AdMob. Disable the SDK's auto-init provider. -->
+        <provider
+            android:name="com.startapp.sdk.adsbase.StartAppInitProvider"
+            android:authorities="${applicationId}.startappinitprovider"
+            tools:node="remove" />
 
         <meta-data
             android:name="com.unity3d.ads.UNITY_ADS_GAME_ID"

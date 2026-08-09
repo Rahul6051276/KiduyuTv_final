@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
-import com.kiduyuk.klausk.kiduyutv.util.StartAppAdManager.MIN_INTERSTITIAL_INTERVAL_MS
+import com.kiduyuk.klausk.kiduyutv.BuildConfig
 import com.startapp.sdk.ads.banner.Banner
 import com.startapp.sdk.ads.banner.BannerListener
 import com.startapp.sdk.adsbase.Ad
@@ -29,7 +29,6 @@ object StartAppAdManager {
 
     private const val TAG = "StartAppAdManager"
     private const val MIN_INTERSTITIAL_INTERVAL_MS = 3 * 60 * 1000L
-    private const val APP_ID = "205544913" // TODO: Replace with your actual Start.io App ID
 
     @Volatile
     var isInitialised = false
@@ -39,18 +38,24 @@ object StartAppAdManager {
     private var lastInterstitialShownAt = 0L
 
     /**
-     * Pre-load StartApp ads. Call once from [KiduyuTvApp.onCreate].
+     * Initialize Start.io once after UMP consent has resolved.
      */
+    @Synchronized
     fun preloadAds(context: Context) {
+        if (isInitialised) return
         if (!shouldShowAds(context)) {
             Log.i(TAG, "Ads disabled - skipping StartApp preload")
             return
         }
         try {
-            // FIX: Use modern StartAppSDK.initParams builder pattern
-            StartAppSDK.initParams(context, APP_ID)
-                .setReturnAdsEnabled(false) // Blocks annoying ads when users re-open the app
-                .init()
+            // Code initialization is intentionally delayed until UMP resolves.
+            // The final false disables return ads so AdMob and Start.io cannot
+            // stack full-screen ads when the app returns to the foreground.
+            StartAppSDK.init(
+                context.applicationContext,
+                BuildConfig.START_IO_APP_ID,
+                false
+            )
 
             StartAppSDK.setUserConsent(
                 context,
@@ -80,6 +85,8 @@ object StartAppAdManager {
      */
     fun loadBanner(activity: Activity, container: ViewGroup) {
         if (!shouldShowAds(activity)) return
+        if (!isInitialised) preloadAds(activity)
+        if (!isInitialised) return
         try {
             container.removeAllViews()
             val banner = Banner(activity)
@@ -120,6 +127,11 @@ object StartAppAdManager {
      */
     fun showInterstitial(activity: Activity, onDismissed: () -> Unit = {}) {
         if (!shouldShowAds(activity)) {
+            onDismissed()
+            return
+        }
+        if (!isInitialised) preloadAds(activity)
+        if (!isInitialised) {
             onDismissed()
             return
         }
@@ -180,6 +192,11 @@ object StartAppAdManager {
         onDismissed: () -> Unit = {}
     ) {
         if (!shouldShowAds(activity)) {
+            onDismissed()
+            return
+        }
+        if (!isInitialised) preloadAds(activity)
+        if (!isInitialised) {
             onDismissed()
             return
         }

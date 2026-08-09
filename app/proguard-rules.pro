@@ -79,7 +79,7 @@
 ##############################################
 
 -keepattributes Signature
--keepattributes *Annotation*
+-keepattributes Exceptions,InnerClasses,Signature,Deprecated,SourceFile,LineNumberTable,*Annotation*,EnclosingMethod
 
 -keep class retrofit2.** { *; }
 -keep class okhttp3.** { *; }
@@ -148,6 +148,9 @@
     @com.startapp.sdk.adsbase.annotations.* <methods>;
 }
 -keep class com.startapp.sdk.adsbase.mediation.** { *; }
+-dontwarn android.webkit.JavascriptInterface
+-dontwarn com.startapp.**
+-dontwarn org.jetbrains.annotations.**
 
 ##############################################
 # 📢 UNITY ADS

@@ -1,12 +1,15 @@
 package com.kiduyuk.klausk.kiduyutv.ui.components
 
+import android.app.Activity
 import android.content.Context
 import android.util.Log
+import android.widget.FrameLayout
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,11 +26,13 @@ import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
 import com.kiduyuk.klausk.kiduyutv.util.AdUnitIds
 import com.kiduyuk.klausk.kiduyutv.util.SettingsManager
+import com.kiduyuk.klausk.kiduyutv.util.StartAppAdManager
 
 @Composable
 fun BannerAdView(modifier: Modifier = Modifier) {
     val isPreviewMode = LocalInspectionMode.current
     val context: Context = LocalContext.current
+    val activity = context as? Activity
     val screenWidthPx = LocalWindowInfo.current.containerSize.width
     val density = LocalResources.current.displayMetrics.density
     val screenWidthDp = (screenWidthPx / density).toInt().takeIf { it > 0 } ?: 360
@@ -47,6 +52,7 @@ fun BannerAdView(modifier: Modifier = Modifier) {
         return
     }
 
+    val containerRef = remember { mutableStateOf<FrameLayout?>(null) }
     val adView = remember(context, screenWidthDp) {
         AdView(context).apply {
             adUnitId = AdUnitIds.PHONE_BANNER
@@ -58,6 +64,11 @@ fun BannerAdView(modifier: Modifier = Modifier) {
 
                 override fun onAdFailedToLoad(error: LoadAdError) {
                     Log.w(TAG, "Phone banner ad failed to load: ${error.message}")
+                    val container = containerRef.value
+                    if (activity != null && container != null) {
+                        Log.i(TAG, "Loading Start.io phone banner fallback")
+                        StartAppAdManager.loadBanner(activity, container)
+                    }
                 }
 
                 override fun onAdImpression() {
@@ -68,11 +79,19 @@ fun BannerAdView(modifier: Modifier = Modifier) {
                     Log.i(TAG, "Phone banner ad clicked")
                 }
             }
-            loadAd(AdRequest.Builder().build())
         }
     }
 
-    AndroidView(modifier = modifier.wrapContentSize(), factory = { adView })
+    AndroidView(
+        modifier = modifier.wrapContentSize(),
+        factory = { ctx ->
+            FrameLayout(ctx).apply {
+                containerRef.value = this
+                addView(adView)
+                adView.loadAd(AdRequest.Builder().build())
+            }
+        }
+    )
 
     LifecycleResumeEffect(adView) {
         adView.resume()
@@ -83,6 +102,8 @@ fun BannerAdView(modifier: Modifier = Modifier) {
     // composition (not on every recomposition).
     DisposableEffect(Unit) {
         onDispose {
+            containerRef.value?.removeAllViews()
+            containerRef.value = null
             adView.destroy()
         }
     }
