@@ -27,6 +27,7 @@ class StreamSelectionDialog(
 
     private val list: ListView
     private val close: TextView
+    private val streamCount: TextView
     private val streamAdapter: StreamAdapter
 
     init {
@@ -37,12 +38,15 @@ class StreamSelectionDialog(
         window?.let {
             it.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
             it.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            it.setDimAmount(0.6f)
+            it.setDimAmount(0.76f)
             it.setGravity(Gravity.CENTER)
         }
 
         list = view.findViewById(R.id.listStreams)
         close = view.findViewById(R.id.btnCloseStreams)
+        streamCount = view.findViewById(R.id.tvStreamCount)
+        streamCount.text =
+            context.getString(R.string.stream_source_count, streams.size)
         streamAdapter = StreamAdapter(context, streams, activeUrl)
         list.adapter = streamAdapter
         list.setOnItemClickListener { _, _, position, _ ->
@@ -62,7 +66,7 @@ class StreamSelectionDialog(
     override fun onStart() {
         super.onStart()
         val maxWidth = (context.resources.displayMetrics.widthPixels * 0.9f).toInt()
-        val preferredWidth = (680 * context.resources.displayMetrics.density).toInt()
+        val preferredWidth = (720 * context.resources.displayMetrics.density).toInt()
         window?.setLayout(
             preferredWidth.coerceAtMost(maxWidth),
             WindowManager.LayoutParams.WRAP_CONTENT
@@ -87,6 +91,7 @@ class StreamSelectionDialog(
     fun updateStreams(updated: List<StreamItem>) {
         if (!isShowing) return
         streams = updated
+        streamCount.text = context.getString(R.string.stream_source_count, updated.size)
         streamAdapter.replace(updated, activeUrl)
     }
 
@@ -108,18 +113,26 @@ class StreamSelectionDialog(
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val stream = getItem(position)
             val view = convertView ?: LayoutInflater.from(context)
-                .inflate(R.layout.item_direct_stream_track, parent, false)
+                .inflate(R.layout.item_direct_stream_source, parent, false)
             val host = runCatching { Uri.parse(stream.url).host }.getOrNull().orEmpty()
             val title = stream.name.ifBlank { stream.title.ifBlank { "Stream" } }
-            view.findViewById<TextView>(R.id.trackTitle).text =
-                "${position + 1}. $title"
-            view.findViewById<TextView>(R.id.trackSubtitle).apply {
-                text = listOf(stream.quality, host).filter { it.isNotBlank() }.joinToString(" • ")
-                visibility = if (text.isBlank()) View.GONE else View.VISIBLE
+            val provider = stream.provider.ifBlank { title }
+            view.findViewById<TextView>(R.id.streamSourceIcon).text =
+                provider.firstOrNull()?.uppercaseChar()?.toString() ?: (position + 1).toString()
+            view.findViewById<TextView>(R.id.streamSourceTitle).text = title
+            view.findViewById<TextView>(R.id.streamSourceMetadata).apply {
+                val metadata = listOf(
+                    provider,
+                    stream.quality,
+                    stream.type.uppercase(),
+                    host
+                ).filter { it.isNotBlank() }.distinctBy { it.lowercase() }
+                text = metadata.joinToString("  •  ")
+                visibility = if (metadata.isEmpty()) View.GONE else View.VISIBLE
             }
             val active = stream.url == activeUrl
-            view.findViewById<View>(R.id.trackCheck).visibility =
-                if (active) View.VISIBLE else View.INVISIBLE
+            view.findViewById<View>(R.id.streamSourceActive).visibility =
+                if (active) View.VISIBLE else View.GONE
             view.isActivated = active
 
             // Render the validation status badge. We only show "stream ok"
@@ -127,7 +140,7 @@ class StreamSelectionDialog(
             // headers; we show "stream failed" when the probe reached the
             // server (2xx) but the response did not carry video stream signals,
             // or when the stream status is unknown (not yet validated).
-            val statusView = view.findViewById<TextView>(R.id.trackStatus)
+            val statusView = view.findViewById<TextView>(R.id.streamSourceStatus)
             when {
                 stream.isValid && !stream.isFailed -> {
                     statusView.text = context.getString(R.string.stream_ok)
