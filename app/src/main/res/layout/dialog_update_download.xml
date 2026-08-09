@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:cardBackgroundColor="@color/surface_dark"
     app:cardCornerRadius="24dp"
     app:cardElevation="18dp"
-    app:cardPreventCornerOverlap="true">
+    app:cardPreventCornerOverlap="true"
+    app:strokeColor="@color/direct_stream_outline"
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -114,16 +116,18 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
-        <ProgressBar
+        <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/updateProgress"
-            style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_width="match_parent"
             android:layout_height="8dp"
             android:layout_marginTop="10dp"
             android:indeterminate="false"
             android:max="100"
             android:progress="0"
-            android:progressDrawable="@drawable/bg_update_progress" />
+            app:indicatorColor="@color/kiduyu_red"
+            app:trackColor="@color/card_dark"
+            app:trackCornerRadius="4dp"
+            app:trackThickness="8dp" />
 
         <TextView
             android:layout_width="match_parent"
@@ -135,4 +139,4 @@
             android:textColor="@color/text_muted"
             android:textSize="12sp" />
     </LinearLayout>
-</androidx.cardview.widget.CardView>
+</com.google.android.material.card.MaterialCardView>

@@ -24,10 +24,13 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +39,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,7 +60,6 @@ import com.kiduyuk.klausk.kiduyutv.util.UpdateUtil
 import com.kiduyuk.klausk.kiduyutv.util.ConsentManager
 import com.kiduyuk.klausk.kiduyutv.util.StartAppAdManager
 import com.kiduyuk.klausk.kiduyutv.util.AdManager
-import io.github.cutelibs.cutedialog.CuteDialog
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -960,6 +963,12 @@ class SplashActivity : ComponentActivity() {
         } else {
             null
         }
+        val configuration = LocalConfiguration.current
+        val compactHeight = configuration.screenHeightDp < 600
+        val logoContainerSize = if (compactHeight) 92.dp else 118.dp
+        val logoSize = if (compactHeight) 70.dp else 92.dp
+        val brandTextSize = if (compactHeight) 36.sp else 44.sp
+        val loadingSize = if (compactHeight) 64.dp else 84.dp
 
         Box(
             modifier = Modifier
@@ -977,6 +986,18 @@ class SplashActivity : ComponentActivity() {
         ) {
             Box(
                 modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 150.dp, y = (-170).dp)
+                    .size(430.dp)
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(Color(0x33E50914), Color.Transparent)
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
                     .align(Alignment.TopStart)
                     .fillMaxHeight()
                     .width(5.dp)
@@ -987,26 +1008,30 @@ class SplashActivity : ComponentActivity() {
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Top + WindowInsetsSides.Horizontal
+                        )
+                    )
                     .padding(horizontal = 30.dp, vertical = 26.dp),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(Color(0x331C2430))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(18.dp)
-                        )
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xCC1A1D22),
+                    tonalElevation = 6.dp,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Color.White.copy(alpha = 0.10f)
+                    )
                 ) {
                     Text(
                         text = "v${BuildConfig.VERSION_NAME}",
                         color = Color(0xFF9AA3AE),
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
                 }
             }
@@ -1019,46 +1044,40 @@ class SplashActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Box(
+                Card(
                     modifier = Modifier
-                        .size(118.dp)
-                        .clip(RoundedCornerShape(30.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color(0xFF20242B),
-                                    Color(0xFF121418)
-                                )
-                            )
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.10f),
-                            shape = RoundedCornerShape(30.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.mipmap.ic_launcher11),
-                        contentDescription = "KiduyuTV icon",
-                        modifier = Modifier
-                            .size(92.dp)
-                            .clip(RoundedCornerShape(24.dp))
+                        .size(logoContainerSize),
+                    shape = RoundedCornerShape(if (compactHeight) 24.dp else 32.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1D22)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 14.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Color.White.copy(alpha = 0.12f)
                     )
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Image(
+                            painter = painterResource(id = R.mipmap.ic_launcher11),
+                            contentDescription = "KiduyuTV icon",
+                            modifier = Modifier
+                                .size(logoSize)
+                                .clip(RoundedCornerShape(if (compactHeight) 18.dp else 24.dp))
+                        )
+                    }
                 }
 
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = "Kiduyu",
                         color = Color.White,
-                        fontSize = 44.sp,
+                        fontSize = brandTextSize,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 0.sp
                     )
                     Text(
                         text = "TV",
                         color = Color(0xFFE50914),
-                        fontSize = 44.sp,
+                        fontSize = brandTextSize,
                         fontWeight = FontWeight.ExtraBold,
                         letterSpacing = 0.sp
                     )
@@ -1076,7 +1095,7 @@ class SplashActivity : ComponentActivity() {
                 LottieAnimation(
                     composition = lottieComposition,
                     progress = { lottieProgress },
-                    modifier = Modifier.size(84.dp)
+                    modifier = Modifier.size(loadingSize)
                 )
             }
 
@@ -1084,23 +1103,25 @@ class SplashActivity : ComponentActivity() {
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
+                    .windowInsetsPadding(
+                        WindowInsets.safeDrawing.only(
+                            WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal
+                        )
+                    )
                     .padding(horizontal = 30.dp, vertical = 34.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 syncStatus?.let { label ->
-                    Box(
+                    Surface(
                         modifier = Modifier
-                            .widthIn(max = 560.dp)
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(Color(0xFF171B21))
-                            .border(
-                                width = 1.dp,
-                                color = Color.White.copy(alpha = 0.07f),
-                                shape = RoundedCornerShape(18.dp)
-                            )
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                            .widthIn(max = 600.dp),
+                        shape = RoundedCornerShape(50),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color.White.copy(alpha = 0.08f)
+                        )
                     ) {
                         Text(
                             text = label,
@@ -1109,25 +1130,27 @@ class SplashActivity : ComponentActivity() {
                             fontWeight = FontWeight.Medium,
                             letterSpacing = 0.sp,
                             textAlign = TextAlign.Center,
-                            maxLines = 2
+                            maxLines = 2,
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 9.dp)
                         )
                     }
                 }
 
-                Box(
+                Card(
                     modifier = Modifier
-                        .widthIn(max = 560.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Color(0xCC101318))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.08f),
-                            shape = RoundedCornerShape(22.dp)
-                        )
-                        .padding(horizontal = 18.dp, vertical = 14.dp)
+                        .widthIn(max = 600.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xE6111419)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Color.White.copy(alpha = 0.10f)
+                    )
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
