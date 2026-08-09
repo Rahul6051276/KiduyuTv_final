@@ -1,5 +1,6 @@
 package com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api
 
+import android.net.Uri
 import android.util.Log
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamResponse
@@ -18,8 +19,8 @@ import java.net.URL
  * player must attach when fetching the manifest and segments.
  *
  * Endpoints mounted at the KiduyuTV providers backend:
- *   - GET api/streams/{type}/{tmdbId}[?season=&episode=]         (aggregate)
- *   - GET api/streams/{provider}/{type}/{tmdbId}[?season=&episode=]  (single)
+ *   - GET api/streams/{type}/{tmdbId}?token=...[&season=&episode=]         (aggregate)
+ *   - GET api/streams/{provider}/{type}/{tmdbId}?token=...[&season=&episode=]  (single)
  *
  * Where:
  *   - `type` is "movie" or "series"
@@ -32,6 +33,7 @@ object ProvidersApi {
     private const val TAG = "KiduyuLiteProvider"
 
     private const val baseUrl = "https://sflatransport.com/kiduyuTv_providers"
+    private const val streamApiToken = "0a965c3877cd30510c014d81a5d400536a99bc65831d7af57caf479915d57186"
 
     /**
      * Returns the server-side keys of providers currently enabled by
@@ -90,21 +92,21 @@ object ProvidersApi {
         } else {
             "api/streams/${provider.lowercase()}/$type/$tmdbId"
         }
-        val query = buildString {
-            if (type == "series") {
-                if (season != null) append("season=").append(season).append('&')
-                if (episode != null) append("episode=").append(episode).append('&')
-            }
-        }.trimEnd('&')
-
-        val urlString = "$baseUrl/$pathSegment" + if (query.isNotEmpty()) "?$query" else ""
+        val urlBuilder = Uri.parse("$baseUrl/$pathSegment").buildUpon()
+            .appendQueryParameter("token", streamApiToken)
+        if (type == "series") {
+            season?.let { urlBuilder.appendQueryParameter("season", it.toString()) }
+            episode?.let { urlBuilder.appendQueryParameter("episode", it.toString()) }
+        }
+        val urlString = urlBuilder.build().toString()
         val providerLabel = provider?.takeIf { it.isNotBlank() } ?: "aggregate"
         Log.i(
             TAG,
             "Request provider=$providerLabel type=$type tmdbId=$tmdbId " +
                 "season=${season ?: "-"} episode=${episode ?: "-"}"
         )
-        Log.i(TAG, "GET $urlString")
+        // Do not log the complete URL because its query contains the bearer token.
+        Log.i(TAG, "GET $baseUrl/$pathSegment (authenticated)")
 
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
