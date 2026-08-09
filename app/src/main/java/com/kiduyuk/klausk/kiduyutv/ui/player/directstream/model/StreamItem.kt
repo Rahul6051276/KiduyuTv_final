@@ -9,9 +9,9 @@ package com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model
  * this at the DataSource level.
  */
 data class StreamItem(
-    /** Short label, e.g. `"Vixsrc - 1080p"`. Used as a fallback display name. */
+    /** Detailed backend label. Used only when [name] is missing. */
     val title: String,
-    /** Verbose label, e.g. `"Vidfast vRapid"`. Optional; empty when server omits it. */
+    /** Preferred stream-picker label, e.g. `"Vidfast vRapid"`. */
     val name: String = "",
     /** Direct HTTPS URL to the upstream HLS playlist or progressive file. */
     val url: String,

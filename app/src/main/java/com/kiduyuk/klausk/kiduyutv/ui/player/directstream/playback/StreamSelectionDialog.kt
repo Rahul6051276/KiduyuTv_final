@@ -110,7 +110,7 @@ class StreamSelectionDialog(
             val view = convertView ?: LayoutInflater.from(context)
                 .inflate(R.layout.item_direct_stream_track, parent, false)
             val host = runCatching { Uri.parse(stream.url).host }.getOrNull().orEmpty()
-            val title = stream.title.ifBlank { stream.name.ifBlank { "Stream" } }
+            val title = stream.name.ifBlank { stream.title.ifBlank { "Stream" } }
             view.findViewById<TextView>(R.id.trackTitle).text =
                 "${position + 1}. $title"
             view.findViewById<TextView>(R.id.trackSubtitle).apply {
