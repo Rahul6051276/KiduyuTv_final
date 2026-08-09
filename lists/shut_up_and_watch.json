@@ -1,0 +1,1879 @@
+[
+    {
+        "id": 101591,
+        "name": "BMF",
+        "overview": "The drug trafficking drama is inspired by the true story of two brothers who rose from the decaying streets of southwest Detroit in the late 1980s and gave birth to one of the most influential crime families in the country. It revolves around brothers Demetrius \"Big Meech\" Flenory and Terry \"Southwest T\" Flenory, who together took their vision beyond the drug trade and into the world of hip-hop. The drama, per Starz, will tell a story about love, family and capitalism in the pursuit of the American dream.",
+        "posterPath": "/5gUlUufL3fom30qxKawwlWuD7kC.jpg",
+        "backdropPath": "/4L5Ta7BasGDZ3KtdxjgnFqdAiHK.jpg",
+        "voteAverage": 8.0,
+        "firstAirDate": "2021-09-26",
+        "genreIds": [
+            18,
+            80
+        ],
+        "popularity": 11.2128
+    },
+    {
+        "id": 225171,
+        "name": "Pluribus",
+        "overview": "The most miserable person on Earth must save the world from happiness.",
+        "posterPath": "/z7Nga7Q9IGFWs5OEduY2gGFxnX3.jpg",
+        "backdropPath": "/ulm1ex4JFYJByyaPyqTr47MFyEQ.jpg",
+        "voteAverage": 7.941,
+        "firstAirDate": "2025-11-06",
+        "genreIds": [
+            18,
+            10765
+        ],
+        "popularity": 41.6848
+    },
+    {
+        "id": 111110,
+        "name": "ONE PIECE",
+        "overview": "With his straw hat and ragtag crew, young pirate Monkey D. Luffy goes on an epic voyage for treasure.",
+        "posterPath": "/blWCPEqDGLBuLB9u89CxP9ORQP4.jpg",
+        "backdropPath": "/qD211Hb5XwFxrszzBBe5EUYJerh.jpg",
+        "voteAverage": 8.112,
+        "firstAirDate": "2023-08-31",
+        "genreIds": [
+            10759,
+            10765
+        ],
+        "popularity": 31.6061
+    },
+    {
+        "id": 124364,
+        "name": "FROM",
+        "overview": "Unravel the mystery of a nightmarish town in middle America that traps all those who enter. As the unwilling residents fight to keep a sense of normalcy and search for a way out, they must also survive the threats of the surrounding forest – including the terrifying creatures that come out when the sun goes down.",
+        "posterPath": "/pRtJagIxpfODzzb0T0NAvZSzErC.jpg",
+        "backdropPath": "/xLdw1xdHocKYFFvx7w41NchXMfJ.jpg",
+        "voteAverage": 8.498,
+        "firstAirDate": "2022-02-20",
+        "genreIds": [
+            9648,
+            18,
+            10765
+        ],
+        "popularity": 185.1812
+    },
+    {
+        "id": 97546,
+        "name": "Ted Lasso",
+        "overview": "Ted Lasso, an American football coach, moves to England when he's hired to manage a soccer team—despite having no experience. With cynical players and a doubtful town, will he get them to see the Ted Lasso Way?",
+        "posterPath": "/uRHsiw1wLxPHFXkkv4Ix1s0O6f4.jpg",
+        "backdropPath": "/3KLmx6nLaiYe07kSwuWdpTEHJgE.jpg",
+        "voteAverage": 8.344,
+        "firstAirDate": "2020-08-14",
+        "genreIds": [
+            18,
+            35
+        ],
+        "popularity": 143.4798
+    },
+    {
+        "id": 87523,
+        "name": "The Good Lord Bird",
+        "overview": "Henry 'Little Onion' Shackleford, a newly freed teenager joins abolitionist John Brown on a holy crusade to end slavery. Onion encounters Frederick Douglass and Harriet Tubman, and he finds himself as a part of the famous 1859 raid at Harpers Ferry.",
+        "posterPath": "/bNFcWrxlnFXvrjJezId6bAoePzT.jpg",
+        "backdropPath": "/8WwsIKZEGXhxhKpa4LwstfqgYxJ.jpg",
+        "voteAverage": 6.706,
+        "firstAirDate": "2020-10-04",
+        "genreIds": [
+            18,
+            37,
+            10768
+        ],
+        "popularity": 8.2562
+    },
+    {
+        "id": 74577,
+        "name": "The End of the F***ing World",
+        "overview": "James is 17 and is pretty sure he is a psychopath. Alyssa, also 17, is the cool and moody new girl at school. The pair make a connection and she persuades him to embark on a darkly comedic road trip in search of her real father.",
+        "posterPath": "/f1OV9xEJCZVYcYSDRr5xOD8NJw3.jpg",
+        "backdropPath": "/nfWhNM5VVd9a5bEGobs83TWTuLM.jpg",
+        "voteAverage": 8.026,
+        "firstAirDate": "2017-10-24",
+        "genreIds": [
+            35,
+            18,
+            80
+        ],
+        "popularity": 18.1467
+    },
+    {
+        "id": 110316,
+        "name": "Alice in Borderland",
+        "overview": "With his two friends, a video-game-obsessed young man finds himself in a strange version of Tokyo where they must compete in dangerous games to win.",
+        "posterPath": "/Ac8ruycRXzgcsndTZFK6ouGA0FA.jpg",
+        "backdropPath": "/QZaPkNUvhdcKONuO2fXuqtcQRo.jpg",
+        "voteAverage": 8.092,
+        "firstAirDate": "2020-12-10",
+        "genreIds": [
+            9648,
+            18,
+            10759
+        ],
+        "popularity": 37.5155
+    },
+    {
+        "id": 225180,
+        "name": "BLUE EYE SAMURAI",
+        "overview": "Driven by a dream of revenge against those who made her an outcast in Edo-period Japan, a young warrior cuts a bloody path toward her destiny.",
+        "posterPath": "/fXm3JT4WLQVnwukdvghtAblc1wc.jpg",
+        "backdropPath": "/oCMZpwLBcb3dnRuzEKWNWrw1tHz.jpg",
+        "voteAverage": 8.496,
+        "firstAirDate": "2023-11-03",
+        "genreIds": [
+            10759,
+            16,
+            18
+        ],
+        "popularity": 14.6023
+    },
+    {
+        "id": 126308,
+        "name": "Shōgun",
+        "overview": "In Japan in the year 1600, at the dawn of a century-defining civil war, Lord Yoshii Toranaga is fighting for his life as his enemies on the Council of Regents unite against him, when a mysterious European ship is found marooned in a nearby fishing village.",
+        "posterPath": "/7O4iVfOMQmdCSxhOg1WnzG1AgYT.jpg",
+        "backdropPath": "/bwSmgmd90hCWwqOKQYTEraeOZhJ.jpg",
+        "voteAverage": 8.421,
+        "firstAirDate": "2024-02-27",
+        "genreIds": [
+            18,
+            10768
+        ],
+        "popularity": 31.0701
+    },
+    {
+        "id": 106379,
+        "name": "Fallout",
+        "overview": "The story of haves and have-nots in a world in which there's almost nothing left to have. 200 years after the apocalypse, the gentle denizens of luxury fallout shelters are forced to return to the irradiated hellscape their ancestors left behind — and are shocked to discover an incredibly complex, gleefully weird, and highly violent universe waiting for them.",
+        "posterPath": "/c15BtJxCXMrISLVmysdsnZUPQft.jpg",
+        "backdropPath": "/coaPCIqQBPUZsOnJcWZxhaORcDT.jpg",
+        "voteAverage": 8.123,
+        "firstAirDate": "2024-04-10",
+        "genreIds": [
+            10759,
+            10765,
+            18
+        ],
+        "popularity": 46.6384
+    },
+    {
+        "id": 250307,
+        "name": "The Pitt",
+        "overview": "The staff of Pittsburgh's Trauma Medical Center work around the clock to save lives in an overcrowded and underfunded emergency department.",
+        "posterPath": "/kvFSpESyBZMjaeOJDx7RS3P1jey.jpg",
+        "backdropPath": "/z3BkMbCy5ajZPMyKEUwsPHuz2cV.jpg",
+        "voteAverage": 8.727,
+        "firstAirDate": "2025-01-09",
+        "genreIds": [
+            18
+        ],
+        "popularity": 89.8981
+    },
+    {
+        "id": 119051,
+        "name": "Wednesday",
+        "overview": "Smart, sarcastic and a little dead inside, Wednesday Addams investigates twisted mysteries while making new friends — and foes — at Nevermore Academy.",
+        "posterPath": "/9PFonBhy4cQy7Jz20NpMygczOkv.jpg",
+        "backdropPath": "/iHSwvRVsRyxpX7FE7GbviaDvgGZ.jpg",
+        "voteAverage": 8.338,
+        "firstAirDate": "2022-11-23",
+        "genreIds": [
+            10765,
+            9648,
+            35
+        ],
+        "popularity": 58.739
+    },
+    {
+        "id": 222766,
+        "name": "The Day of the Jackal",
+        "overview": "An unrivalled and highly elusive lone assassin, the Jackal, makes his living carrying out hits for the highest fee. But following his latest kill, he meets his match in a tenacious British intelligence officer who starts to track down the Jackal in a thrilling cat-and-mouse chase across Europe, leaving destruction in its wake.",
+        "posterPath": "/tYLecM3WSEjlkKhkGiH5G68Dprm.jpg",
+        "backdropPath": "/enVrO8TRkdT8dmYXTfI4sEjR5Kp.jpg",
+        "voteAverage": 8.234,
+        "firstAirDate": "2024-11-07",
+        "genreIds": [
+            18,
+            10759,
+            9648
+        ],
+        "popularity": 32.1171
+    },
+    {
+        "id": 157741,
+        "name": "Landman",
+        "overview": "Set in the proverbial boomtowns of West-Texas and a modern-day tale of fortune-seeking in the world of oil rigs, the series is an upstairs/downstairs story of roughnecks and wildcat billionaires that are fueling a boom so big it’s reshaping our climate, our economy and our geopolitics.",
+        "posterPath": "/hYthRgS1nvQkGILn9YmqsF8kSk6.jpg",
+        "backdropPath": "/mh2UczqEXJJVgqohbyZbHTuxwhL.jpg",
+        "voteAverage": 8.166,
+        "firstAirDate": "2024-11-17",
+        "genreIds": [
+            18
+        ],
+        "popularity": 52.0053
+    },
+    {
+        "id": 125988,
+        "name": "Silo",
+        "overview": "In a ruined and toxic future, thousands live in a giant silo deep underground. After its sheriff breaks a cardinal rule and residents die mysteriously, engineer Juliette starts to uncover shocking secrets and the truth about the silo.",
+        "posterPath": "/gMYZZvnkVNTqSVnVCphWbPXwWwb.jpg",
+        "backdropPath": "/uTWhbLc7Bj4qNSdW3ZvZKL8cOHv.jpg",
+        "voteAverage": 8.185,
+        "firstAirDate": "2023-05-04",
+        "genreIds": [
+            10765,
+            18
+        ],
+        "popularity": 236.6381
+    },
+    {
+        "id": 82782,
+        "name": "The Righteous Gemstones",
+        "overview": "The story of a world-famous televangelist family with a history of deviance, greed and, yes, charitable work, all in the name of Jesus.",
+        "posterPath": "/bKb54fgtMrS54VMMl8KdDIFlG3g.jpg",
+        "backdropPath": "/vXPxMNfuapkRXBUhac3LAkuzSzc.jpg",
+        "voteAverage": 7.474,
+        "firstAirDate": "2019-08-18",
+        "genreIds": [
+            35,
+            18
+        ],
+        "popularity": 27.6119
+    },
+    {
+        "id": 100088,
+        "name": "The Last of Us",
+        "overview": "Twenty years after modern civilization has been destroyed, Joel, a hardened survivor, is hired to smuggle Ellie, a 14-year-old girl, out of an oppressive quarantine zone. What starts as a small job soon becomes a brutal, heartbreaking journey, as they both must traverse the United States and depend on each other for survival.",
+        "posterPath": "/dmo6TYuuJgaYinXBPjrgG9mB5od.jpg",
+        "backdropPath": "/lY2DhbA7Hy44fAKddr06UrXWWaQ.jpg",
+        "voteAverage": 8.414,
+        "firstAirDate": "2023-01-15",
+        "genreIds": [
+            18
+        ],
+        "popularity": 47.8543
+    },
+    {
+        "id": 247718,
+        "name": "MobLand",
+        "overview": "Two mob families clash in a war that threatens to topple empires and lives.",
+        "posterPath": "/abeH7n5pcuQcwYcTxG6DTZvXLP1.jpg",
+        "backdropPath": "/tQqbbxBAdW2ql8vbOqMOJbtSQ7O.jpg",
+        "voteAverage": 8.358,
+        "firstAirDate": "2025-03-30",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 50.9914
+    },
+    {
+        "id": 120998,
+        "name": "Poker Face",
+        "overview": "Follow Charlie Cale, a woman with an extraordinary ability to tell when someone is lying, as she hits the road and, at every stop, encounters a new cast of characters and crimes she can't help but solve.",
+        "posterPath": "/8Xm5dyMQC9whMJKnGdFugUAW73C.jpg",
+        "backdropPath": "/ccOzCmrglAjRGtqv5ClTaBEsWt8.jpg",
+        "voteAverage": 7.44,
+        "firstAirDate": "2023-01-26",
+        "genreIds": [
+            80,
+            9648
+        ],
+        "popularity": 26.7383
+    },
+    {
+        "id": 93740,
+        "name": "Foundation",
+        "overview": "Follow a band of exiles on their monumental journey to save humanity and rebuild civilization amid the fall of the Galactic Empire.",
+        "posterPath": "/tg9I5pOY4M9CKj8U0cxVBTsm5eh.jpg",
+        "backdropPath": "/7NNNXo0qG2SqH4JoG7GPvJ2hzes.jpg",
+        "voteAverage": 7.712,
+        "firstAirDate": "2021-09-23",
+        "genreIds": [
+            10765,
+            18
+        ],
+        "popularity": 43.2629
+    },
+    {
+        "id": 83631,
+        "name": "What We Do in the Shadows",
+        "overview": "A documentary-style look into the daily (or rather, nightly) lives of a group of vampires in Staten Island who have “lived” together for hundreds and hundreds of years.",
+        "posterPath": "/wa3ZQE9kLnqwN3vQ0NNjg1NPsCa.jpg",
+        "backdropPath": "/mKikck71CvVISUSTLk29fwRbH4y.jpg",
+        "voteAverage": 7.99,
+        "firstAirDate": "2019-03-27",
+        "genreIds": [
+            35,
+            10765
+        ],
+        "popularity": 32.0962
+    },
+    {
+        "id": 47665,
+        "name": "Black Sails",
+        "overview": "The pirate adventures of Captain Flint and his men twenty years prior to Robert Louis Stevenson’s classic “Treasure Island.” Flint, the most brilliant and most feared pirate captain of his day, takes on a fast-talking young addition to his crew who goes by the name John Silver. Threatened with extinction on all sides, they fight for the survival of New Providence Island, the most notorious criminal haven of its day – a debauched paradise teeming with pirates, prostitutes, thieves and fortune seekers, a place defined by both its enlightened ideals and its stunning brutality.",
+        "posterPath": "/mZcSwrDdw6cdOVgXm496DgwrQcQ.jpg",
+        "backdropPath": "/A7lo83g09i3cDmLRKtDiiYN8w0z.jpg",
+        "voteAverage": 7.623,
+        "firstAirDate": "2014-01-25",
+        "genreIds": [
+            18,
+            10759
+        ],
+        "popularity": 30.4112
+    },
+    {
+        "id": 18347,
+        "name": "Community",
+        "overview": "Follow the lives of a group of students at what is possibly the world’s worst community college in the fictional locale of Greendale, Colorado.",
+        "posterPath": "/3KUjDt8XY7w2Ku70UE0SECmv1zP.jpg",
+        "backdropPath": "/1xRfgONYmK3T6FSmbtcuo8eyxVt.jpg",
+        "voteAverage": 8.0,
+        "firstAirDate": "2009-09-17",
+        "genreIds": [
+            35
+        ],
+        "popularity": 46.4073
+    },
+    {
+        "id": 136315,
+        "name": "The Bear",
+        "overview": "Carmy, a young fine-dining chef, comes home to Chicago to run his family sandwich shop. As he fights to transform the shop and himself, he works alongside a rough-around-the-edges crew that ultimately reveal themselves as his chosen family.",
+        "posterPath": "/eKfVzzEazSIjJMrw9ADa2x8ksLz.jpg",
+        "backdropPath": "/aJtG4txtmiRHwAAqENQHZvBs6kY.jpg",
+        "voteAverage": 8.146,
+        "firstAirDate": "2022-06-23",
+        "genreIds": [
+            18,
+            35
+        ],
+        "popularity": 65.8199
+    },
+    {
+        "id": 70593,
+        "name": "Kingdom",
+        "overview": "In this zombie thriller set in Korea's medieval Joseon dynasty which has been defeated by corruption and famine, a mysterious rumor of the king’s death spreads, as does a strange plague that renders the infected immune to death and hungry for flesh. The crown prince, fallen victim to a conspiracy, sets out on a journey to unveil the evil scheme and save his people.",
+        "posterPath": "/AsICtiVtz4icMQQRwDvOzfaTzjK.jpg",
+        "backdropPath": "/jRhJlV4inm8wAAqTeHUX5HpjZcc.jpg",
+        "voteAverage": 8.21,
+        "firstAirDate": "2019-01-25",
+        "genreIds": [
+            18,
+            9648
+        ],
+        "popularity": 12.0599
+    },
+    {
+        "id": 73107,
+        "name": "Barry",
+        "overview": "A hit man from the Midwest moves to Los Angeles and gets caught up in the city's theatre arts scene.",
+        "posterPath": "/j1XpwD11f0BAEI7pX6UdMhUVX2F.jpg",
+        "backdropPath": "/nfjqhuGFUWqJD14B4fxlSiZWfeR.jpg",
+        "voteAverage": 7.908,
+        "firstAirDate": "2018-03-25",
+        "genreIds": [
+            35,
+            80,
+            18
+        ],
+        "popularity": 21.9988
+    },
+    {
+        "id": 63333,
+        "name": "The Last Kingdom",
+        "overview": "A show of heroic deeds and epic battles with a thematic depth that embraces politics, religion, warfare, courage, love, loyalty and our universal search for identity. Combining real historical figures and events with fictional characters, it is the story of how a people combined their strength under one of the most iconic kings of history in order to reclaim their land for themselves and build a place they call home.",
+        "posterPath": "/8eJf0hxgIhE6QSxbtuNCekTddy1.jpg",
+        "backdropPath": "/QbtctI8EzlhsyFDMUMyG3fli8B.jpg",
+        "voteAverage": 8.259,
+        "firstAirDate": "2015-10-10",
+        "genreIds": [
+            10759,
+            18,
+            10768
+        ],
+        "popularity": 58.8983
+    },
+    {
+        "id": 95396,
+        "name": "Severance",
+        "overview": "Mark leads a team of office workers whose memories have been surgically divided between their work and personal lives. When a mysterious colleague appears outside of work, it begins a journey to discover the truth about their jobs.",
+        "posterPath": "/pPHpeI2X1qEd1CS1SeyrdhZ4qnT.jpg",
+        "backdropPath": "/ixgFmf1X59PUZam2qbAfskx2gQr.jpg",
+        "voteAverage": 8.385,
+        "firstAirDate": "2022-02-17",
+        "genreIds": [
+            18,
+            9648,
+            10765
+        ],
+        "popularity": 45.5418
+    },
+    {
+        "id": 110492,
+        "name": "Peacemaker",
+        "overview": "The continuing story of Peacemaker, a vainglorious superhero/supervillain who believes in peace at any cost — no matter how many people he has to kill. After a miraculous recovery from his duel with Bloodsport, Peacemaker soon discovers that his freedom comes at a price.",
+        "posterPath": "/eYzbGcYnOUlvj2fa76pTgIXogd7.jpg",
+        "backdropPath": "/aJcUU3LMlqMKBi8L3eaxGfAbd4G.jpg",
+        "voteAverage": 8.187,
+        "firstAirDate": "2022-01-13",
+        "genreIds": [
+            10759,
+            10765,
+            35
+        ],
+        "popularity": 43.2921
+    },
+    {
+        "id": 118357,
+        "name": "1883",
+        "overview": "Follow the Dutton family as they embark on a journey west through the Great Plains toward the last bastion of untamed America. A stark retelling of Western expansion, and an intense study of one family fleeing poverty to seek a better future in America’s promised land — Montana.",
+        "posterPath": "/waLbm384SQDwLTCn6ttPqQS5kfV.jpg",
+        "backdropPath": "/uQUHCqxHsG9blvtCoL7vluMG9Jp.jpg",
+        "voteAverage": 8.297,
+        "firstAirDate": "2021-12-19",
+        "genreIds": [
+            18,
+            37
+        ],
+        "popularity": 19.8279
+    },
+    {
+        "id": 97951,
+        "name": "Mayor of Kingstown",
+        "overview": "In a small Michigan town where the business of incarceration is the only thriving industry, the McClusky family are the power brokers between the police, criminals, inmates, prison guards and politicians in a city completely dependent on prisons and the prisoners they contain.",
+        "posterPath": "/6rWIip9MZELAA0SKii5WqsBDCYW.jpg",
+        "backdropPath": "/39bifj2FNytJ2m1cqOBcWMTKgmV.jpg",
+        "voteAverage": 7.951,
+        "firstAirDate": "2021-11-14",
+        "genreIds": [
+            18,
+            80
+        ],
+        "popularity": 40.4672
+    },
+    {
+        "id": 73586,
+        "name": "Yellowstone",
+        "overview": "Follow the violent world of the Dutton family, who controls the largest contiguous ranch in the United States. Led by their patriarch John Dutton, the family defends their property against constant attack by land developers, an Indian reservation, and America’s first National Park.",
+        "posterPath": "/vOYfRZ0NpUK5hG2CB2dJFnYJlGe.jpg",
+        "backdropPath": "/ynSOcgDLZfdLCZfRSYZGiTgYJVo.jpg",
+        "voteAverage": 8.269,
+        "firstAirDate": "2018-06-20",
+        "genreIds": [
+            37,
+            18
+        ],
+        "popularity": 112.5608
+    },
+    {
+        "id": 95215,
+        "name": "Reservation Dogs",
+        "overview": "Four Indigenous teenagers in rural Oklahoma steal, rob and save in order to get to the exotic, mysterious and faraway land of California.",
+        "posterPath": "/t6hqwD5oQRGgNrZKN71BQYxteC1.jpg",
+        "backdropPath": "/4vC3CijGu8g2Z1UobwkJpRQHOVO.jpg",
+        "voteAverage": 7.922,
+        "firstAirDate": "2021-08-09",
+        "genreIds": [
+            18,
+            35
+        ],
+        "popularity": 14.8844
+    },
+    {
+        "id": 103768,
+        "name": "Sweet Tooth",
+        "overview": "On an epic adventure across a postapocalyptic world, a lovable boy who's part human and part deer searches for family and home with a gruff protector.",
+        "posterPath": "/rgMfhcrVZjuy5b7Pn0KzCRCEnMX.jpg",
+        "backdropPath": "/xpba0Dxz3sxV3QgYLR8UIe1LAAX.jpg",
+        "voteAverage": 7.746,
+        "firstAirDate": "2021-06-04",
+        "genreIds": [
+            18,
+            10765
+        ],
+        "popularity": 23.8548
+    },
+    {
+        "id": 111462,
+        "name": "The Liberator",
+        "overview": "A diverse, dedicated, rough-and-tumble squad of soldiers spearheads the Allied invasion of Italy during World War II.",
+        "posterPath": "/kivHJpsGFWgqnDMRDnnpOSgLD1s.jpg",
+        "backdropPath": "/uU23hb1c3LRqszBmBftLc2cMhbx.jpg",
+        "voteAverage": 7.098,
+        "firstAirDate": "2020-11-11",
+        "genreIds": [
+            10768,
+            18,
+            16
+        ],
+        "popularity": 2.9311
+    },
+    {
+        "id": 71694,
+        "name": "Snowfall",
+        "overview": "Los Angeles. 1983. A storm is coming and its name is crack. Set against the infancy of the crack cocaine epidemic and its ultimate radical impact on the culture as we know it, the story follows numerous characters on a violent collision course.",
+        "posterPath": "/y7ntzl7msiaS6o7dvDbNG7XFYcR.jpg",
+        "backdropPath": "/eEXwPg7nIERmRHC1yJoBf3Q5C7k.jpg",
+        "voteAverage": 8.391,
+        "firstAirDate": "2017-07-05",
+        "genreIds": [
+            18,
+            80
+        ],
+        "popularity": 39.704
+    },
+    {
+        "id": 46639,
+        "name": "American Gods",
+        "overview": "An ex-con becomes the traveling partner of a conman who turns out to be one of the older gods trying to recruit troops to battle the upstart deities. Based on Neil Gaiman's fantasy novel.",
+        "posterPath": "/3KCAZaKHmoMIN9dHutqaMtubQqD.jpg",
+        "backdropPath": "/uY3MJohUpY7UMMTK90BIhX5txEs.jpg",
+        "voteAverage": 7.087,
+        "firstAirDate": "2017-04-30",
+        "genreIds": [
+            18,
+            9648,
+            10765
+        ],
+        "popularity": 19.4673
+    },
+    {
+        "id": 62822,
+        "name": "Humans",
+        "overview": "In a parallel present where the latest must-have gadget for any busy family is a 'Synth' - a highly-developed robotic servant that's so similar to a real human it's transforming the way we live.",
+        "posterPath": "/iBjjSGgnjAQBSQGO9pYIh7Gp2PO.jpg",
+        "backdropPath": "/fS2AKTDK0VwZo7dq9sG38D9cuu.jpg",
+        "voteAverage": 7.484,
+        "firstAirDate": "2015-06-14",
+        "genreIds": [
+            10765,
+            18,
+            9648
+        ],
+        "popularity": 16.3408
+    },
+    {
+        "id": 85723,
+        "name": "Raised by Wolves",
+        "overview": "After Earth is ravaged by a great religious war, an atheistic android architect sends two of his creations, Mother and Father, to start a peaceful, godless colony on the planet Kepler-22b. Their treacherous task is jeopardized by the arrival of the Mithraic, a deeply devout religious order of surviving humans.",
+        "posterPath": "/mTvSVKMn2Npf6zvYNbGMJnYLtvp.jpg",
+        "backdropPath": "/na2xUduK8HviOFT97TiFG2MkJmY.jpg",
+        "voteAverage": 7.508,
+        "firstAirDate": "2020-09-03",
+        "genreIds": [
+            10765,
+            18
+        ],
+        "popularity": 15.2138
+    },
+    {
+        "id": 87739,
+        "name": "The Queen's Gambit",
+        "overview": "In a 1950s orphanage, a young girl reveals an astonishing talent for chess and begins an unlikely journey to stardom while grappling with addiction.",
+        "posterPath": "/zU0htwkhNvBQdVSIKB9s6hgVeFK.jpg",
+        "backdropPath": "/34OGjFEbHj0E3lE2w0iTUVq0CBz.jpg",
+        "voteAverage": 8.426,
+        "firstAirDate": "2020-10-23",
+        "genreIds": [
+            18
+        ],
+        "popularity": 20.8628
+    },
+    {
+        "id": 62017,
+        "name": "The Man in the High Castle",
+        "overview": "Explore what it would be like if the Allied Powers had lost WWII, and Japan and Germany ruled the United States. Based on Philip K. Dick's award-winning novel.",
+        "posterPath": "/xhoDZbMNeyCA0BGPZQsdIiO43Dp.jpg",
+        "backdropPath": "/pLio7Lod6YoNMM7ybFVjIJjwIxe.jpg",
+        "voteAverage": 7.5,
+        "firstAirDate": "2015-01-15",
+        "genreIds": [
+            10765,
+            18
+        ],
+        "popularity": 28.4603
+    },
+    {
+        "id": 63351,
+        "name": "Narcos",
+        "overview": "A gritty chronicle of the war against Colombia's infamously violent and powerful drug cartels.",
+        "posterPath": "/rTmal9fDbwh5F0waol2hq35U4ah.jpg",
+        "backdropPath": "/y9ekzkPFmWSqUU3Kj0wHmYUM8qu.jpg",
+        "voteAverage": 8.076,
+        "firstAirDate": "2015-08-28",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 38.1541
+    },
+    {
+        "id": 96481,
+        "name": "Rise of Empires: Ottoman",
+        "overview": "Ottoman Sultan Mehmed II wages an epic campaign to take the Byzantine capital of Constantinople and shapes the course of history for centuries.",
+        "posterPath": "/nkvdPFYo7o2IQWooJvA9UE0nvAp.jpg",
+        "backdropPath": "/ztruG6mR07igZWchQHiaFkND8Di.jpg",
+        "voteAverage": 7.499,
+        "firstAirDate": "2020-01-24",
+        "genreIds": [
+            99,
+            10768,
+            10759
+        ],
+        "popularity": 9.5158
+    },
+    {
+        "id": 713,
+        "name": "Chappelle's Show",
+        "overview": "Dave Chappelle's singular point of view is unleashed through a combination of laidback stand-up and street-smart sketches.",
+        "posterPath": "/aHpTmNU2wLHokoVpzcnh2VQBJOI.jpg",
+        "backdropPath": "/u6EhNH7o8s6HNmxkBV5X4KuaPQ.jpg",
+        "voteAverage": 8.106,
+        "firstAirDate": "2003-01-22",
+        "genreIds": [
+            35
+        ],
+        "popularity": 7.5222
+    },
+    {
+        "id": 4546,
+        "name": "Curb Your Enthusiasm",
+        "overview": "The off-kilter, unscripted comic vision of Larry David, who plays himself in a parallel universe in which he can't seem to do anything right, and, by his standards, neither can anyone else.",
+        "posterPath": "/pjRRB1NCFJzCb0euvpia4rKDov1.jpg",
+        "backdropPath": "/u98PeujOJCXCowph9mxRzo9Nw1s.jpg",
+        "voteAverage": 8.047,
+        "firstAirDate": "2000-10-15",
+        "genreIds": [
+            35
+        ],
+        "popularity": 53.3883
+    },
+    {
+        "id": 1891,
+        "name": "Rome",
+        "overview": "A down-to-earth account of the lives of both illustrious and ordinary Romans set in the last days of the Roman Republic.",
+        "posterPath": "/1A1BwgWO3Sw379VEhR0vkTuE3XW.jpg",
+        "backdropPath": "/b2fhZk0xB2TgMsDXT6goR28PoHX.jpg",
+        "voteAverage": 8.23,
+        "firstAirDate": "2005-08-28",
+        "genreIds": [
+            10759,
+            18
+        ],
+        "popularity": 23.0569
+    },
+    {
+        "id": 1104,
+        "name": "Mad Men",
+        "overview": "Set in 1960-1970 New York, this sexy, stylized and provocative drama follows the lives of the ruthlessly competitive men and women of Madison Avenue advertising.",
+        "posterPath": "/7v8iCNzKFpdlrCMcqCoJyn74Nsa.jpg",
+        "backdropPath": "/A5lVyejMsP5G7rAJBwU9ug3Wzou.jpg",
+        "voteAverage": 8.1,
+        "firstAirDate": "2007-07-19",
+        "genreIds": [
+            18
+        ],
+        "popularity": 64.8062
+    },
+    {
+        "id": 4556,
+        "name": "Scrubs",
+        "overview": "In the unreal world of Sacred Heart Hospital, John \"J.D.\" Dorian learns the ways of medicine, friendship and life.",
+        "posterPath": "/w7ri7byEYLdciSZOwWHj6TUAX7j.jpg",
+        "backdropPath": "/rRKTV46DKVP8AfdCQDyQMAtJeCl.jpg",
+        "voteAverage": 8.082,
+        "firstAirDate": "2001-10-02",
+        "genreIds": [
+            35
+        ],
+        "popularity": 45.4365
+    },
+    {
+        "id": 1437,
+        "name": "Firefly",
+        "overview": "In the year 2517, the universe is a vast frontier where lawlessness reigns and adventure awaits! Join Captain Malcolm Reynolds and his ragtag crew aboard the spaceship Serenity as they navigate the fringes of society, battling the oppressive Alliance and facing off against ruthless bounty hunters.",
+        "posterPath": "/vZcKsy4sGAvWMVqLluwYuoi11Kj.jpg",
+        "backdropPath": "/te4VJNMipsFQofCkiytuyswGDlV.jpg",
+        "voteAverage": 8.338,
+        "firstAirDate": "2002-09-20",
+        "genreIds": [
+            18,
+            10759,
+            10765
+        ],
+        "popularity": 21.0167
+    },
+    {
+        "id": 61662,
+        "name": "Schitt's Creek",
+        "overview": "Formerly filthy rich video store magnate Johnny Rose, his soap star wife Moira, and their two kids, über-hipster son David and socialite daughter Alexis, suddenly find themselves broke and forced to live in Schitt's Creek, a small depressing town they once bought as a joke.",
+        "posterPath": "/iRfSzrPS5VYWQv7KVSEg2BZZL6C.jpg",
+        "backdropPath": "/ftNmVV8LuNVmtB8mzoUTucozVKE.jpg",
+        "voteAverage": 7.791,
+        "firstAirDate": "2015-01-13",
+        "genreIds": [
+            35
+        ],
+        "popularity": 43.5988
+    },
+    {
+        "id": 4344,
+        "name": "Rescue Me",
+        "overview": "The aftermath of 9/11 has left the firefighters of the NYFD traumatized, and no one more so than Tommy Gavin. Recently separated from his wife and their three kids, Tommy drifts between sorrow and anger as he tries to shake the recurring nightmares of his fallen comrades, especially his late cousin, Jimmy Keefe. Working alongside veterans like Lt. “Lou” Shea, Franco Rivera and Sean Garrity, and rookie Mike Lombardi, Tommy battles alcohol and drugs as he struggles to remain first and foremost a New York City firefighter.",
+        "posterPath": "/gnOwOb82chSJkQEZ9pd6jf2ZrEX.jpg",
+        "backdropPath": "/bmPIJET1BbQqvUEYSfjdz0BxGRR.jpg",
+        "voteAverage": 7.544,
+        "firstAirDate": "2004-07-21",
+        "genreIds": [
+            18
+        ],
+        "popularity": 31.9163
+    },
+    {
+        "id": 65798,
+        "name": "Letterkenny",
+        "overview": "Letterkenny follows Wayne, a good-ol’ country boy in Letterkenny, Ontario trying to protect his homegrown way of life on the farm, against a world that is constantly evolving around him. The residents of Letterkenny belong to one of three groups: Hicks, Skids, and Hockey Players. The three groups are constantly feuding with each other over seemingly trivial matters; often ending with someone getting their ass kicked.",
+        "posterPath": "/zrB0Viy72GYKiLrtSs7SQVz5QWl.jpg",
+        "backdropPath": "/wdHK7RZNIGfskbGCIusSKN3vto6.jpg",
+        "voteAverage": 7.913,
+        "firstAirDate": "2016-02-07",
+        "genreIds": [
+            35
+        ],
+        "popularity": 15.672
+    },
+    {
+        "id": 54671,
+        "name": "Penny Dreadful",
+        "overview": "Some of literature's most terrifying characters, including Dr. Frankenstein, Dorian Gray, and iconic figures from the novel Dracula are lurking in the darkest corners of Victorian London. Penny Dreadful is a frightening psychological thriller that weaves together these classic horror origin stories into a new adult drama.",
+        "posterPath": "/hQSdrXBYTbLGHYDIseHkBOPXTgL.jpg",
+        "backdropPath": "/32iacqVElB91YZKl9Ky3QEEkXtH.jpg",
+        "voteAverage": 7.806,
+        "firstAirDate": "2014-05-11",
+        "genreIds": [
+            10765,
+            18,
+            9648,
+            10759
+        ],
+        "popularity": 15.8621
+    },
+    {
+        "id": 93812,
+        "name": "The Great",
+        "overview": "A genre-bending, anti-historical ride through 18th century Russia following the rise of Catherine the Nothing to Catherine the Great and her explosive relationship with husband Peter, the emperor of Russia.",
+        "posterPath": "/tpz9UQ3hUwYufNcKWVW00FCjWyc.jpg",
+        "backdropPath": "/2K84O2cr0jRH7ROeeHJ3zbTR8Uf.jpg",
+        "voteAverage": 8.074,
+        "firstAirDate": "2020-05-15",
+        "genreIds": [
+            18,
+            35
+        ],
+        "popularity": 23.7762
+    },
+    {
+        "id": 19885,
+        "name": "Sherlock",
+        "overview": "A modern update finds the famous sleuth and his doctor partner solving crime in 21st century London.",
+        "posterPath": "/7WTsnHkbA0FaG6R9twfFde0I9hl.jpg",
+        "backdropPath": "/8rvLEmdI4gLrMO1rLqbNdnNcPFE.jpg",
+        "voteAverage": 8.507,
+        "firstAirDate": "2010-07-25",
+        "genreIds": [
+            80,
+            18,
+            9648
+        ],
+        "popularity": 43.5488
+    },
+    {
+        "id": 85021,
+        "name": "Gangs of London",
+        "overview": "When the head of a criminal organisation, Finn Wallace is assassinated, the sudden power vacuum his death creates threatens the fragile peace between the intricate web of gangs operating on the streets of the city. Now it’s up to the grieving, volatile and impulsive Sean Wallace to restore control and find those responsible for killing his father.",
+        "posterPath": "/fVgwa6wGw9ddGM5O7mqrrwB6gHK.jpg",
+        "backdropPath": "/9aJ6KwLASA38WzdMRVjk7ILpuTv.jpg",
+        "voteAverage": 7.812,
+        "firstAirDate": "2020-04-23",
+        "genreIds": [
+            10759,
+            18,
+            80
+        ],
+        "popularity": 18.0384
+    },
+    {
+        "id": 1396,
+        "name": "Breaking Bad",
+        "overview": "Walter White, a New Mexico chemistry teacher, is diagnosed with Stage III cancer and given a prognosis of only two years left to live. He becomes filled with a sense of fearlessness and an unrelenting desire to secure his family's financial future at any cost as he enters the dangerous world of drugs and crime.",
+        "posterPath": "/anFx9aTOOYqgS3v7x3R84Kz67ly.jpg",
+        "backdropPath": "/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg",
+        "voteAverage": 8.947,
+        "firstAirDate": "2008-01-20",
+        "genreIds": [
+            18,
+            80
+        ],
+        "popularity": 172.9164
+    },
+    {
+        "id": 46296,
+        "name": "Spartacus",
+        "overview": "Torn from his homeland and the woman he loves, Spartacus is condemned to the brutal world of the arena where blood and death are primetime entertainment.",
+        "posterPath": "/c2GKN4VHCj1dnjFMANRpGkCVBae.jpg",
+        "backdropPath": "/zbfXS4o6UykeXsD8djFTyV7Cj4N.jpg",
+        "voteAverage": 8.028,
+        "firstAirDate": "2010-01-22",
+        "genreIds": [
+            18
+        ],
+        "popularity": 80.1583
+    },
+    {
+        "id": 93784,
+        "name": "Tales from the Loop",
+        "overview": "The story of the town and people who live above “The Loop,” a machine built to unlock and explore the mysteries of the universe – making things possible that were previously relegated only to science fiction.",
+        "posterPath": "/56D0QFyLhrRp1ZTBz8Gw10qtZas.jpg",
+        "backdropPath": "/5cv0cgTIGv0jnkWsMAoCObA0XCd.jpg",
+        "voteAverage": 7.036,
+        "firstAirDate": "2020-04-03",
+        "genreIds": [
+            18,
+            9648,
+            10765
+        ],
+        "popularity": 8.7208
+    },
+    {
+        "id": 4613,
+        "name": "Band of Brothers",
+        "overview": "Drawn from interviews with survivors of Easy Company, as well as their journals and letters, Band of Brothers chronicles the experiences of these men from paratrooper training in Georgia through the end of the war. As an elite rifle company parachuting into Normandy early on D-Day morning, participants in the Battle of the Bulge, and witness to the horrors of war, the men of Easy knew extraordinary bravery and extraordinary fear - and became the stuff of legend. Based on Stephen E. Ambrose's acclaimed book of the same name.",
+        "posterPath": "/pGzV187ogXzgJrvPRy2YPi29ofH.jpg",
+        "backdropPath": "/2yDV0xLyqW88dn5qE7YCRnoYmfy.jpg",
+        "voteAverage": 8.596,
+        "firstAirDate": "2001-09-09",
+        "genreIds": [
+            18,
+            10768
+        ],
+        "popularity": 35.9779
+    },
+    {
+        "id": 71116,
+        "name": "Castle Rock",
+        "overview": "Based on the stories of Stephen King, the series intertwines characters and themes from the fictional town of Castle Rock.",
+        "posterPath": "/6dnUpv9ghx84pgxlMOb4uuJrWDs.jpg",
+        "backdropPath": "/qyRJPtJkJz7wtS4UJnJez9S3WOM.jpg",
+        "voteAverage": 7.235,
+        "firstAirDate": "2018-07-25",
+        "genreIds": [
+            9648,
+            18
+        ],
+        "popularity": 20.3282
+    },
+    {
+        "id": 81349,
+        "name": "Devs",
+        "overview": "Young computer engineer Lily Chan investigates the secretive development division of her employer, a cutting-edge tech company based in San Francisco, which she believes is behind the murder of her boyfriend.",
+        "posterPath": "/uv63iNWOh69bSJYJQZjiX6n8B3m.jpg",
+        "backdropPath": "/5yf5yfogIxhHhDU7F2Nuk1BsTYQ.jpg",
+        "voteAverage": 7.343,
+        "firstAirDate": "2020-03-05",
+        "genreIds": [
+            10765,
+            18,
+            9648
+        ],
+        "popularity": 10.1777
+    },
+    {
+        "id": 79622,
+        "name": "Hunters",
+        "overview": "A diverse band of Nazi Hunters living in 1977 New York City discover that hundreds of high ranking Nazi officials are living among us and conspiring to create a Fourth Reich in the U.S. The eclectic team of Hunters set out on a bloody quest to bring the Nazis to justice and thwart their new genocidal plans.",
+        "posterPath": "/mjsz10d1abJXZwT9b8CTgniRJh9.jpg",
+        "backdropPath": "/qiHP7bcwRVvxDoeH6PpvkwmpYyS.jpg",
+        "voteAverage": 7.14,
+        "firstAirDate": "2020-02-20",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 24.7753
+    },
+    {
+        "id": 1398,
+        "name": "The Sopranos",
+        "overview": "The story of New Jersey-based Italian-American mobster Tony Soprano and the difficulties he faces as he tries to balance the conflicting requirements of his home life and the criminal organization he heads. Those difficulties are often highlighted through his ongoing professional relationship with psychiatrist Jennifer Melfi. The show features Tony's family members and Mafia associates in prominent roles and story arcs, most notably his wife Carmela and his cousin and protégé Christopher Moltisanti.",
+        "posterPath": "/rTc7ZXdroqjkKivFPvCPX0Ru7uw.jpg",
+        "backdropPath": "/lNpkvX2s8LGB0mjGODMT4o6Up7j.jpg",
+        "voteAverage": 8.673,
+        "firstAirDate": "1999-01-10",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 98.8972
+    },
+    {
+        "id": 1399,
+        "name": "Game of Thrones",
+        "overview": "Seven noble families fight for control of the mythical land of Westeros. Friction between the houses leads to full-scale war. All while a very ancient evil awakens in the farthest north. Amidst the war, a neglected military order of misfits, the Night's Watch, is all that stands between the realms of men and icy horrors beyond.",
+        "posterPath": "/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg",
+        "backdropPath": "/2OMB0ynKlyIenMJWI2Dy9IWT4c.jpg",
+        "voteAverage": 8.469,
+        "firstAirDate": "2011-04-17",
+        "genreIds": [
+            10765,
+            18,
+            10759
+        ],
+        "popularity": 175.4213
+    },
+    {
+        "id": 3322,
+        "name": "Oz",
+        "overview": "The daily lives of prisoners in Emerald City, an experimental unit of the Oswald Maximum Security Prison where ingroups - Muslims, Latinos, Italians, Aryans - stick close to their mutual friends and terrorize their mutual enemies.",
+        "posterPath": "/oTQ9PUnCgf9CimYeWuDGp8iaT07.jpg",
+        "backdropPath": "/2nboc7IWrvJwiT1Dq847IuNcXqF.jpg",
+        "voteAverage": 8.049,
+        "firstAirDate": "1997-07-12",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 37.4444
+    },
+    {
+        "id": 3796,
+        "name": "Trailer Park Boys",
+        "overview": "Follow the booze-fueled misadventures of three longtime pals and petty serial criminals who run scams from their Nova Scotia trailer park.",
+        "posterPath": "/nIcIwVTYcZnW1BDzexGfFO7KmX1.jpg",
+        "backdropPath": "/4RttvRiea7C5BaD1YJXpny6nGSx.jpg",
+        "voteAverage": 7.734,
+        "firstAirDate": "2001-04-22",
+        "genreIds": [
+            35
+        ],
+        "popularity": 18.5961
+    },
+    {
+        "id": 75191,
+        "name": "The Terror",
+        "overview": "A chilling anthology series featuring stories of people in terrifying situations inspired by true historical events.",
+        "posterPath": "/fUVn5mScv83FfwrRUUR694yA7bd.jpg",
+        "backdropPath": "/ssyZgYScV9eClakZDwu4sPrgMmy.jpg",
+        "voteAverage": 7.354,
+        "firstAirDate": "2018-03-26",
+        "genreIds": [
+            9648,
+            18,
+            10765
+        ],
+        "popularity": 19.9587
+    },
+    {
+        "id": 185,
+        "name": "Carnivàle",
+        "overview": "Carnivàle is an American television series set in the United States during the Great Depression and Dust Bowl. In tracing the lives of two disparate groups of people, its overarching story depicts the battle between good and evil and the struggle between free will and destiny; the storyline mixes Christian theology with gnosticism and Masonic lore, particularly that of the Knights Templar.",
+        "posterPath": "/5pKvfZ3qLuKJd8PQfKcPxN9jTO9.jpg",
+        "backdropPath": "/gPXlZQr7PR3Ay2pP6XBdvVKmM25.jpg",
+        "voteAverage": 7.9,
+        "firstAirDate": "2003-09-14",
+        "genreIds": [
+            10765,
+            9648,
+            18
+        ],
+        "popularity": 12.2019
+    },
+    {
+        "id": 84977,
+        "name": "Russian Doll",
+        "overview": "Nadia keeps dying and reliving her 36th birthday party. She's trapped in a surreal time loop -- and staring down the barrel of her own mortality.",
+        "posterPath": "/1ju4vQ1EwlIkQxEgWiYmxOs3iBG.jpg",
+        "backdropPath": "/5TgMzFqbOEcEo99uhIo8DmiENOx.jpg",
+        "voteAverage": 7.361,
+        "firstAirDate": "2019-02-01",
+        "genreIds": [
+            35,
+            18
+        ],
+        "popularity": 11.0054
+    },
+    {
+        "id": 70453,
+        "name": "Sharp Objects",
+        "overview": "Reporter Camille Preaker confronts the psychological demons from her past when she returns to her hometown to investigate the murders of two young girls.",
+        "posterPath": "/1SGovj2qDdkJexvhFiXllj9EYfu.jpg",
+        "backdropPath": "/b9cCIwtT0gD42wEMMZwMdY8zfgS.jpg",
+        "voteAverage": 7.764,
+        "firstAirDate": "2018-07-08",
+        "genreIds": [
+            80,
+            18,
+            9648
+        ],
+        "popularity": 12.127
+    },
+    {
+        "id": 1401,
+        "name": "Hell on Wheels",
+        "overview": "The epic story of post-Civil War America, focusing on Cullen Bohannon, a Confederate soldier who sets out to exact revenge on the Union soldiers who killed his wife. His journey takes him west to Hell on Wheels, a dangerous, raucous, lawless melting pot of a town that travels with and services the construction of the first transcontinental railroad, an engineering feat unprecedented for its time.",
+        "posterPath": "/ckC9pL9yeYpOoK5aJ7GbYYWheK7.jpg",
+        "backdropPath": "/pXwEO7OYA7LhVPYyGIIqa58wwcF.jpg",
+        "voteAverage": 7.611,
+        "firstAirDate": "2011-11-06",
+        "genreIds": [
+            10759,
+            18,
+            37
+        ],
+        "popularity": 23.5611
+    },
+    {
+        "id": 1406,
+        "name": "Deadwood",
+        "overview": "The story of the early days of Deadwood, South Dakota; woven around actual historic events with most of the main characters based on real people. Deadwood starts as a gold mining camp and gradually turns from a lawless wild-west community into an organized wild-west civilized town. The story focuses on the real-life characters Seth Bullock and Al Swearengen.",
+        "posterPath": "/fWwxYAuqY4Na7fKI3Qq2nFWCwG8.jpg",
+        "backdropPath": "/dGzPJnh8YcUS4J10sNunohaXMVn.jpg",
+        "voteAverage": 8.095,
+        "firstAirDate": "2004-03-21",
+        "genreIds": [
+            37,
+            80,
+            18
+        ],
+        "popularity": 28.0207
+    },
+    {
+        "id": 47640,
+        "name": "The Strain",
+        "overview": "A high concept thriller that tells the story of Dr. Ephraim Goodweather, the head of the Center for Disease Control Canary Team in New York City. He and his team are called upon to investigate a mysterious viral outbreak with hallmarks of an ancient and evil strain of vampirism. As the strain spreads, Eph, his team, and an assembly of everyday New Yorkers, wage war for the fate of humanity itself.",
+        "posterPath": "/2BWErT9QcADpf2G4BZ769eSnFTP.jpg",
+        "backdropPath": "/4YnAZ1KO9goeS4c06VO7HXiO3oO.jpg",
+        "voteAverage": 7.465,
+        "firstAirDate": "2014-07-13",
+        "genreIds": [
+            10765,
+            18,
+            9648
+        ],
+        "popularity": 33.0888
+    },
+    {
+        "id": 34415,
+        "name": "The Killing",
+        "overview": "The Killing is an American crime drama television series based upon the Danish television series Forbrydelsen. Set in Seattle, Washington, the series follows the various murder investigations by homicide detectives Sarah Linden and Stephen Holder.",
+        "posterPath": "/3yiwAUNGn1rsPSVmFgVwPVJFtYf.jpg",
+        "backdropPath": "/LjXBJaNaBGgAsNHDYfFTwGOUWb.jpg",
+        "voteAverage": 7.836,
+        "firstAirDate": "2011-04-03",
+        "genreIds": [
+            18,
+            80,
+            9648
+        ],
+        "popularity": 29.0967
+    },
+    {
+        "id": 54344,
+        "name": "The Leftovers",
+        "overview": "When 2% of the world's population abruptly disappears without explanation, the world struggles to understand just what they're supposed to do about it. This is the story of the people who didn't make the cut.",
+        "posterPath": "/NKJdryIFHr245Umq6gXsf7oULW.jpg",
+        "backdropPath": "/rK9D7R4nzG3YGBktQY7VD5tGdtb.jpg",
+        "voteAverage": 7.671,
+        "firstAirDate": "2014-06-29",
+        "genreIds": [
+            10765,
+            18
+        ],
+        "popularity": 34.3208
+    },
+    {
+        "id": 1621,
+        "name": "Boardwalk Empire",
+        "overview": "Atlantic City at the dawn of Prohibition is a place where the rules don't apply. And the man who runs things -- legally and otherwise -- is the town's treasurer, Enoch \"Nucky\" Thompson, who is equal parts politician and gangster.",
+        "posterPath": "/zyHLWVmqS8m7bxABJjcDFMYLdF8.jpg",
+        "backdropPath": "/7Yj4QbECkH3JavlZxw4NWReoN7B.jpg",
+        "voteAverage": 8.0,
+        "firstAirDate": "2010-09-19",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 38.45
+    },
+    {
+        "id": 1429,
+        "name": "Attack on Titan",
+        "overview": "100 years ago, the last remnants of humanity were forced to retreat behind the towering walls of a fortified city to escape the massive, man-eating Titans that roamed the land outside their fortress. Only the members of the Scouting Legion dared to stray beyond the safety of the walls – but even those brave warriors seldom returned alive. Those within the city clung to the illusion of a peaceful existence until the day that dream was shattered, and their slim chance at survival was reduced to one horrifying choice: kill – or be devoured!",
+        "posterPath": "/hTP1DtLGFamjfu8WqjnuQdP1n4i.jpg",
+        "backdropPath": "/rqbCbjB19amtOtFQbb3K2lgm2zv.jpg",
+        "voteAverage": 8.684,
+        "firstAirDate": "2013-04-07",
+        "genreIds": [
+            16,
+            10765,
+            10759
+        ],
+        "popularity": 29.0506
+    },
+    {
+        "id": 87108,
+        "name": "Chernobyl",
+        "overview": "The true story of one of the worst man-made catastrophes in history: the catastrophic nuclear accident at Chernobyl. A tale of the brave men and women who sacrificed to save Europe from unimaginable disaster.",
+        "posterPath": "/hlLXt2tOPT6RRnjiUmoxyG1LTFi.jpg",
+        "backdropPath": "/3URK0z9PzpVNJrGE7XOuyy6KFzk.jpg",
+        "voteAverage": 8.722,
+        "firstAirDate": "2019-05-06",
+        "genreIds": [
+            18
+        ],
+        "popularity": 36.3795
+    },
+    {
+        "id": 13916,
+        "name": "Death Note",
+        "overview": "Light Yagami is an ace student with great prospects—and he’s bored out of his mind. But all that changes when he finds the Death Note, a notebook dropped by a rogue Shinigami death god. Any human whose name is written in the notebook dies, and Light has vowed to use the power of the Death Note to rid the world of evil. But will Light succeed in his noble goal, or will the Death Note turn him into the very thing he fights against?",
+        "posterPath": "/tCZFfYTIwrR7n94J6G14Y4hAFU6.jpg",
+        "backdropPath": "/koBa94NxTaGe2FoDzlXMuJptsv0.jpg",
+        "voteAverage": 8.623,
+        "firstAirDate": "2006-10-04",
+        "genreIds": [
+            16,
+            9648,
+            10765
+        ],
+        "popularity": 34.6669
+    },
+    {
+        "id": 4589,
+        "name": "Arrested Development",
+        "overview": "The story of a wealthy family that lost everything, and the one son who had no choice but to keep them all together.",
+        "posterPath": "/p4r4RD7RsNcJVoz0H6z3dBoTBtW.jpg",
+        "backdropPath": "/qCXY93t7QnKp6aWT1WKaQo0Qt5r.jpg",
+        "voteAverage": 7.9,
+        "firstAirDate": "2003-11-02",
+        "genreIds": [
+            35
+        ],
+        "popularity": 47.7973
+    },
+    {
+        "id": 1972,
+        "name": "Battlestar Galactica",
+        "overview": "When an old enemy, the Cylons, resurface and obliterate the 12 colonies, the crew of the aged Galactica protect a small civilian fleet - the last of humanity - as they journey toward the fabled 13th colony, Earth.",
+        "posterPath": "/99PJSbcO2LeM10uOGWeFihNp77j.jpg",
+        "backdropPath": "/sEjNaoENrqIZONKNn1iLFB0Us9k.jpg",
+        "voteAverage": 8.208,
+        "firstAirDate": "2004-10-18",
+        "genreIds": [
+            10765,
+            10759,
+            18
+        ],
+        "popularity": 45.4354
+    },
+    {
+        "id": 1409,
+        "name": "Sons of Anarchy",
+        "overview": "The Sons of Anarchy (SOA) are an outlaw motorcycle club with many charters in the United States and overseas. The show focused on the original and founding charter, Sons of Anarchy Motorcycle Club, Redwood Original, often referred to by the acronym SAMCRO, Sam Crow, or simply Redwood Charter. The charter operates both legal and illegal businesses in the small town of Charming, California. They combine gun-running and a garage, and involvement in porn film industry. Clay, the charter president, likes it old school and violent; while Jax, his stepson and the club's VP, has thoughts about changing the way things are done. Their conflict has effects on both the club and their personal relationship, especially when Jax goes on a personal quest to cleanse the SAMCRO name and image.",
+        "posterPath": "/kiy8BHtIHAslh81rvFcZ4wbNGdY.jpg",
+        "backdropPath": "/mcgZDwhMlrFsfpbvCeg5RY5mhiu.jpg",
+        "voteAverage": 8.4,
+        "firstAirDate": "2008-09-03",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 65.3592
+    },
+    {
+        "id": 2316,
+        "name": "The Office",
+        "overview": "The everyday lives of office employees in the Scranton, Pennsylvania branch of the fictional Dunder Mifflin Paper Company.",
+        "posterPath": "/7DJKHzAi83BmQrWLrYYOqcoKfhR.jpg",
+        "backdropPath": "/mLyW3UTgi2lsMdtueYODcfAB9Ku.jpg",
+        "voteAverage": 8.586,
+        "firstAirDate": "2005-03-24",
+        "genreIds": [
+            35
+        ],
+        "popularity": 108.3688
+    },
+    {
+        "id": 1405,
+        "name": "Dexter",
+        "overview": "Dexter Morgan, a blood spatter pattern analyst for the Miami Metro Police also leads a secret life as a serial killer, hunting down criminals who have slipped through the cracks of justice.",
+        "posterPath": "/q8dWfc4JwQuv3HayIZeO84jAXED.jpg",
+        "backdropPath": "/aSGSxGMTP893DPMCvMl9AdnEICE.jpg",
+        "voteAverage": 8.243,
+        "firstAirDate": "2006-10-01",
+        "genreIds": [
+            80,
+            18,
+            9648
+        ],
+        "popularity": 129.6639
+    },
+    {
+        "id": 44217,
+        "name": "Vikings",
+        "overview": "The adventures of Ragnar Lothbrok, the greatest hero of his age. The series tells the sagas of Ragnar's band of Viking brothers and his family, as he rises to become King of the Viking tribes. As well as being a fearless warrior, Ragnar embodies the Norse traditions of devotion to the gods. Legend has it that he was a direct descendant of Odin, the god of war and warriors.",
+        "posterPath": "/bQLrHIRNEkE3PdIWQrZHynQZazu.jpg",
+        "backdropPath": "/13kblIK8DnxMurcRDkeyy2sGR7v.jpg",
+        "voteAverage": 8.098,
+        "firstAirDate": "2013-03-03",
+        "genreIds": [
+            10759,
+            18,
+            10768
+        ],
+        "popularity": 115.2904
+    },
+    {
+        "id": 4607,
+        "name": "Lost",
+        "overview": "Stripped of everything, the survivors of a horrific plane crash must work together to stay alive. But the island holds many secrets.",
+        "posterPath": "/og6S0aTZU6YUJAbqxeKjCa3kY1E.jpg",
+        "backdropPath": "/yUOFocKDW7MCC5isx4FK8A68QFp.jpg",
+        "voteAverage": 8.0,
+        "firstAirDate": "2004-09-22",
+        "genreIds": [
+            9648,
+            10759,
+            18
+        ],
+        "popularity": 94.76
+    },
+    {
+        "id": 84661,
+        "name": "The Outsider",
+        "overview": "When an insidious supernatural force edges its way into a seemingly straightforward investigation into the gruesome murder of a young boy, it leads a seasoned cop and an unorthodox investigator to question everything they believe in.",
+        "posterPath": "/aMiPwPQjQI1EZN3xP2V0sSU37dc.jpg",
+        "backdropPath": "/lmlsqpAfDZnZumcFhbsTrOy9uNZ.jpg",
+        "voteAverage": 7.355,
+        "firstAirDate": "2020-01-12",
+        "genreIds": [
+            18,
+            9648,
+            80
+        ],
+        "popularity": 14.0236
+    },
+    {
+        "id": 57243,
+        "name": "Doctor Who",
+        "overview": "The Doctor is a Time Lord: a 900 year old alien with 2 hearts, part of a gifted civilization who mastered time travel. The Doctor saves planets for a living—more of a hobby actually, and the Doctor's very, very good at it.",
+        "posterPath": "/m6G92osOtSeXwjSfL21jZCUOvxe.jpg",
+        "backdropPath": "/vcFW09U4834DyFOeRZpsx9x1D3S.jpg",
+        "voteAverage": 7.616,
+        "firstAirDate": "2005-03-26",
+        "genreIds": [
+            10759,
+            18,
+            10765
+        ],
+        "popularity": 113.0861
+    },
+    {
+        "id": 60059,
+        "name": "Better Call Saul",
+        "overview": "Six years before Saul Goodman meets Walter White. We meet him when the man who will become Saul Goodman is known as Jimmy McGill, a small-time lawyer searching for his destiny, and, more immediately, hustling to make ends meet. Working alongside, and, often, against Jimmy, is “fixer” Mike Ehrmantraut. The series tracks Jimmy’s transformation into Saul Goodman, the man who puts “criminal” in “criminal lawyer\".",
+        "posterPath": "/zjg4jpK1Wp2kiRvtt5ND0kznako.jpg",
+        "backdropPath": "/rfxryDIv8huejujg4JueDJx8zCz.jpg",
+        "voteAverage": 8.71,
+        "firstAirDate": "2015-02-08",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 76.1561
+    },
+    {
+        "id": 39852,
+        "name": "The Sinner",
+        "overview": "In a small New York town, a haunted detective hunts for answers about perplexing crimes while wrestling with his own demons.",
+        "posterPath": "/rmibFGdqOe0kKKhPls0jVOdZCWw.jpg",
+        "backdropPath": "/lVWku9LX2qdJTtAbRzaCDhhWeTK.jpg",
+        "voteAverage": 7.463,
+        "firstAirDate": "2017-08-02",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 32.2231
+    },
+    {
+        "id": 34307,
+        "name": "Shameless",
+        "overview": "Chicagoan Frank Gallagher is the proud single dad of six smart, industrious, independent kids, who without him would be... perhaps better off. When Frank's not at the bar spending what little money they have, he's passed out on the floor. But the kids have found ways to grow up in spite of him. They may not be like any family you know, but they make no apologies for being exactly who they are.",
+        "posterPath": "/ifo31fMWLmyOVpdak9K0kY4jldQ.jpg",
+        "backdropPath": "/5s9XHTB9SLPdg3mNU6BlSLnZ9Qq.jpg",
+        "voteAverage": 8.167,
+        "firstAirDate": "2011-01-09",
+        "genreIds": [
+            18,
+            35
+        ],
+        "popularity": 151.618
+    },
+    {
+        "id": 62704,
+        "name": "Ballers",
+        "overview": "Looking at the lives of former and current football players, the show follows former superstar Spencer Strasmore as he gets his life on track in retirement while mentoring other current and former players through the daily grind of the business of football.",
+        "posterPath": "/WyIazPyjmcFMC42nWEpI0jr56x.jpg",
+        "backdropPath": "/gyPWbM1lq7Ufd9cENSl5Phsrb0a.jpg",
+        "voteAverage": 6.794,
+        "firstAirDate": "2015-06-21",
+        "genreIds": [
+            18,
+            35
+        ],
+        "popularity": 22.6044
+    },
+    {
+        "id": 89456,
+        "name": "Primal",
+        "overview": "A caveman forms a bond with a dinosaur as they struggle to survive in a hostile world.",
+        "posterPath": "/mf12pRakr3eYdJtv6klQtoznnbU.jpg",
+        "backdropPath": "/tbHQDtoDZGJsfe7Kx6BEShcrZAa.jpg",
+        "voteAverage": 8.7,
+        "firstAirDate": "2019-10-08",
+        "genreIds": [
+            10759,
+            16
+        ],
+        "popularity": 14.6753
+    },
+    {
+        "id": 71446,
+        "name": "Money Heist",
+        "overview": "To carry out the biggest heist in history, a mysterious man called The Professor recruits a band of eight robbers who have a single characteristic: none of them has anything to lose. Five months of seclusion - memorizing every step, every detail, every probability - culminate in eleven days locked up in the National Coinage and Stamp Factory of Spain, surrounded by police forces and with dozens of hostages in their power, to find out whether their suicide wager will lead to everything or nothing.",
+        "posterPath": "/reEMJA1uzscCbkpeRJeTT2bjqUp.jpg",
+        "backdropPath": "/gFZriCkpJYsApPZEF3jhxL4yLzG.jpg",
+        "voteAverage": 8.2,
+        "firstAirDate": "2017-05-02",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 29.6261
+    },
+    {
+        "id": 66186,
+        "name": "The Detour",
+        "overview": "A what-in-the-living-hell-is-wrong-with-this-family comedy created by comic super-couple Jason Jones &amp; Samantha Bee and inspired by their own experiences with family trips. Unfiltered dad Nate hits the road with wife Robin and kids Delilah and Jared. Every leg of their trip is fraught with disaster as they encounter one hellish turn after another. If there's trouble on the road, this family will find it and plow into it.",
+        "posterPath": "/hXR3Vxu8BVtMF9YxRrbCV6fcEWr.jpg",
+        "backdropPath": "/ePDemJODqCWGqsVWTSdfgjgGFMA.jpg",
+        "voteAverage": 7.071,
+        "firstAirDate": "2016-04-11",
+        "genreIds": [
+            35,
+            10767
+        ],
+        "popularity": 6.7715
+    },
+    {
+        "id": 88055,
+        "name": "Servant",
+        "overview": "A Philadelphia couple are in mourning after an unspeakable tragedy creates a rift in their marriage and opens the door for a mysterious force to enter their home.",
+        "posterPath": "/plsSSobmPSSz4hm8vYMXeIVkJJP.jpg",
+        "backdropPath": "/7nsRpSCYcDGLcDmFAISHC8zMQ0D.jpg",
+        "voteAverage": 7.495,
+        "firstAirDate": "2019-11-28",
+        "genreIds": [
+            18,
+            9648
+        ],
+        "popularity": 21.5001
+    },
+    {
+        "id": 70796,
+        "name": "The Marvelous Mrs. Maisel",
+        "overview": "It’s 1958 Manhattan and Miriam “Midge” Maisel has everything she’s ever wanted - the perfect husband, kids, and Upper West Side apartment. But when her life suddenly takes a turn and Midge must start over, she discovers a previously unknown talent - one that will take her all the way from the comedy clubs of Greenwich Village to a spot on Johnny Carson’s couch.",
+        "posterPath": "/zS7fQiOZiKCVH2vlYSiIsFWW8hh.jpg",
+        "backdropPath": "/vQ77kC1amsZECKIxkUIsMJCtBVp.jpg",
+        "voteAverage": 8.068,
+        "firstAirDate": "2017-03-16",
+        "genreIds": [
+            35,
+            18
+        ],
+        "popularity": 25.9025
+    },
+    {
+        "id": 63639,
+        "name": "The Expanse",
+        "overview": "A thriller set two hundred years in the future following the case of a missing young woman who brings a hardened detective and a rogue ship's captain together in a race across the solar system to expose the greatest conspiracy in human history.",
+        "posterPath": "/5vQlVWkIMPhZ88OWchJsgwGEK9.jpg",
+        "backdropPath": "/uUwnClwdMA12bpHgeKgkQrbu5Oe.jpg",
+        "voteAverage": 8.067,
+        "firstAirDate": "2015-12-14",
+        "genreIds": [
+            18,
+            9648,
+            10765
+        ],
+        "popularity": 49.7517
+    },
+    {
+        "id": 82856,
+        "name": "The Mandalorian",
+        "overview": "After the fall of the Galactic Empire, lawlessness has spread throughout the galaxy. A lone gunfighter makes his way through the outer reaches, earning his keep as a bounty hunter.",
+        "posterPath": "/sWgBv7LV2PRoQgkxwlibdGXKz1S.jpg",
+        "backdropPath": "/9zcbqSxdsRMZWHYtyCd1nXPr2xq.jpg",
+        "voteAverage": 8.408,
+        "firstAirDate": "2019-11-12",
+        "genreIds": [
+            10765,
+            10759
+        ],
+        "popularity": 51.4185
+    },
+    {
+        "id": 62560,
+        "name": "Mr. Robot",
+        "overview": "A young programmer, Elliot, suffers from a debilitating anti-social disorder and decides that he can only connect to people by hacking them. He wields his skills as a weapon to protect the people that he cares about. Elliot finds himself in the intersection between a cybersecurity firm he works for and the underworld organizations that are recruiting him to bring down corporate America.",
+        "posterPath": "/kv1nRqgebSsREnd7vdC2pSGjpLo.jpg",
+        "backdropPath": "/uJUe985oIuRiD3hmHQYskIMc2WU.jpg",
+        "voteAverage": 8.27,
+        "firstAirDate": "2015-06-24",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 40.8923
+    },
+    {
+        "id": 68507,
+        "name": "His Dark Materials",
+        "overview": "Lyra is an orphan who lives in a parallel universe in which science, theology and magic are entwined. Her search for a kidnapped friend uncovers a sinister plot involving stolen children and turns into a quest to understand a mysterious phenomenon called Dust. She is later joined on her journey by Will, a boy who possesses a knife that can cut windows between worlds. As she learns the truth about her parents and her prophesied destiny, the two young people are caught up in a war against celestial powers that ranges across many worlds.",
+        "posterPath": "/g6tIKGc3f1H5QMz1dcgCwADKpZ7.jpg",
+        "backdropPath": "/t8KjRqfOqNx14cHLwARjR08bjeb.jpg",
+        "voteAverage": 7.813,
+        "firstAirDate": "2019-11-03",
+        "genreIds": [
+            10765,
+            18,
+            10759
+        ],
+        "popularity": 24.699
+    },
+    {
+        "id": 71912,
+        "name": "The Witcher",
+        "overview": "Geralt of Rivia, a mutated monster-hunter for hire, journeys toward his destiny in a turbulent world where people often prove more wicked than beasts.",
+        "posterPath": "/AoGsDM02UVt0npBA8OvpDcZbaMi.jpg",
+        "backdropPath": "/foGkPxpw9h8zln81j63mix5B7m8.jpg",
+        "voteAverage": 7.899,
+        "firstAirDate": "2019-12-20",
+        "genreIds": [
+            10765,
+            18,
+            10759
+        ],
+        "popularity": 67.1648
+    },
+    {
+        "id": 79788,
+        "name": "Watchmen",
+        "overview": "Set in an alternate history where “superheroes” are treated as outlaws, “Watchmen” embraces the nostalgia of the original groundbreaking graphic novel while attempting to break new ground of its own.",
+        "posterPath": "/m8rWq3j73ZGhDuSCZWMMoE9ePH1.jpg",
+        "backdropPath": "/fh2CStc3fKFYhkKOFyUHBGksRWj.jpg",
+        "voteAverage": 7.629,
+        "firstAirDate": "2019-10-20",
+        "genreIds": [
+            18,
+            80,
+            10765,
+            9648,
+            10759
+        ],
+        "popularity": 13.8355
+    },
+    {
+        "id": 87917,
+        "name": "For All Mankind",
+        "overview": "Explore an aspirational world where NASA and the space program remained a priority and a focal point of our hopes and dreams as told through the lives of NASA astronauts, engineers, and their families.",
+        "posterPath": "/JP3DItWMbrrLiKR5AYUfpsNf2b.jpg",
+        "backdropPath": "/9OQ5BIITkJwRJo9JA6AlCfJIGBQ.jpg",
+        "voteAverage": 7.742,
+        "firstAirDate": "2019-11-01",
+        "genreIds": [
+            18,
+            10765,
+            10768
+        ],
+        "popularity": 53.7373
+    },
+    {
+        "id": 89314,
+        "name": "Reprisal",
+        "overview": "A hyper-noir story that follows a relentless femme fatale who, after being left for dead, sets out to take revenge against her brother and his bombastic gang of gear-heads.",
+        "posterPath": "/lwNZ6FRhJkw1u4LyFQFZGi12tt4.jpg",
+        "backdropPath": "/pTNsuk2ZWyHCjLtfYvbQwJvfJ6H.jpg",
+        "voteAverage": 7.019,
+        "firstAirDate": "2019-12-06",
+        "genreIds": [
+            18,
+            80
+        ],
+        "popularity": 5.5969
+    },
+    {
+        "id": 1413,
+        "name": "American Horror Story",
+        "overview": "An anthology horror drama series centering on different characters and locations, including a house with a murderous past, an asylum, a witch coven, a freak show, a hotel, a farmhouse in Roanoke, a cult, the apocalypse and a summer camp.",
+        "posterPath": "/x2c3AvZeTyNehRZXabTojAxfDuR.jpg",
+        "backdropPath": "/6fQSEUfV3eDUS5AGhwJK8CAWt0b.jpg",
+        "voteAverage": 8.076,
+        "firstAirDate": "2011-10-05",
+        "genreIds": [
+            18,
+            9648,
+            10765
+        ],
+        "popularity": 86.9797
+    },
+    {
+        "id": 79086,
+        "name": "Godfather of Harlem",
+        "overview": "Loosely based on infamous crime boss Bumpy Johnson, who in the early 1960s returned from ten years in prison to find the neighborhood he once ruled in shambles. With the streets controlled by the Italian mob, Bumpy attempts to regain his piece of Harlem.",
+        "posterPath": "/avhyzJycLNi3nXov2lREhDkP3ik.jpg",
+        "backdropPath": "/tgH5BaWIrPGbDNnFyA4aHtamjWF.jpg",
+        "voteAverage": 8.125,
+        "firstAirDate": "2019-09-29",
+        "genreIds": [
+            18,
+            80
+        ],
+        "popularity": 26.144
+    },
+    {
+        "id": 60574,
+        "name": "Peaky Blinders",
+        "overview": "A gangster family epic set in 1919 Birmingham, England and centered on a gang who sew razor blades in the peaks of their caps, and their fierce boss Tommy Shelby, who means to move up in the world.",
+        "posterPath": "/vUUqzWa2LnHIVqkaKVlVGkVcZIW.jpg",
+        "backdropPath": "/dzq83RHwQcnP6WGJ6YkenIqeaa5.jpg",
+        "voteAverage": 8.524,
+        "firstAirDate": "2013-09-12",
+        "genreIds": [
+            18,
+            80
+        ],
+        "popularity": 84.1677
+    },
+    {
+        "id": 67070,
+        "name": "Fleabag",
+        "overview": "A portrait into the mind of a dry-witted, sexual, angry, porn-watching, grief-riddled woman, trying to make sense of the world. As she hurls herself headlong at modern living, Fleabag is thrown roughly up against the walls of contemporary London, with all its frenetic energy, late nights, and bright lights.",
+        "posterPath": "/27vEYsRKa3eAniwmoccOoluEXQ1.jpg",
+        "backdropPath": "/hXdQ4MWsEOX6qg6VydKrLb3YJ4g.jpg",
+        "voteAverage": 8.278,
+        "firstAirDate": "2016-07-21",
+        "genreIds": [
+            35,
+            18
+        ],
+        "popularity": 13.0703
+    },
+    {
+        "id": 86831,
+        "name": "Love, Death & Robots",
+        "overview": "Terrifying creatures, wicked surprises and dark comedy converge in this NSFW anthology of animated stories presented by Tim Miller and David Fincher.",
+        "posterPath": "/vL5BQvXH96cJzmNK5n7QliQxy90.jpg",
+        "backdropPath": "/nBrkOZyI75artyizuBFeya48KbO.jpg",
+        "voteAverage": 8.205,
+        "firstAirDate": "2019-03-15",
+        "genreIds": [
+            16,
+            10765
+        ],
+        "popularity": 29.68
+    },
+    {
+        "id": 70523,
+        "name": "Dark",
+        "overview": "A missing child sets four families on a frantic hunt for answers as they unearth a mind-bending mystery that spans three generations.",
+        "posterPath": "/apbrbWs8M9lyOpJYU5WXrpFbk1Z.jpg",
+        "backdropPath": "/3jDXL4Xvj3AzDOF6UH1xeyHW8MH.jpg",
+        "voteAverage": 8.426,
+        "firstAirDate": "2017-12-01",
+        "genreIds": [
+            80,
+            18,
+            10765,
+            9648
+        ],
+        "popularity": 46.5692
+    },
+    {
+        "id": 64230,
+        "name": "Preacher",
+        "overview": "A preacher sets out on a mission to make the almighty himself confess his sin of abandoning the world. With his best friend Cassidy, an alcoholic Irish vampire, his love Tulip, a red blooded gun towing Texan, and the power of genesis, an unholy child born from an angel and a devil, Jesse gives up everything to set the world straight with its creator.",
+        "posterPath": "/ey1WQajA25E5sFGHSApcqSWUSEc.jpg",
+        "backdropPath": "/bENaaAmX4d0zUYYrZyFCT1U0V86.jpg",
+        "voteAverage": 7.434,
+        "firstAirDate": "2016-05-22",
+        "genreIds": [
+            10765,
+            9648,
+            18
+        ],
+        "popularity": 20.3375
+    },
+    {
+        "id": 63247,
+        "name": "Westworld",
+        "overview": "A dark odyssey about the dawn of artificial consciousness and the evolution of sin. Set at the intersection of the near future and the reimagined past, it explores a world in which every human appetite, no matter how noble or depraved, can be indulged.",
+        "posterPath": "/ALlSU9du9iRiKIIoY1sREGNqQ5.jpg",
+        "backdropPath": "/rX5hvSRB2k4YoIvRg6Zky52rWk0.jpg",
+        "voteAverage": 8.0,
+        "firstAirDate": "2016-10-02",
+        "genreIds": [
+            10765,
+            37
+        ],
+        "popularity": 52.2514
+    },
+    {
+        "id": 71809,
+        "name": "The Dark Crystal: Age of Resistance",
+        "overview": "Return to the world of Thra, where three Gelfling discover the horrifying secret behind the Skeksis' power and set out to ignite the fires of rebellion and save their world.",
+        "posterPath": "/xnMJ7mBC8Jx4emaj7TE4TU0Qm92.jpg",
+        "backdropPath": "/prDq9t3vxMEDKUNcLwyuWLHGeuM.jpg",
+        "voteAverage": 7.82,
+        "firstAirDate": "2019-08-30",
+        "genreIds": [
+            10765,
+            10759,
+            10751
+        ],
+        "popularity": 11.1195
+    },
+    {
+        "id": 65708,
+        "name": "Taboo",
+        "overview": "Adventurer James Keziah Delaney returns to London from Africa in 1814 along with fourteen stolen diamonds to seek vengeance after the death of his father.",
+        "posterPath": "/om1wVOuEtwH3krHutIWO9sJzkS5.jpg",
+        "backdropPath": "/gder6NtVlBIpenWWMOwpbQK05Uc.jpg",
+        "voteAverage": 7.895,
+        "firstAirDate": "2017-01-07",
+        "genreIds": [
+            18,
+            9648
+        ],
+        "popularity": 29.7627
+    },
+    {
+        "id": 72750,
+        "name": "Killing Eve",
+        "overview": "A security consultant hunts for a ruthless assassin. Equally obsessed with each other, they go head to head in an epic game of cat-and-mouse.",
+        "posterPath": "/4wKhTVw8aGq5AZMa0Q1spERdi7n.jpg",
+        "backdropPath": "/2eR0H27Us1tvbjd95oW7WhiKioC.jpg",
+        "voteAverage": 7.895,
+        "firstAirDate": "2018-04-08",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 24.7263
+    },
+    {
+        "id": 60708,
+        "name": "Gotham",
+        "overview": "Everyone knows the name Commissioner Gordon. He is one of the crime world's greatest foes, a man whose reputation is synonymous with law and order. But what is known of Gordon's story and his rise from rookie detective to Police Commissioner? What did it take to navigate the multiple layers of corruption that secretly ruled Gotham City, the spawning ground of the world's most iconic villains? And what circumstances created them – the larger-than-life personas who would become Catwoman, The Penguin, The Riddler, Two-Face and The Joker?",
+        "posterPath": "/zLpSNnVoL2bjQdc1PcaHUPUzttP.jpg",
+        "backdropPath": "/rbDFI2I1nMyJtX4Y3jJ4H1QRdRX.jpg",
+        "voteAverage": 7.599,
+        "firstAirDate": "2014-09-22",
+        "genreIds": [
+            18,
+            80,
+            10765
+        ],
+        "popularity": 53.1606
+    },
+    {
+        "id": 66025,
+        "name": "Animal Kingdom",
+        "overview": "17-year-old Joshua \"J\" Cody moves in with his freewheeling relatives in their Southern California beach town after his mother dies of a heroin overdose. Headed by boot-tough matriarch Janine \"Smurf\" Cody and her right-hand Baz, who runs the business and calls the shots, the clan also consists of Pope, the oldest and most dangerous of the Cody boys; Craig, the tough and fearless middle son; and Deran, the troubled, suspicious \"baby\" of the family.",
+        "posterPath": "/rzvdKrnSRKPFI0pgqMQknDPpRC9.jpg",
+        "backdropPath": "/eQJwfyMqSra10ck8HOoiCrbQR32.jpg",
+        "voteAverage": 7.777,
+        "firstAirDate": "2016-06-14",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 41.5449
+    },
+    {
+        "id": 48866,
+        "name": "The 100",
+        "overview": "100 years in the future, when the Earth has been abandoned due to radioactivity, the last surviving humans live on an ark orbiting the planet — but the ark won't last forever. So the repressive regime picks 100 expendable juvenile delinquents to send down to Earth to see if the planet is still habitable.",
+        "posterPath": "/wHIMMLFsk32wIzDmawWkYVbxFCS.jpg",
+        "backdropPath": "/8ZerYKvIaNUJZvAHXYTQu4qTwFw.jpg",
+        "voteAverage": 7.878,
+        "firstAirDate": "2014-03-19",
+        "genreIds": [
+            10765,
+            10759,
+            18,
+            80
+        ],
+        "popularity": 59.8224
+    },
+    {
+        "id": 67195,
+        "name": "Legion",
+        "overview": "David Haller, AKA Legion, is a troubled young man who may be more than human. Diagnosed as schizophrenic, David has been in and out of psychiatric hospitals for years. But after a strange encounter with a fellow patient, he’s confronted with the possibility that the voices he hears and the visions he sees might be real.",
+        "posterPath": "/xhJtYVTsdXQCIlB5hAXkMCPUG9y.jpg",
+        "backdropPath": "/87eP7ITTrOWvkA4EqCuoRdyjzLy.jpg",
+        "voteAverage": 7.516,
+        "firstAirDate": "2017-02-08",
+        "genreIds": [
+            10759,
+            10765,
+            18
+        ],
+        "popularity": 22.3371
+    },
+    {
+        "id": 69478,
+        "name": "The Handmaid's Tale",
+        "overview": "Set in a dystopian future, a woman is forced to live as a concubine under a fundamentalist theocratic dictatorship.",
+        "posterPath": "/eGUT7j3n3rn5yGihlCgwUnD70HV.jpg",
+        "backdropPath": "/sokTOq0zAmPS7wCR4qd4Kca35x7.jpg",
+        "voteAverage": 8.159,
+        "firstAirDate": "2017-04-26",
+        "genreIds": [
+            18,
+            10765,
+            10759
+        ],
+        "popularity": 70.5412
+    },
+    {
+        "id": 66732,
+        "name": "Stranger Things",
+        "overview": "When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces, and one strange little girl.",
+        "posterPath": "/uOOtwVbSr4QDjAGIifLDwpb2Pdl.jpg",
+        "backdropPath": "/56v2KjBlU4XaOv9rVYEQypROD7P.jpg",
+        "voteAverage": 8.556,
+        "firstAirDate": "2016-07-15",
+        "genreIds": [
+            10759,
+            9648,
+            10765
+        ],
+        "popularity": 135.7894
+    },
+    {
+        "id": 76479,
+        "name": "The Boys",
+        "overview": "A group of vigilantes known informally as “The Boys” set out to take down corrupt superheroes with no more than blue-collar grit and a willingness to fight dirty.",
+        "posterPath": "/in1R2dDc421JxsoRWaIIAqVI2KE.jpg",
+        "backdropPath": "/n6vVs6z8obNbExdD3QHTr4Utu1Z.jpg",
+        "voteAverage": 8.441,
+        "firstAirDate": "2019-07-25",
+        "genreIds": [
+            10765,
+            10759
+        ],
+        "popularity": 134.2299
+    },
+    {
+        "id": 75006,
+        "name": "The Umbrella Academy",
+        "overview": "Reunited by their father's death, estranged siblings with extraordinary powers uncover shocking family secrets — and a looming threat to humanity.",
+        "posterPath": "/qhcwrnnCnN8NE1N6XXKHFmveJR9.jpg",
+        "backdropPath": "/gHJhN9AJV4PmJ7YpLFa9ldDWuG8.jpg",
+        "voteAverage": 8.464,
+        "firstAirDate": "2019-02-15",
+        "genreIds": [
+            10759,
+            10765,
+            18
+        ],
+        "popularity": 28.624
+    },
+    {
+        "id": 79501,
+        "name": "Doom Patrol",
+        "overview": "The Doom Patrol’s members each suffered horrible accidents that gave them superhuman abilities — but also left them scarred and disfigured. Traumatized and downtrodden, the team found purpose through The Chief, who brought them together to investigate the weirdest phenomena in existence — and to protect Earth from what they find.",
+        "posterPath": "/nVN7Dt0Xr78gnJepRsRLaLYklbY.jpg",
+        "backdropPath": "/sSJZVwCS0tFzcLSaQOjLpv5mFau.jpg",
+        "voteAverage": 7.484,
+        "firstAirDate": "2019-02-15",
+        "genreIds": [
+            10765,
+            18
+        ],
+        "popularity": 28.8696
+    },
+    {
+        "id": 42009,
+        "name": "Black Mirror",
+        "overview": "Twisted tales run wild in this mind-bending anthology series that reveals humanity's worst traits, greatest innovations and more.",
+        "posterPath": "/seN6rRfN0I6n8iDXjlSMk1QjNcq.jpg",
+        "backdropPath": "/dg3OindVAGZBjlT3xYKqIAdukPL.jpg",
+        "voteAverage": 8.287,
+        "firstAirDate": "2011-12-04",
+        "genreIds": [
+            10765,
+            18,
+            9648
+        ],
+        "popularity": 64.8295
+    },
+    {
+        "id": 71915,
+        "name": "Good Omens",
+        "overview": "Aziraphale and Crowley, of Heaven and Hell respectively, have grown rather fond of the Earth. So it's terrible news that it's about to end. The armies of Good and Evil are amassing. The Four Horsemen are ready to ride. Everything is going according to the Divine Plan...except that someone seems to have misplaced the Antichrist. Can our heroes find him and stop Armageddon before it's too late?",
+        "posterPath": "/nO68XVx5of8hlBwEOGOkPC8Mveu.jpg",
+        "backdropPath": "/dQCKc5NKeKOGAQusk2FdctGB9k5.jpg",
+        "voteAverage": 8.024,
+        "firstAirDate": "2019-05-31",
+        "genreIds": [
+            35,
+            18,
+            10765
+        ],
+        "popularity": 27.5992
+    },
+    {
+        "id": 69740,
+        "name": "Ozark",
+        "overview": "A financial adviser drags his family from Chicago to the Missouri Ozarks, where he must launder $500 million in five years to appease a drug boss.",
+        "posterPath": "/pCGyPVrI9Fzw6rE1Pvi4BIXF6ET.jpg",
+        "backdropPath": "/aatG9iVAUL7U7OyFEmupESpOrD2.jpg",
+        "voteAverage": 8.196,
+        "firstAirDate": "2017-07-21",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 39.5877
+    },
+    {
+        "id": 1436,
+        "name": "Justified",
+        "overview": "A character drama based on the 2001 Elmore Leonard short story \"Fire in the Hole.\" Leonard's tale centers around U.S. Marshal Raylan Givens of Kentucky, a quiet but strong-willed official of the law. The tale covers his high-stakes job, as well as his strained relationships with his ex-wife and father.",
+        "posterPath": "/ie1quhMk09lDtvtAyQAHTu09R9Z.jpg",
+        "backdropPath": "/cyieN1P9Xo5SvLasSUT7SaAAzfy.jpg",
+        "voteAverage": 7.982,
+        "firstAirDate": "2010-03-16",
+        "genreIds": [
+            80,
+            18
+        ],
+        "popularity": 32.2782
+    }
+]

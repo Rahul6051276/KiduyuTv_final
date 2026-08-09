@@ -534,6 +534,102 @@ private fun HomeContent(
                         }
                     }
 
+                    if (uiState.harryPotterCollection.isNotEmpty()) {
+                        ContentRow(
+                            title = "Harry Potter Collection",
+                            items = uiState.harryPotterCollection,
+                            restoreFocusItemId = lastClickedItemId,
+                            getItemId = { it.id },
+                            onItemFocus = { movie -> onSelectItem(movie) },
+                            onItemClick = { movie ->
+                                onSetLastClickedItemId(movie.id)
+                                onMovieClick(movie.id)
+                            }
+                        ) { movie, isFocused, onClick ->
+                            MovieCard(movie = movie, isSelected = isFocused, onClick = onClick)
+                        }
+                    }
+
+                    if (uiState.animeToWatch.isNotEmpty()) {
+                        ContentRow(
+                            title = "100 Anime to Watch Before You Die",
+                            items = uiState.animeToWatch,
+                            restoreFocusItemId = lastClickedItemId,
+                            getItemId = { it.id },
+                            onItemFocus = { tvShow -> onSelectItem(tvShow) },
+                            onItemClick = { tvShow ->
+                                onSetLastClickedItemId(tvShow.id)
+                                onTvShowClick(tvShow.id)
+                            }
+                        ) { tvShow, isFocused, onClick ->
+                            TvShowCard(tvShow = tvShow, isSelected = isFocused, onClick = onClick)
+                        }
+                    }
+
+                    if (uiState.popularHorror.isNotEmpty()) {
+                        ContentRow(
+                            title = "Popular Horror",
+                            items = uiState.popularHorror,
+                            restoreFocusItemId = lastClickedItemId,
+                            getItemId = { it.id },
+                            onItemFocus = { movie -> onSelectItem(movie) },
+                            onItemClick = { movie ->
+                                onSetLastClickedItemId(movie.id)
+                                onMovieClick(movie.id)
+                            }
+                        ) { movie, isFocused, onClick ->
+                            MovieCard(movie = movie, isSelected = isFocused, onClick = onClick)
+                        }
+                    }
+
+                    if (uiState.shutUpAndWatch.isNotEmpty()) {
+                        ContentRow(
+                            title = "Shut Up and Watch",
+                            items = uiState.shutUpAndWatch,
+                            restoreFocusItemId = lastClickedItemId,
+                            getItemId = { it.id },
+                            onItemFocus = { tvShow -> onSelectItem(tvShow) },
+                            onItemClick = { tvShow ->
+                                onSetLastClickedItemId(tvShow.id)
+                                onTvShowClick(tvShow.id)
+                            }
+                        ) { tvShow, isFocused, onClick ->
+                            TvShowCard(tvShow = tvShow, isSelected = isFocused, onClick = onClick)
+                        }
+                    }
+
+                    if (uiState.jamesBondCollection.isNotEmpty()) {
+                        ContentRow(
+                            title = "James Bond Collection",
+                            items = uiState.jamesBondCollection,
+                            restoreFocusItemId = lastClickedItemId,
+                            getItemId = { it.id },
+                            onItemFocus = { movie -> onSelectItem(movie) },
+                            onItemClick = { movie ->
+                                onSetLastClickedItemId(movie.id)
+                                onMovieClick(movie.id)
+                            }
+                        ) { movie, isFocused, onClick ->
+                            MovieCard(movie = movie, isSelected = isFocused, onClick = onClick)
+                        }
+                    }
+
+                    if (uiState.piratesOfTheCaribbean.isNotEmpty()) {
+                        ContentRow(
+                            title = "Pirates of the Caribbean",
+                            items = uiState.piratesOfTheCaribbean,
+                            restoreFocusItemId = lastClickedItemId,
+                            getItemId = { it.id },
+                            onItemFocus = { movie -> onSelectItem(movie) },
+                            onItemClick = { movie ->
+                                onSetLastClickedItemId(movie.id)
+                                onMovieClick(movie.id)
+                            }
+                        ) { movie, isFocused, onClick ->
+                            MovieCard(movie = movie, isSelected = isFocused, onClick = onClick)
+                        }
+                    }
+
                     if (uiState.hallmarkMovies.isNotEmpty()) {
                         ContentRow(
                             title = "Hallmark Movies",

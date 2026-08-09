@@ -31,6 +31,12 @@ data class HomeUiState(
     val topTvShows: List<TvShow> = emptyList(),
     val oscarWinners2026: List<Movie> = emptyList(),
     val marvelCinematicUniverse: List<Movie> = emptyList(),
+    val harryPotterCollection: List<Movie> = emptyList(),
+    val animeToWatch: List<TvShow> = emptyList(),
+    val popularHorror: List<Movie> = emptyList(),
+    val shutUpAndWatch: List<TvShow> = emptyList(),
+    val jamesBondCollection: List<Movie> = emptyList(),
+    val piratesOfTheCaribbean: List<Movie> = emptyList(),
     val hallmarkMovies: List<Movie> = emptyList(),
     val trueStoryMovies: List<Movie> = emptyList(),
     val christianMovies: List<Movie> = emptyList(),
@@ -202,6 +208,24 @@ class HomeViewModel : ViewModel() {
                     val marvelCinematicUniverseDeferred = async {
                         repository.getGitHubMovieList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/marvel_cinematic_universe.json").getOrNull() ?: emptyList()
                     }
+                    val harryPotterCollectionDeferred = async {
+                        repository.getGitHubMovieList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/harry_potter_collection.json").getOrNull() ?: emptyList()
+                    }
+                    val animeToWatchDeferred = async {
+                        repository.getGitHubTvShowList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/anime_to_watch_before_you_die.json").getOrNull() ?: emptyList()
+                    }
+                    val popularHorrorDeferred = async {
+                        repository.getGitHubMovieList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/popular_horror.json").getOrNull() ?: emptyList()
+                    }
+                    val shutUpAndWatchDeferred = async {
+                        repository.getGitHubTvShowList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/shut_up_and_watch.json").getOrNull() ?: emptyList()
+                    }
+                    val jamesBondCollectionDeferred = async {
+                        repository.getGitHubMovieList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/james_bond_collection.json").getOrNull() ?: emptyList()
+                    }
+                    val piratesOfTheCaribbeanDeferred = async {
+                        repository.getGitHubMovieList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/pirates_of_the_caribbean.json").getOrNull() ?: emptyList()
+                    }
                     // Networks and companies loaded in parallel with other content
                     val companiesNetworksDeferred = async {
                         repository.getGitHubCompaniesNetworks(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/companies_networks.json").getOrNull()
@@ -244,6 +268,12 @@ class HomeViewModel : ViewModel() {
                     // Await all results in parallel
                     val oscarWinners2026 = oscarWinnersDeferred.await()
                     val marvelCinematicUniverse = marvelCinematicUniverseDeferred.await()
+                    val harryPotterCollection = harryPotterCollectionDeferred.await()
+                    val animeToWatch = animeToWatchDeferred.await()
+                    val popularHorror = popularHorrorDeferred.await()
+                    val shutUpAndWatch = shutUpAndWatchDeferred.await()
+                    val jamesBondCollection = jamesBondCollectionDeferred.await()
+                    val piratesOfTheCaribbean = piratesOfTheCaribbeanDeferred.await()
                     val hallmarkMovies = hallmarkMoviesDeferred.await()
                     val trueStoryMovies = trueStoryMoviesDeferred.await()
                     val bestSitcoms = bestSitcomsDeferred.await()
@@ -287,6 +317,13 @@ class HomeViewModel : ViewModel() {
                         oscarWinners2026 = sortedOscarWinners,
                         // Keep the curator's MCU viewing order from the Trakt list.
                         marvelCinematicUniverse = marvelCinematicUniverse,
+                        // Keep each Trakt curator's original viewing order.
+                        harryPotterCollection = harryPotterCollection,
+                        animeToWatch = animeToWatch,
+                        popularHorror = popularHorror,
+                        shutUpAndWatch = shutUpAndWatch,
+                        jamesBondCollection = jamesBondCollection,
+                        piratesOfTheCaribbean = piratesOfTheCaribbean,
                         hallmarkMovies = sortedHallmark,
                         trueStoryMovies = sortedTrueStory,
                         bestSitcoms = sortedSitcoms,

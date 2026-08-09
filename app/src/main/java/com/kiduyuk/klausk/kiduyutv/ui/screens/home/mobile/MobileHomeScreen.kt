@@ -439,6 +439,54 @@ fun MobileHomeScreen(
                         }
                     }
 
+                    if (uiState.harryPotterCollection.isNotEmpty()) {
+                        item {
+                            MobileCategoryRow("Harry Potter Collection", uiState.harryPotterCollection) { movie ->
+                                onMovieClick(movie.id)
+                            }
+                        }
+                    }
+
+                    if (uiState.animeToWatch.isNotEmpty()) {
+                        item {
+                            MobileCategoryRow("100 Anime to Watch Before You Die", uiState.animeToWatch) { tvShow ->
+                                onTvShowClick(tvShow.id)
+                            }
+                        }
+                    }
+
+                    if (uiState.popularHorror.isNotEmpty()) {
+                        item {
+                            MobileCategoryRow("Popular Horror", uiState.popularHorror) { movie ->
+                                onMovieClick(movie.id)
+                            }
+                        }
+                    }
+
+                    if (uiState.shutUpAndWatch.isNotEmpty()) {
+                        item {
+                            MobileCategoryRow("Shut Up and Watch", uiState.shutUpAndWatch) { tvShow ->
+                                onTvShowClick(tvShow.id)
+                            }
+                        }
+                    }
+
+                    if (uiState.jamesBondCollection.isNotEmpty()) {
+                        item {
+                            MobileCategoryRow("James Bond Collection", uiState.jamesBondCollection) { movie ->
+                                onMovieClick(movie.id)
+                            }
+                        }
+                    }
+
+                    if (uiState.piratesOfTheCaribbean.isNotEmpty()) {
+                        item {
+                            MobileCategoryRow("Pirates of the Caribbean", uiState.piratesOfTheCaribbean) { movie ->
+                                onMovieClick(movie.id)
+                            }
+                        }
+                    }
+
                     // Time Travel Movies
                     if (uiState.timeTravelMovies.isNotEmpty()) {
                         item {
