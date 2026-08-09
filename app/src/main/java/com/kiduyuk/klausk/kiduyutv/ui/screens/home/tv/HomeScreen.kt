@@ -514,6 +514,26 @@ private fun HomeContent(
                         }
                     }
 
+                    if (uiState.marvelCinematicUniverse.isNotEmpty()) {
+                        ContentRow(
+                            title = "Marvel Cinematic Universe",
+                            items = uiState.marvelCinematicUniverse,
+                            restoreFocusItemId = lastClickedItemId,
+                            getItemId = { it.id },
+                            onItemFocus = { movie -> onSelectItem(movie) },
+                            onItemClick = { movie ->
+                                onSetLastClickedItemId(movie.id)
+                                onMovieClick(movie.id)
+                            }
+                        ) { movie, isFocused, onClick ->
+                            MovieCard(
+                                movie = movie,
+                                isSelected = isFocused,
+                                onClick = onClick
+                            )
+                        }
+                    }
+
                     if (uiState.hallmarkMovies.isNotEmpty()) {
                         ContentRow(
                             title = "Hallmark Movies",

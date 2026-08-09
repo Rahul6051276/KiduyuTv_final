@@ -30,6 +30,7 @@ data class HomeUiState(
     val latestMovies: List<Movie> = emptyList(),
     val topTvShows: List<TvShow> = emptyList(),
     val oscarWinners2026: List<Movie> = emptyList(),
+    val marvelCinematicUniverse: List<Movie> = emptyList(),
     val hallmarkMovies: List<Movie> = emptyList(),
     val trueStoryMovies: List<Movie> = emptyList(),
     val christianMovies: List<Movie> = emptyList(),
@@ -198,6 +199,9 @@ class HomeViewModel : ViewModel() {
                     val oscarWinnersDeferred = async {
                         repository.getGitHubMovieList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/oscar_winners_2026.json").getOrNull() ?: emptyList()
                     }
+                    val marvelCinematicUniverseDeferred = async {
+                        repository.getGitHubMovieList(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/marvel_cinematic_universe.json").getOrNull() ?: emptyList()
+                    }
                     // Networks and companies loaded in parallel with other content
                     val companiesNetworksDeferred = async {
                         repository.getGitHubCompaniesNetworks(context, "https://raw.githubusercontent.com/kiduyu-klaus/KiduyuTv_final/refs/heads/main/lists/companies_networks.json").getOrNull()
@@ -239,6 +243,7 @@ class HomeViewModel : ViewModel() {
 
                     // Await all results in parallel
                     val oscarWinners2026 = oscarWinnersDeferred.await()
+                    val marvelCinematicUniverse = marvelCinematicUniverseDeferred.await()
                     val hallmarkMovies = hallmarkMoviesDeferred.await()
                     val trueStoryMovies = trueStoryMoviesDeferred.await()
                     val bestSitcoms = bestSitcomsDeferred.await()
@@ -280,6 +285,8 @@ class HomeViewModel : ViewModel() {
                     // Update UI with all secondary content at once
                     _uiState.value = _uiState.value.copy(
                         oscarWinners2026 = sortedOscarWinners,
+                        // Keep the curator's MCU viewing order from the Trakt list.
+                        marvelCinematicUniverse = marvelCinematicUniverse,
                         hallmarkMovies = sortedHallmark,
                         trueStoryMovies = sortedTrueStory,
                         bestSitcoms = sortedSitcoms,

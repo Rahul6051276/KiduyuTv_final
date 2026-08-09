@@ -431,6 +431,14 @@ fun MobileHomeScreen(
                         }
                     }
 
+                    if (uiState.marvelCinematicUniverse.isNotEmpty()) {
+                        item {
+                            MobileCategoryRow("Marvel Cinematic Universe", uiState.marvelCinematicUniverse) { movie ->
+                                onMovieClick(movie.id)
+                            }
+                        }
+                    }
+
                     // Time Travel Movies
                     if (uiState.timeTravelMovies.isNotEmpty()) {
                         item {
