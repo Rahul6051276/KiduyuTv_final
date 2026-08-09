@@ -99,7 +99,7 @@
             android:exported="false"
             android:hardwareAccelerated="true"
             android:screenOrientation="landscape"
-            android:theme="@style/Theme.KiduyuTv.Player" />
+            android:theme="@style/Theme.KiduyuTv.DirectStreamPlayer" />
         
         <activity
             android:name=".ui.player.youtube.YouTubePlayerActivity"

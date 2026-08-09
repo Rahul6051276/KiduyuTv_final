@@ -8,7 +8,7 @@
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="64dp"
+    android:layout_height="72dp"
     android:background="@android:color/transparent"
     android:clickable="false"
     android:focusable="false"
@@ -22,7 +22,7 @@
         android:layout_width="20dp"
         android:layout_height="20dp"
         android:contentDescription="@null"
-        android:src="@android:drawable/checkbox_on_background"
+        android:src="@drawable/ic_direct_stream_selected"
         android:visibility="invisible" />
 
     <LinearLayout

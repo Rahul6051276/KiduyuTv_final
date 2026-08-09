@@ -27,6 +27,22 @@
         <item name="android:hardwareAccelerated">true</item>
     </style>
 
+    <style name="Theme.KiduyuTv.DirectStreamPlayer" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/kiduyu_red</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorSecondary">@color/kiduyu_red</item>
+        <item name="colorSurface">@color/direct_stream_surface</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/direct_stream_surface_high</item>
+        <item name="colorOutline">@color/direct_stream_outline</item>
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:hardwareAccelerated">true</item>
+    </style>
+
     <style name="DirectStreamTrackTab">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">40dp</item>
@@ -51,6 +67,18 @@
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:elevation">4dp</item>
+    </style>
+
+    <style name="DirectStreamRoundControlButton" parent="DirectStreamControlButton">
+        <item name="android:background">@drawable/bg_direct_stream_round_control</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:elevation">8dp</item>
+    </style>
+
+    <style name="DirectStreamPlayControlButton" parent="DirectStreamControlButton">
+        <item name="android:background">@drawable/bg_direct_stream_play_control</item>
+        <item name="android:elevation">12dp</item>
     </style>
 
     <style name="Theme.NoTitleBar.Fullscreen" parent="@android:style/Theme.NoTitleBar.Fullscreen" />

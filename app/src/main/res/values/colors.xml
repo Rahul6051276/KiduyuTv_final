@@ -21,4 +21,8 @@
     <color name="text_primary">#FFFFFFFF</color>
     <color name="text_secondary">#B3B3B3</color>
     <color name="text_muted">#808080</color>
+    <color name="direct_stream_surface">#E61A1A1F</color>
+    <color name="direct_stream_surface_high">#F02A2A31</color>
+    <color name="direct_stream_outline">#3DFFFFFF</color>
+    <color name="direct_stream_scrim">#8A000000</color>
 </resources>

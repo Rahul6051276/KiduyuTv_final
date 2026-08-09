@@ -13,21 +13,22 @@
     android:background="@drawable/bg_direct_stream_dialog"
     android:focusable="false"
     android:orientation="vertical"
-    android:padding="18dp">
+    android:elevation="16dp"
+    android:padding="24dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/track_settings"
             android:textColor="@color/text_primary"
-            android:textSize="20sp"
+            android:textSize="22sp"
             android:textStyle="bold" />
 
         <!-- Tab strip: Video / Audio / Subtitle.  Each tab is a focusable TextView. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="16dp"
             android:orientation="horizontal">
 
             <TextView
@@ -54,13 +55,13 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:background="@color/kiduyu_red" />
+            android:layout_marginTop="12dp"
+            android:background="@color/direct_stream_outline" />
 
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="220dp"
-            android:layout_marginTop="8dp">
+            android:layout_marginTop="10dp">
 
             <ListView
                 android:id="@+id/listTracks"

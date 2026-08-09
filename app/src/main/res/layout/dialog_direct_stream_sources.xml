@@ -3,6 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bg_direct_stream_dialog"
+    android:elevation="16dp"
     android:orientation="vertical"
     android:padding="24dp">
 
@@ -26,7 +27,7 @@
         android:id="@+id/listStreams"
         android:layout_width="match_parent"
         android:layout_height="320dp"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="18dp"
         android:cacheColorHint="@android:color/transparent"
         android:clickable="true"
         android:divider="@null"
