@@ -31,7 +31,7 @@ jobs:
       # history here. Build number now comes from github.run_number,
       # and version-bump tag logic only needs tag refs, not full history.
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
           fetch-tags: true
@@ -87,12 +87,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         # Shallow clone — we no longer need full history here,
         # the build number now comes from prepare_release.
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -101,7 +101,7 @@ jobs:
       # so setup-gradle's default (write cache on default branch) already
       # does the right thing — the old ternary always evaluated to false.
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -173,6 +173,7 @@ jobs:
       - name: Build ${{ matrix.flavor }} Release APK
         env:
           SUBDL_API_KEY: ${{ secrets.SUBDL_API_KEY }}
+          STREAM_API_TOKEN: ${{ secrets.STREAM_API_TOKEN }}
         run: ./gradlew assemble${{ matrix.flavor_task }}Release --build-cache --configuration-cache --parallel -x lint -x test
 
       - name: Rename ${{ matrix.flavor }} Release APK
@@ -292,7 +293,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
