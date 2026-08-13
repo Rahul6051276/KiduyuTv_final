@@ -24,6 +24,7 @@ import com.kiduyuk.klausk.kiduyutv.data.model.CastMember
 import com.kiduyuk.klausk.kiduyutv.ui.components.TvBannerAdView
 import com.kiduyuk.klausk.kiduyutv.ui.player.iptv.IptvPlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamLauncher
 import com.kiduyuk.klausk.kiduyutv.ui.player.youtube.YouTubePlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.screens.cast.tv.CastDetailScreen
 import com.kiduyuk.klausk.kiduyutv.ui.screens.cast.tv.CastImagesScreen
@@ -342,8 +343,9 @@ fun NavGraph(navController: NavHostController) {
 
             if (SettingsManager(navController.context).isDirectStreamEnabled()) {
                 androidx.compose.runtime.LaunchedEffect(tmdbId, season, episode) {
-                    navController.context.startActivity(
-                        DirectStreamActivity.createIntent(
+                    DirectStreamLauncher.launch(
+                        context = navController.context,
+                        intent = DirectStreamActivity.createIntent(
                             context = navController.context,
                             tmdbId = tmdbId,
                             isTv = isTv,
@@ -355,9 +357,9 @@ fun NavGraph(navController: NavHostController) {
                             overview = overview,
                             voteAverage = voteAverage,
                             releaseDate = releaseDate
-                        )
+                        ),
+                        onLaunched = { navController.popBackStack() }
                     )
-                    navController.popBackStack()
                 }
             } else StreamLinksScreen(
                 tmdbId = tmdbId,

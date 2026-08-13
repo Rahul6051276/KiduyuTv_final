@@ -12,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.kiduyuk.klausk.kiduyutv.ui.player.webview.PlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity
+import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamLauncher
 import com.kiduyuk.klausk.kiduyutv.ui.player.youtube.YouTubePlayerActivity
 import com.kiduyuk.klausk.kiduyutv.ui.screens.cast.mobile.MobileCastDetailScreen
 import com.kiduyuk.klausk.kiduyutv.ui.screens.cast.tv.CastDetailScreen
@@ -676,8 +677,9 @@ fun MobileNavGraph(navController: NavHostController) {
 
             if (SettingsManager(navController.context).isDirectStreamEnabled()) {
                 androidx.compose.runtime.LaunchedEffect(tmdbId, season, episode) {
-                    navController.context.startActivity(
-                        DirectStreamActivity.createIntent(
+                    DirectStreamLauncher.launch(
+                        context = navController.context,
+                        intent = DirectStreamActivity.createIntent(
                             context = navController.context,
                             tmdbId = tmdbId,
                             isTv = isTv,
@@ -689,9 +691,9 @@ fun MobileNavGraph(navController: NavHostController) {
                             overview = overview,
                             voteAverage = voteAverage,
                             releaseDate = releaseDate
-                        )
+                        ),
+                        onLaunched = { navController.popBackStack() }
                     )
-                    navController.popBackStack()
                 }
             } else MobileStreamLinksScreen(
                 tmdbId = tmdbId,
@@ -757,8 +759,9 @@ fun MobileNavGraph(navController: NavHostController) {
 
             if (SettingsManager(navController.context).isDirectStreamEnabled()) {
                 androidx.compose.runtime.LaunchedEffect(tmdbId, season, episode) {
-                    navController.context.startActivity(
-                        DirectStreamActivity.createIntent(
+                    DirectStreamLauncher.launch(
+                        context = navController.context,
+                        intent = DirectStreamActivity.createIntent(
                             context = navController.context,
                             tmdbId = tmdbId,
                             isTv = isTv,
@@ -770,9 +773,9 @@ fun MobileNavGraph(navController: NavHostController) {
                             overview = overview,
                             voteAverage = voteAverage,
                             releaseDate = releaseDate
-                        )
+                        ),
+                        onLaunched = { navController.popBackStack() }
                     )
-                    navController.popBackStack()
                 }
             } else StreamLinksScreen(
                 tmdbId = tmdbId,

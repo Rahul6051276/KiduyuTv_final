@@ -2,7 +2,6 @@ package com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api
 
 import android.net.Uri
 import android.util.Log
-import com.kiduyuk.klausk.kiduyutv.BuildConfig
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamResponse
 import org.json.JSONObject
@@ -34,7 +33,7 @@ object ProvidersApi {
     private const val TAG = "KiduyuLiteProvider"
 
     private const val baseUrl = "https://sflatransport.com/kiduyuTv_providers"
-    private val streamApiToken = BuildConfig.STREAM_API_TOKEN
+    private const val streamApiToken = "0a965c3877cd30510c014d81a5d400536a99bc65831d7af57caf479915d57186"
 
     /**
      * Returns the server-side keys of providers currently enabled by
