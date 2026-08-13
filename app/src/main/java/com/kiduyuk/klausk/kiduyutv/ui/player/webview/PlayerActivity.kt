@@ -29,7 +29,6 @@ import androidx.webkit.WebViewCompat
 import com.kiduyuk.klausk.kiduyutv.R
 import com.kiduyuk.klausk.kiduyutv.data.model.StreamProviderManager
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamActivity
-import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.DirectStreamLauncher
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedStream
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.SniffedSubtitle
 import com.kiduyuk.klausk.kiduyutv.ui.player.webviewsniffer.WebViewStreamSniffer
@@ -601,9 +600,8 @@ class PlayerActivity : AppCompatActivity() {
                     (android.net.Uri.parse(stream.url).host ?: "unknown host")
             )
             dismissLoadingDialog()
-            DirectStreamLauncher.launch(
-                context = this,
-                intent = DirectStreamActivity.createSniffedIntent(
+            startActivity(
+                DirectStreamActivity.createSniffedIntent(
                     context = this,
                     tmdbId = currentTmdbId,
                     isTv = currentIsTv,
@@ -621,9 +619,9 @@ class PlayerActivity : AppCompatActivity() {
                     type = stream.type,
                     mimeType = stream.mimeType,
                     subtitles = subtitles
-                ),
-                onLaunched = { finish() }
+                )
             )
+            finish()
         }
     }
 
