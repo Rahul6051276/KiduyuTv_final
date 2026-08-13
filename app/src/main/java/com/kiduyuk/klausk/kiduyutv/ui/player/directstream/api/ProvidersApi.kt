@@ -31,6 +31,13 @@ import java.net.URL
 object ProvidersApi {
 
     private const val TAG = "KiduyuLiteProvider"
+    private const val CONNECT_TIMEOUT_MS = 30_000
+    private const val PROVIDERS_READ_TIMEOUT_MS = 30_000
+
+    // Aggregate stream requests wait for several enabled providers on the
+    // backend. Some valid scrapers need well over 30 seconds, so keep the
+    // request bounded but do not fail while those providers are still working.
+    private const val STREAMS_READ_TIMEOUT_MS = 180_000
 
     private const val baseUrl = "https://sflatransport.com/kiduyuTv_providers"
     private const val streamApiToken = "0a965c3877cd30510c014d81a5d400536a99bc65831d7af57caf479915d57186"
@@ -43,8 +50,8 @@ object ProvidersApi {
         val urlString = "$baseUrl/api/providers"
         Log.i(TAG, "GET $urlString")
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 30_000
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = PROVIDERS_READ_TIMEOUT_MS
             requestMethod = "GET"
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", "KiduyuTVLite/1.0 (Android)")
@@ -109,8 +116,8 @@ object ProvidersApi {
         Log.i(TAG, "GET $baseUrl/$pathSegment (authenticated)")
 
         val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
-            connectTimeout = 15_000
-            readTimeout = 30_000
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = STREAMS_READ_TIMEOUT_MS
             requestMethod = "GET"
             setRequestProperty("Accept", "application/json")
             setRequestProperty("User-Agent", "KiduyuTVLite/1.0 (Android)")
