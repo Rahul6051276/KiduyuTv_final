@@ -916,6 +916,22 @@ class DirectStreamActivity : AppCompatActivity() {
                 "excludedHighResolution=${items.size - automaticCandidates.size} url=${chosen.url}"
         )
         val resumeMs = consumePendingStartPosition()
+        // DahmerMovies playback is served through p.111477.xyz. When no
+        // cf_clearance cookie has been captured yet, open the site's root
+        // page first so Cloudflare can complete its browser challenge. The
+        // resulting cookie is persisted by CloudflareBypassActivity and is
+        // attached by PlayerEngine when this stream is retried.
+        if (needsDahmerMoviesClearance(chosen)) {
+            Log.w(
+                TAG,
+                "DahmerMovies stream detected without cf_clearance; " +
+                    "opening $DAHMER_CLEARANCE_URL"
+            )
+            pendingCloudflareStream = chosen
+            pendingCloudflareResumeMs = resumeMs
+            launchCloudflareBypass(chosen, DAHMER_CLEARANCE_URL)
+            return
+        }
         // Proactive Cloudflare bypass for the oogachaka CDN: if the stream
         // comes from serve.oogachakacdn.store and we don't already have a
         // saved cf_clearance cookie, open the bypass activity immediately
@@ -968,6 +984,42 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     /**
+     * Returns `true` when [stream] belongs to DahmerMovies and no usable
+     * `cf_clearance` cookie is available for p.111477.xyz. Cookies supplied
+     * directly with the stream response are checked before the persisted
+     * Cloudflare cookie store.
+     */
+    private fun needsDahmerMoviesClearance(stream: StreamItem): Boolean {
+        if (!stream.provider.equals(DAHMER_PROVIDER, ignoreCase = true)) return false
+
+        val streamCookie = stream.headers.entries
+            .firstOrNull { it.key.equals("Cookie", ignoreCase = true) }
+            ?.value
+        if (containsCfClearance(streamCookie)) return false
+
+        val saved = CloudflareBypassActivity.loadCookies(
+            applicationContext,
+            DAHMER_CLEARANCE_HOST
+        )
+        if (containsCfClearance(saved)) {
+            Log.i(
+                TAG,
+                "DahmerMovies clearance already saved for $DAHMER_CLEARANCE_HOST"
+            )
+            return false
+        }
+        return true
+    }
+
+    private fun containsCfClearance(cookies: String?): Boolean = cookies
+        ?.split(';')
+        ?.any { entry ->
+            entry.substringBefore('=').trim()
+                .equals(CloudflareBypassActivity.CF_CLEARANCE_COOKIE, ignoreCase = true) &&
+                entry.substringAfter('=', missingDelimiterValue = "").trim().isNotEmpty()
+        } == true
+
+    /**
      * Quick check for a Cloudflare-style 403 on [stream]. Returns `true`
      * when the upstream replied with HTTP 403 (a "Verify you are human"
      * challenge) and the host does not already have a saved `cf_clearance`
@@ -1001,6 +1053,21 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
+        // This also covers stream switching, subtitle reloads and sniffed
+        // playback paths that do not pass through playBest().
+        if (!engine.player.isPlaying && needsDahmerMoviesClearance(stream)) {
+            Log.w(
+                TAG,
+                "startStreamPlayback intercepted DahmerMovies without " +
+                    "cf_clearance; opening $DAHMER_CLEARANCE_URL"
+            )
+            pendingCloudflareStream = stream
+            pendingCloudflareResumeMs = startPositionMs
+            showStatus(getString(R.string.cloudflare_blocked_checking), retry = false)
+            showLoadingArtwork()
+            launchCloudflareBypass(stream, DAHMER_CLEARANCE_URL)
+            return
+        }
         // Pre-load guard: the oogachaka CDN reliably 403s fresh clients, so
         // route every load to the bypass activity before handing the stream
         // to ExoPlayer. Catches streams that bypass the playBest() check
@@ -1108,9 +1175,12 @@ class DirectStreamActivity : AppCompatActivity() {
      * `RESULT_OK`. Our [cloudflareBypassLauncher] picks that result up and
      * retries [stream].
      */
-    private fun launchCloudflareBypass(stream: StreamItem) {
+    private fun launchCloudflareBypass(
+        stream: StreamItem,
+        verificationUrl: String = stream.url
+    ) {
         val intent = Intent(this, CloudflareBypassActivity::class.java).apply {
-            putExtra(CloudflareBypassActivity.EXTRA_URL, stream.url)
+            putExtra(CloudflareBypassActivity.EXTRA_URL, verificationUrl)
             putExtra(
                 CloudflareBypassActivity.EXTRA_TITLE,
                 if (stream.provider.isNotBlank()) {
@@ -1123,7 +1193,7 @@ class DirectStreamActivity : AppCompatActivity() {
         Log.i(
             TAG,
             "Launching CloudflareBypassActivity for ${stream.provider} " +
-                "${stream.quality} url=${stream.url}"
+                "${stream.quality} verificationUrl=$verificationUrl"
         )
         runCatching {
             cloudflareBypassLauncher.launch(intent)
@@ -1761,6 +1831,9 @@ class DirectStreamActivity : AppCompatActivity() {
         const val TYPE_SERIES = "series"
 
         private const val OOGACHAKA_STREAM_PREFIX = "https://serve.oogachakacdn.store"
+        private const val DAHMER_PROVIDER = "DahmerMovies"
+        private const val DAHMER_CLEARANCE_HOST = "p.111477.xyz"
+        private const val DAHMER_CLEARANCE_URL = "https://p.111477.xyz/"
 
         private const val SKIP_SEC_MIN = 30
         private const val WATCH_PROGRESS_INTERVAL_MS = 15_000L
