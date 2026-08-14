@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.android.material.card.MaterialCardView
 import com.kiduyuk.klausk.kiduyutv.R
 import com.kiduyuk.klausk.kiduyutv.data.api.TmdbApiService
 import com.kiduyuk.klausk.kiduyutv.data.model.Episode
@@ -52,7 +53,7 @@ class EpisodeAdapter(
         private val onClick: (Episode) -> Unit
     ) : RecyclerView.ViewHolder(view) {
 
-        private val root: View = view.findViewById(R.id.episodeRowRoot)
+        private val root: MaterialCardView = view.findViewById(R.id.episodeRowRoot)
         private val still: ImageView = view.findViewById(R.id.ivEpisodeStill)
         private val stillFallback: TextView = view.findViewById(R.id.tvEpisodeStillFallback)
         private val numberAndTitle: TextView = view.findViewById(R.id.tvEpisodeNumberAndTitle)
@@ -86,6 +87,19 @@ class EpisodeAdapter(
             }
 
             playingBadge.visibility = if (isPlaying) View.VISIBLE else View.GONE
+            root.setCardBackgroundColor(
+                if (isPlaying) {
+                    ctx.getColor(R.color.kiduyu_red)
+                } else {
+                    ctx.getColor(R.color.direct_stream_surface)
+                }
+            )
+            root.strokeColor = if (isPlaying) {
+                ctx.getColor(R.color.kiduyu_red)
+            } else {
+                ctx.getColor(R.color.direct_stream_outline)
+            }
+            root.strokeWidth = if (isPlaying) 2 else 1
 
             root.setOnClickListener { onClick(episode) }
             root.setOnKeyListener { _, keyCode, event ->

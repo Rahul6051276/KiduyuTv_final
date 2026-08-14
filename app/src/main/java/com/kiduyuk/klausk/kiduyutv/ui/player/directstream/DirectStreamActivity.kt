@@ -1212,12 +1212,35 @@ class DirectStreamActivity : AppCompatActivity() {
      * `RESULT_OK`. Our [cloudflareBypassLauncher] picks that result up and
      * retries [stream].
      */
+    private fun resolveCloudflareBypassUrl(
+        stream: StreamItem,
+        fallbackUrl: String = stream.url
+    ): String {
+        val candidate = stream.headers.entries
+            .firstOrNull { (key, _) ->
+                key.equals("Referer", ignoreCase = true) ||
+                    key.equals("Referrer", ignoreCase = true) ||
+                    key.equals("Origin", ignoreCase = true)
+            }
+            ?.value
+            ?.trim()
+            ?.takeIf { it.isNotBlank() && it.startsWith("http", ignoreCase = true) }
+        return candidate ?: fallbackUrl
+    }
+
     private fun launchCloudflareBypass(
         stream: StreamItem,
         verificationUrl: String = stream.url
     ) {
+        val resolvedUrl = when {
+            verificationUrl.isBlank() -> resolveCloudflareBypassUrl(stream, stream.url)
+            verificationUrl.equals(stream.url, ignoreCase = true) ->
+                resolveCloudflareBypassUrl(stream, verificationUrl)
+            else -> verificationUrl
+        }
+
         val intent = Intent(this, CloudflareBypassActivity::class.java).apply {
-            putExtra(CloudflareBypassActivity.EXTRA_URL, verificationUrl)
+            putExtra(CloudflareBypassActivity.EXTRA_URL, resolvedUrl)
             putExtra(
                 CloudflareBypassActivity.EXTRA_TITLE,
                 if (stream.provider.isNotBlank()) {
@@ -1230,7 +1253,7 @@ class DirectStreamActivity : AppCompatActivity() {
         Log.i(
             TAG,
             "Launching CloudflareBypassActivity for ${stream.provider} " +
-                "${stream.quality} verificationUrl=$verificationUrl"
+                "${stream.quality} verificationUrl=$resolvedUrl (source=${if (resolvedUrl == stream.url) "stream" else "referer"})"
         )
         runCatching {
             cloudflareBypassLauncher.launch(intent)
@@ -1608,7 +1631,11 @@ class DirectStreamActivity : AppCompatActivity() {
 
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                    showExitConfirmationDialog()
+                    if (isEpisodesPanelOpen) {
+                        closeEpisodesPanel()
+                    } else {
+                        showExitConfirmationDialog()
+                    }
                     return true
                 }
                 return true
