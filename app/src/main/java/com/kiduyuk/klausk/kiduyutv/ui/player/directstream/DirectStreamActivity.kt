@@ -159,6 +159,8 @@ class DirectStreamActivity : AppCompatActivity() {
     private var cachedEpisodeDurationMs: Long? = null
     private var episodeDurationFetchJob: Job? = null
     private var skipSegmentsFetchJob: Job? = null
+    private var autoSkipCountdownJob: Job? = null
+    private var currentAutoSkipSegment: SkipSegment? = null
 
     // --- Episodes side panel ------------------------------------------
     private lateinit var episodeAdapter: EpisodeAdapter
@@ -788,23 +790,25 @@ class DirectStreamActivity : AppCompatActivity() {
         val active = candidates.firstOrNull { (_, segment) -> isSkipActive(segment, positionMs) }
 
         if (active == null) {
+            cancelAutoSkipCountdown()
             if (shownSkipType != null) hideSkipButton()
             return
         }
 
-        // If auto-skip is enabled, jump to the segment end automatically
-        // the first time we encounter the segment to avoid repeated seeks.
+        // If auto-skip is enabled, show a 5s countdown before jumping to the segment end.
         if (settingsManager.isAutoSkipSegmentsEnabled()) {
             val (atype, asegment) = active
-            val segmentStart = asegment.startMs
-            val segmentEnd = asegment.endMs ?: (segmentStart + 5 * 60_000L)
-            if (autoSkippedSegmentStartMs != segmentStart) {
-                autoSkippedSegmentStartMs = segmentStart
-                engine.player.seekTo(segmentEnd)
-                hideSkipButton()
-                return
+            if (autoSkippedSegmentStartMs != asegment.startMs) {
+                if (engine.player.isPlaying) {
+                    startAutoSkipCountdown(atype, asegment)
+                } else {
+                    cancelAutoSkipCountdown()
+                }
+            } else {
+                cancelAutoSkipCountdown()
             }
         } else {
+            cancelAutoSkipCountdown()
             // reset auto-skip tracker when auto-skip disabled
             autoSkippedSegmentStartMs = null
         }
@@ -848,14 +852,54 @@ class DirectStreamActivity : AppCompatActivity() {
         if (shownSkipType == null && binding.skipOverlayContainer.visibility != View.VISIBLE) return
         shownSkipType = null
         binding.btnSkipSegment.isEnabled = false
-        binding.btnSkipSegment.alpha = 0.45f
+        binding.btnSkipSegment.alpha = 0f
         binding.skipOverlayContainer.visibility = View.GONE
+    }
+
+    private fun startAutoSkipCountdown(type: SkipSegmentType, segment: SkipSegment) {
+        if (autoSkipCountdownJob?.isActive == true && currentAutoSkipSegment == segment) return
+
+        cancelAutoSkipCountdown()
+        currentAutoSkipSegment = segment
+
+        autoSkipCountdownJob = lifecycleScope.launch {
+            val label = when (type) {
+                SkipSegmentType.INTRO -> "Intro"
+                SkipSegmentType.RECAP -> "Recap"
+                SkipSegmentType.OUTRO -> "Outro"
+                SkipSegmentType.PREVIEW -> "Preview"
+            }
+
+            binding.tvAutoSkipCountdown.visibility = View.VISIBLE
+            for (i in 5 downTo 1) {
+                binding.tvAutoSkipCountdown.text = "Skipping $label in $i..."
+                delay(1000L)
+            }
+
+            // Perform skip
+            val segmentEnd = segment.endMs ?: (segment.startMs + 5 * 60_000L)
+            autoSkippedSegmentStartMs = segment.startMs
+            engine.player.seekTo(segmentEnd)
+
+            binding.tvAutoSkipCountdown.visibility = View.GONE
+            autoSkipCountdownJob = null
+            currentAutoSkipSegment = null
+            hideSkipButton()
+        }
+    }
+
+    private fun cancelAutoSkipCountdown() {
+        autoSkipCountdownJob?.cancel()
+        autoSkipCountdownJob = null
+        currentAutoSkipSegment = null
+        binding.tvAutoSkipCountdown.visibility = View.GONE
     }
 
     private fun onSkipClicked() {
         val type = shownSkipType ?: return
         val segment = skipData?.segments?.get(type) ?: return
-        val targetMs = segment.endMs ?: return
+        val targetMs = segment.endMs ?: (segment.startMs + 5 * 60_000L)
+        cancelAutoSkipCountdown()
         engine.player.seekTo(targetMs)
         hideSkipButton()
     }
@@ -2295,6 +2339,7 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        cancelAutoSkipCountdown()
         streamJob?.cancel()
         subtitleJob?.cancel()
         cloudflareProbeJob?.cancel()
