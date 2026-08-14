@@ -154,6 +154,10 @@
                 android:id="@+id/btnSkipSegment"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                    android:focusable="true"
+                    android:focusableInTouchMode="false"
+                    android:nextFocusDown="@id/btnPlayPause"
+                    android:nextFocusUp="@id/btnPlayerBack"
                 android:backgroundTint="#CC1F1F1F"
                 android:contentDescription="@string/skip_segment"
                 android:minHeight="36dp"
@@ -210,7 +214,7 @@
                     <View
                         android:id="@+id/skipHighlightView"
                         android:layout_width="0dp"
-                        android:layout_height="10dp"
+                        android:layout_height="match_parent"
                         android:layout_gravity="center_vertical"
                         android:background="#66F59E0B"
                         android:visibility="gone" />

@@ -120,6 +120,11 @@ class DirectStreamActivity : AppCompatActivity() {
     private var currentImdbId: String? = null
     private var skipData: SkipSegmentsResponse? = null
     private var shownSkipType: SkipSegmentType? = null
+    // Track which content the skipData corresponds to so we don't clear
+    // the UI when a transient fetch failure happens while switching
+    // streams for the same title.
+    private var skipLoadedForImdbId: String? = null
+    private var skipLoadedForTmdbId: Int? = null
     private val repository = TmdbRepository()
     private var pendingStartPositionMs = 0L
     private var pendingReadySeekPositionMs = 0L
@@ -594,6 +599,8 @@ class DirectStreamActivity : AppCompatActivity() {
         // Prefer a known IMDb id. If missing for TV shows, resolve it from
         // TMDB's external_ids endpoint and pass that to SkipDB.
         lifecycleScope.launch {
+            val currentImdb = currentImdbId
+            val currentTmdb = currentTmdbId
             val durationMs = engine.player.duration.takeIf { it > 0L }
             val result: SkipSegmentsResponse? = when {
                 !currentImdbId.isNullOrBlank() -> {
@@ -614,9 +621,26 @@ class DirectStreamActivity : AppCompatActivity() {
                 }
                 else -> null
             }
-            skipData = result
-            if (result == null) {
-                hideSkipButton()
+            // If we successfully fetched segments, record which content
+            // they belong to and update the UI. If the fetch failed but
+            // the previously-loaded segments belong to the same content,
+            // keep them rather than clearing the UI (avoids blink when
+            // switching streams). Only clear when we truly don't have
+            // segments for this content.
+            if (result != null) {
+                skipData = result
+                skipLoadedForImdbId = currentImdb
+                skipLoadedForTmdbId = currentTmdb
+            } else {
+                val sameContent = (skipLoadedForImdbId != null && skipLoadedForImdbId == currentImdb) ||
+                    (skipLoadedForTmdbId != null && skipLoadedForTmdbId == currentTmdb && currentImdb.isNullOrBlank())
+                if (!sameContent) {
+                    skipData = null
+                    skipLoadedForImdbId = null
+                    skipLoadedForTmdbId = null
+                    hideSkipButton()
+                }
+                // else: keep existing skipData for the same content
             }
         }
     }
@@ -681,7 +705,7 @@ class DirectStreamActivity : AppCompatActivity() {
         val lp = binding.skipHighlightView.layoutParams as? FrameLayout.LayoutParams
             ?: FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
         lp.width = width
-        lp.height = (binding.seekBar.height * 0.55f).toInt().coerceAtLeast(8)
+        lp.height = binding.seekBar.height.coerceAtLeast(8)
         lp.leftMargin = startPx
         lp.gravity = Gravity.CENTER_VERTICAL
         binding.skipHighlightView.layoutParams = lp
@@ -1219,6 +1243,13 @@ class DirectStreamActivity : AppCompatActivity() {
     private fun needsDahmerMoviesClearance(stream: StreamItem): Boolean {
         val url = stream.url.trim()
         if (url.isBlank()) return false
+        // Immediate prefix check: if the upstream stream URL starts with
+        // the Dahmer host root, treat it as a Dahmer stream so the
+        // Cloudflare bypass flow can be launched before playback.
+        if (url.startsWith(DAHMER_CLEARANCE_URL, ignoreCase = true)) {
+            Log.d(TAG, "needsDahmerMoviesClearance: direct prefix match for url=$url")
+            return true
+        }
         val host = runCatching { Uri.parse(url).host?.lowercase()?.trim() }.getOrNull().orEmpty()
         // Consider it a Dahmer stream when either:
         // - the host equals the known Dahmer host (p.111477.xyz),
