@@ -180,6 +180,20 @@ interface TmdbApiService {
         @Path("season_number") seasonNumber: Int
     ): SeasonDetail
 
+    /**
+     * Fetches detailed information for a single episode of a TV show, including
+     * its [Episode.runtime] in minutes. Used to obtain the canonical episode
+     * duration before the underlying stream reports its own [durationMs].
+     *
+     * Endpoint: `tv/{tv_id}/season/{season_number}/episode/{episode_number}`
+     */
+    @GET("tv/{tv_id}/season/{season_number}/episode/{episode_number}")
+    suspend fun getEpisodeDetails(
+        @Path("tv_id") tvId: Int,
+        @Path("season_number") seasonNumber: Int,
+        @Path("episode_number") episodeNumber: Int
+    ): Episode
+
     /** Fetches the list of available movie genres. */
     @GET("genre/movie/list")
     suspend fun getMovieGenres(): GenreResponse

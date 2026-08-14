@@ -339,6 +339,32 @@ class TmdbRepository {
         api.getSeasonDetail(tvId, seasonNumber)
     }
 
+    /**
+     * Fetches the canonical runtime (in minutes) for a single TV episode from
+     * TMDB's `tv/{tv_id}/season/{season_number}/episode/{episode_number}`
+     * endpoint. Returns `null` if TMDB has no runtime recorded for the
+     * episode or if the request fails. The caller is expected to convert
+     * the result from minutes to milliseconds before using it as a
+     * playback [durationMs].
+     */
+    suspend fun getEpisodeRuntimeMinutes(
+        tvId: Int,
+        seasonNumber: Int,
+        episodeNumber: Int
+    ): Int? = withContext(Dispatchers.IO) {
+        if (tvId <= 0 || seasonNumber <= 0 || episodeNumber <= 0) return@withContext null
+        runCatching { api.getEpisodeDetails(tvId, seasonNumber, episodeNumber).runtime }
+            .onFailure {
+                Log.w(
+                    TAG,
+                    "TMDB episode runtime fetch failed for tvId=$tvId " +
+                        "S${seasonNumber}E${episodeNumber}: ${it.message}"
+                )
+            }
+            .getOrNull()
+            ?.takeIf { it > 0 }
+    }
+
 // ========== Genre Endpoints ==========
 
     /** Fetches the list of available movie genres with caching. */

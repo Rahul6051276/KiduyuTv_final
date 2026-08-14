@@ -151,6 +151,12 @@ class DirectStreamActivity : AppCompatActivity() {
     private var lastLoadSignature: String? = null
     private var lastStreamPlaybackKey: String? = null
     private var lastFocusChainSignature: String? = null
+    // Cached runtime (in milliseconds) for the currently loaded TV episode,
+    // populated from TMDB's `tv/{tv_id}/season/{season}/episode/{episode}`
+    // endpoint. Used as a fallback when the underlying player has not yet
+    // reported a positive `duration` (e.g. right after `STATE_READY`).
+    private var cachedEpisodeDurationMs: Long? = null
+    private var episodeDurationFetchJob: Job? = null
 
     // --- Episodes side panel ------------------------------------------
     private lateinit var episodeAdapter: EpisodeAdapter
@@ -442,6 +448,11 @@ class DirectStreamActivity : AppCompatActivity() {
             }
         })
 
+        // Start the TMDB episode-runtime lookup for series content so the
+        // canonical duration is ready by the time `loadSkipSegments` runs
+        // (or as soon as the player reports its first duration).
+        fetchEpisodeDurationFromTmdb()
+
         checkAndAddToWatchHistory()
     }
 
@@ -552,6 +563,10 @@ class DirectStreamActivity : AppCompatActivity() {
 
         currentEpisode = nextEpisode
         pendingStartPositionMs = 0L
+        // Clear the previously cached TMDB runtime so the next fetch
+        // populates the duration for the new episode.
+        cachedEpisodeDurationMs = null
+        episodeDurationFetchJob?.cancel()
         currentTitle = currentTitle.substringBefore(" • ")
         updatePlayerTitle()
         updateEpisodeButtons()
@@ -567,6 +582,8 @@ class DirectStreamActivity : AppCompatActivity() {
             "Loading adjacent episode season=$currentSeason episode=$nextEpisode delta=$delta"
         )
         resetWatchProgressForCurrentEpisode()
+        // Kick off the TMDB episode-runtime lookup for the new episode.
+        fetchEpisodeDurationFromTmdb()
         loadCurrentMedia()
         showControls()
     }
@@ -602,13 +619,70 @@ class DirectStreamActivity : AppCompatActivity() {
         provider: StreamProviderChoice
     ): String = "$type|$tmdbId|${season ?: 0}|${episode ?: 0}|${provider.key}"
 
+    /**
+     * Kicks off an asynchronous lookup of the currently loaded TV episode's
+     * runtime from TMDB's `tv/{tv_id}/season/{season}/episode/{episode}`
+     * endpoint. The result (in milliseconds) is stored in
+     * [cachedEpisodeDurationMs] and is later used by [loadSkipSegments] as
+     * the canonical `durationMs` when the underlying player has not yet
+     * reported a positive duration. No-op for non-series content.
+     */
+    private fun fetchEpisodeDurationFromTmdb() {
+        if (currentMediaType != TYPE_SERIES) return
+        val tvId = currentTmdbId.takeIf { it > 0 } ?: return
+        val season = currentSeason ?: return
+        val episode = currentEpisode ?: return
+        // Skip if we already have a positive cached value for the same episode.
+        if (cachedEpisodeDurationMs != null && cachedEpisodeDurationMs!! > 0L) return
+        episodeDurationFetchJob?.cancel()
+        episodeDurationFetchJob = lifecycleScope.launch {
+            val minutes = repository.getEpisodeRuntimeMinutes(tvId, season, episode)
+            val ms = minutes?.takeIf { it > 0 }?.toLong()?.times(60_000L)
+            if (ms != null) {
+                cachedEpisodeDurationMs = ms
+                Log.i(
+                    TAG,
+                    "TMDB episode runtime resolved: tvId=$tvId S${season}E${episode} " +
+                        "${minutes}min -> ${ms}ms"
+                )
+                // Push the resolved duration into the seek bar so the UI shows
+                // a meaningful total length even before the player reports it.
+                if (::engine.isInitialized) {
+                    val playerDuration = engine.player.duration.takeIf { it > 0L }
+                    if (playerDuration == null) {
+                        binding.seekBar.setDurationMs(ms)
+                        binding.tvTotalTime.text = formatPlaybackTime(ms)
+                    }
+                }
+            } else {
+                Log.w(
+                    TAG,
+                    "TMDB did not return a runtime for tvId=$tvId S${season}E${episode}"
+                )
+            }
+        }
+    }
+
+    /**
+     * Returns the canonical episode duration in milliseconds for the current
+     * playback, preferring the TMDB-fetched [cachedEpisodeDurationMs] and
+     * falling back to the player's reported duration. Returns `null` when
+     * neither source has produced a positive value yet.
+     */
+    private fun resolveEpisodeDurationMs(): Long? {
+        val playerDuration = if (::engine.isInitialized) {
+            engine.player.duration.takeIf { it > 0L }
+        } else null
+        return cachedEpisodeDurationMs?.takeIf { it > 0L } ?: playerDuration
+    }
+
     private fun loadSkipSegments() {
         // Prefer a known IMDb id. If missing for TV shows, resolve it from
         // TMDB's external_ids endpoint and pass that to SkipDB.
         lifecycleScope.launch {
             val currentImdb = currentImdbId
             val currentTmdb = currentTmdbId
-            val durationMs = engine.player.duration.takeIf { it > 0L }
+            val durationMs = resolveEpisodeDurationMs()
             val result: SkipSegmentsResponse? = when {
                 !currentImdbId.isNullOrBlank() -> {
                     repository.fetchSkipSegments(
@@ -2190,6 +2264,8 @@ class DirectStreamActivity : AppCompatActivity() {
         cloudflareProbeJob = null
         episodeFetchJob?.cancel()
         episodeFetchJob = null
+        episodeDurationFetchJob?.cancel()
+        episodeDurationFetchJob = null
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()
