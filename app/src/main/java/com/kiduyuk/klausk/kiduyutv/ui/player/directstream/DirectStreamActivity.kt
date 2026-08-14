@@ -191,10 +191,12 @@ class DirectStreamActivity : AppCompatActivity() {
             R.string.cloudflare_bypass_retried,
             Toast.LENGTH_SHORT
         ).show()
-        // Active stream may have changed while the bypass activity was on
-        // top; only retry the stream we promised the user we'd retry.
+        // The user should return to the player with the fresh cookie jar.
+        // Recreate the activity so all player components rebind using the
+        // newly saved Cloudflare cookies instead of continuing with stale
+        // state from the prior session.
         activeStream = stream
-        startStreamPlayback(stream, resumeMs)
+        recreate()
     }
 
     private val watchProgressTick = object : Runnable {
@@ -1149,7 +1151,11 @@ class DirectStreamActivity : AppCompatActivity() {
      * Cloudflare cookie store.
      */
     private fun needsDahmerMoviesClearance(stream: StreamItem): Boolean {
-        if (!stream.provider.equals(DAHMER_PROVIDER, ignoreCase = true)) return false
+        val url = stream.url.trim()
+        if (url.isBlank()) return false
+        val isDahmerStream = url.startsWith(DAHMER_CLEARANCE_URL, ignoreCase = true) ||
+            stream.provider.equals(DAHMER_PROVIDER, ignoreCase = true)
+        if (!isDahmerStream) return false
 
         val streamCookie = stream.headers.entries
             .firstOrNull { it.key.equals("Cookie", ignoreCase = true) }

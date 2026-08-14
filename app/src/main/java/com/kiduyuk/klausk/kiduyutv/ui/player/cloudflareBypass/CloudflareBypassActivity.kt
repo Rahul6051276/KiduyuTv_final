@@ -102,9 +102,11 @@ class CloudflareBypassActivity : AppCompatActivity() {
         const val EXTRA_TIMEOUT_MS = "timeout_ms"
 
         /**
-         * Result extra: the raw `Cookie:` header that contains the freshly
-         * captured `cf_clearance`. The caller can use this to set the
-         * cookie directly without re-reading the SharedPreferences mirror.
+         * Result extra: the raw `Cookie:` header containing the full cookie
+         * jar captured for the target site, including `cf_clearance` and any
+         * companion cookies required by the challenge. The caller can use
+         * this to set the cookies directly without re-reading the
+         * SharedPreferences mirror.
          */
         const val EXTRA_COOKIES = "cookies"
 
@@ -627,6 +629,35 @@ class CloudflareBypassActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Collects the full cookie header for the target URL/host instead of only
+     * the Cloudflare challenge cookie. This keeps any companion cookies that the
+     * site sets alongside `cf_clearance` so the player can reload with an
+     * identical browser session.
+     */
+    private fun captureAllCookiesForTarget(): String {
+        if (targetHost.isBlank()) return ""
+
+        val cm = CookieManager.getInstance()
+        val candidateUrls = linkedSetOf(
+            targetUrl,
+            "https://$targetHost",
+            "http://$targetHost"
+        )
+
+        val merged = linkedSetOf<String>()
+        for (candidate in candidateUrls) {
+            val cookieHeader = cm.getCookie(candidate).orEmpty()
+            if (cookieHeader.isBlank()) continue
+            cookieHeader.split(';')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .forEach { merged.add(it) }
+        }
+
+        return merged.joinToString("; ")
+    }
+
     private fun onChallengeSolved() {
         if (isSolved) return
         isSolved = true
@@ -643,7 +674,9 @@ class CloudflareBypassActivity : AppCompatActivity() {
         // process is allowed to exit cleanly.
         CookieManager.getInstance().flush()
 
-        val cookies = CookieManager.getInstance().getCookie(targetUrl).orEmpty()
+        val cookies = captureAllCookiesForTarget().ifBlank {
+            CookieManager.getInstance().getCookie(targetUrl).orEmpty()
+        }
         setStatus(
             "✓ Verified. Returning to player…",
             isError = false
@@ -652,8 +685,8 @@ class CloudflareBypassActivity : AppCompatActivity() {
 
         // Mirror the cookies to SharedPreferences under the target domain.
         // This is an *additional* persistence layer to the WebView's internal
-        // cookie DB, so the cf_clearance can be re-injected into any other
-        // WebView (e.g. PlayerActivity) even after a process death.
+        // cookie DB, so the entire cookie set can be re-injected into any other
+        // WebView (e.g. the player) even after a process death.
         val saved = saveCookies(this, targetHost, cookies, targetUrl)
         if (!saved) {
             Log.w(TAG, "Could not mirror cookies to SharedPreferences for $targetHost")
