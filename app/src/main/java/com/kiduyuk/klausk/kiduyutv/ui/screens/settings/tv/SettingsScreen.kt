@@ -144,6 +144,7 @@ fun SettingsScreen(
     // Set initial section to ACCOUNT for focus management
     var selectedSection by remember { mutableStateOf(SettingsSection.ACCOUNT) }
     val context = LocalContext.current
+    val settingsManager = SettingsManager(context)
     val uiState by viewModel.uiState.collectAsState()
     val liveTvViewModel: LiveTvViewModel = viewModel()
 
