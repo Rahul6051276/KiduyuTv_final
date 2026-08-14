@@ -698,20 +698,35 @@ class DirectStreamActivity : AppCompatActivity() {
             return
         }
 
-        // If auto-skip is enabled, jump to the segment end automatically
-        // the first time we encounter the segment to avoid repeated seeks.
+        // Auto-skip uses a stricter boundary than the manual skip button.
+        // The button may appear two seconds early, but automatic skipping
+        // must wait until playback has actually reached the segment start.
         if (settingsManager.isAutoSkipSegmentsEnabled()) {
-            val (atype, asegment) = active
-            val segmentStart = asegment.startMs
-            val segmentEnd = asegment.endMs ?: (segmentStart + 5 * 60_000L)
-            if (autoSkippedSegmentStartMs != segmentStart) {
-                autoSkippedSegmentStartMs = segmentStart
-                engine.player.seekTo(segmentEnd)
-                hideSkipButton()
-                return
+            // If the user seeks back before the previously skipped segment,
+            // allow that segment to auto-skip again when playback reaches it.
+            autoSkippedSegmentStartMs?.let { previousStartMs ->
+                if (positionMs < previousStartMs) {
+                    autoSkippedSegmentStartMs = null
+                }
+            }
+
+            val autoSkipTarget = candidates.firstOrNull { (_, segment) ->
+                isSegmentReached(segment, positionMs)
+            }
+
+            if (autoSkipTarget != null) {
+                val (_, segment) = autoSkipTarget
+                val segmentStart = segment.startMs
+                val segmentEnd = segment.endMs ?: (segmentStart + 5 * 60_000L)
+                if (autoSkippedSegmentStartMs != segmentStart) {
+                    autoSkippedSegmentStartMs = segmentStart
+                    engine.player.seekTo(segmentEnd)
+                    hideSkipButton()
+                    return
+                }
             }
         } else {
-            // reset auto-skip tracker when auto-skip disabled
+            // Reset the auto-skip tracker when auto-skip is disabled.
             autoSkippedSegmentStartMs = null
         }
 
@@ -732,6 +747,14 @@ class DirectStreamActivity : AppCompatActivity() {
         val startMs = segment.startMs
         val endMs = segment.endMs ?: (startMs + 5 * 60_000L)
         return positionMs in (startMs - 2_000L)..endMs
+    }
+
+    /** True only after playback reaches the actual segment start. */
+    private fun isSegmentReached(segment: SkipSegment?, positionMs: Long): Boolean {
+        if (segment == null) return false
+        val startMs = segment.startMs
+        val endMs = segment.endMs ?: (startMs + 5 * 60_000L)
+        return positionMs >= startMs && positionMs < endMs
     }
 
     private fun showSkipButton(type: SkipSegmentType, segment: SkipSegment) {
