@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
@@ -18,6 +19,7 @@ import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.dash.DashMediaSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
@@ -193,6 +195,46 @@ class PlayerEngine(context: Context) {
     ): MediaSource {
         val uri = Uri.parse(stream.url)
         val dataSourceFactory = buildDataSourceFactory(stream)
+        val validSubtitles = subtitles.filter { subtitle ->
+            subtitle.url.isNotBlank() && subtitle.mimeType.isNotBlank() &&
+                (subtitle.url.startsWith("http://", ignoreCase = true) ||
+                    subtitle.url.startsWith("https://", ignoreCase = true) ||
+                    subtitle.url.startsWith("file://", ignoreCase = true))
+        }
+
+        // Media3 1.4+ expects sideloaded SRT/VTT tracks to be supplied through
+        // MediaItem.SubtitleConfiguration and DefaultMediaSourceFactory. The
+        // old SingleSampleMediaSource + MergingMediaSource path can produce an
+        // invalid merged timeline and turn a valid video into a fatal playback
+        // error when a local SubDL subtitle is added.
+        //
+        // Header-free subtitles cover SubDL's downloaded cache files and can
+        // use the supported factory path. Keep the manual merge below for
+        // sniffed remote subtitle tracks that require per-track headers.
+        if (validSubtitles.isNotEmpty() && validSubtitles.all { it.headers.isEmpty() }) {
+            val subtitleConfigurations = validSubtitles.mapIndexed { index, subtitle ->
+                MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.url))
+                    .setMimeType(subtitle.mimeType)
+                    .apply {
+                        subtitle.language?.let { setLanguage(it) }
+                        subtitle.label?.let { setLabel(it) }
+                        if (index == 0) setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    }
+                    .build()
+            }
+            val mediaItem = MediaItem.Builder()
+                .setUri(uri)
+                .apply {
+                    when {
+                        isHls(stream) -> setMimeType(MimeTypes.APPLICATION_M3U8)
+                        isDash(stream) -> setMimeType(MimeTypes.APPLICATION_MPD)
+                    }
+                }
+                .setSubtitleConfigurations(subtitleConfigurations)
+                .build()
+            return DefaultMediaSourceFactory(dataSourceFactory).createMediaSource(mediaItem)
+        }
+
         val mediaItem = MediaItem.fromUri(uri)
         val videoSource = when {
             isHls(stream) -> HlsMediaSource.Factory(dataSourceFactory)
@@ -202,14 +244,9 @@ class PlayerEngine(context: Context) {
             else -> ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(mediaItem)
         }
-        if (subtitles.isEmpty()) return videoSource
+        if (validSubtitles.isEmpty()) return videoSource
 
-        val subtitleSources = subtitles.filter { subtitle ->
-            subtitle.url.isNotBlank() && subtitle.mimeType.isNotBlank() &&
-                (subtitle.url.startsWith("http://", ignoreCase = true) ||
-                    subtitle.url.startsWith("https://", ignoreCase = true) ||
-                    subtitle.url.startsWith("file://", ignoreCase = true))
-        }.mapIndexed { index, subtitle ->
+        val subtitleSources = validSubtitles.mapIndexed { index, subtitle ->
             val subtitleUri = Uri.parse(subtitle.url)
             val subtitleDataSource = if (
                 subtitleUri.scheme.equals("http", ignoreCase = true) ||
@@ -234,10 +271,6 @@ class PlayerEngine(context: Context) {
             SingleSampleMediaSource.Factory(subtitleDataSource)
                 .createMediaSource(configuration, C.TIME_UNSET)
         }
-        if (subtitleSources.isEmpty()) return videoSource
-        // Do not clip an external subtitle source whose duration is unknown.
-        // Media3 treats that as an invalid merged timeline and reports
-        // ERROR_CODE_FAILED_RUNTIME_CHECK before playback can start.
         return MergingMediaSource(videoSource, *subtitleSources.toTypedArray())
     }
 

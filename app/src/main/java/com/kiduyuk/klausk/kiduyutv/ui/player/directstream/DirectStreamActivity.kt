@@ -60,6 +60,7 @@ import com.kiduyuk.klausk.kiduyutv.util.FirebaseManager
 import com.kiduyuk.klausk.kiduyutv.util.QuitDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -153,10 +154,11 @@ class DirectStreamActivity : AppCompatActivity() {
     private var lastFocusChainSignature: String? = null
     // Cached runtime (in milliseconds) for the currently loaded TV episode,
     // populated from TMDB's `tv/{tv_id}/season/{season}/episode/{episode}`
-    // endpoint. Used as a fallback when the underlying player has not yet
-    // reported a positive `duration` (e.g. right after `STATE_READY`).
+    // endpoint. Used only to keep the seek-bar UI informative while the
+    // underlying player is still preparing; SkipDB requests use player.duration.
     private var cachedEpisodeDurationMs: Long? = null
     private var episodeDurationFetchJob: Job? = null
+    private var skipSegmentsFetchJob: Job? = null
 
     // --- Episodes side panel ------------------------------------------
     private lateinit var episodeAdapter: EpisodeAdapter
@@ -625,9 +627,9 @@ class DirectStreamActivity : AppCompatActivity() {
      * Kicks off an asynchronous lookup of the currently loaded TV episode's
      * runtime from TMDB's `tv/{tv_id}/season/{season}/episode/{episode}`
      * endpoint. The result (in milliseconds) is stored in
-     * [cachedEpisodeDurationMs] and is later used by [loadSkipSegments] as
-     * the canonical `durationMs` when the underlying player has not yet
-     * reported a positive duration. No-op for non-series content.
+     * [cachedEpisodeDurationMs] for the seek-bar UI while the underlying
+     * player is preparing. SkipDB requests wait for the player duration
+     * instead. No-op for non-series content.
      */
     private fun fetchEpisodeDurationFromTmdb() {
         if (currentMediaType != TYPE_SERIES) return
@@ -666,44 +668,75 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     /**
-     * Returns the canonical episode duration in milliseconds for the current
-     * playback, preferring the TMDB-fetched [cachedEpisodeDurationMs] and
-     * falling back to the player's reported duration. Returns `null` when
-     * neither source has produced a positive value yet.
+     * Suspends until Media3 reports a positive duration for the current item.
+     * A duration of zero or `TIME_UNSET` is not valid for SkipDB matching.
      */
-    private fun resolveEpisodeDurationMs(): Long? {
-        val playerDuration = if (::engine.isInitialized) {
-            engine.player.duration.takeIf { it > 0L }
-        } else null
-        return cachedEpisodeDurationMs?.takeIf { it > 0L } ?: playerDuration
+    private suspend fun awaitPlayerDuration(): Long {
+        while (true) {
+            val durationMs = engine.player.duration.takeIf { it > 0L }
+            if (durationMs != null) return durationMs
+            delay(SKIP_DURATION_POLL_INTERVAL_MS)
+        }
     }
 
     private fun loadSkipSegments() {
-        // Prefer a known IMDb id. If missing for TV shows, resolve it from
-        // TMDB's external_ids endpoint and pass that to SkipDB.
-        lifecycleScope.launch {
-            val currentImdb = currentImdbId
-            val currentTmdb = currentTmdbId
-            val durationMs = resolveEpisodeDurationMs()
+        skipSegmentsFetchJob?.cancel()
+
+        // Capture the media identity before waiting so a delayed response can
+        // never be applied to a different episode or title.
+        val requestImdb = currentImdbId
+        val requestTmdb = currentTmdbId
+        val requestMediaType = currentMediaType
+        val requestSeason = currentSeason
+        val requestEpisode = currentEpisode
+
+        skipSegmentsFetchJob = lifecycleScope.launch {
+            // Do not send SkipDB a null/zero duration. The player may report
+            // STATE_READY before its timeline duration is populated.
+            val durationMs = awaitPlayerDuration()
+
+            if (
+                requestImdb != currentImdbId ||
+                requestTmdb != currentTmdbId ||
+                requestMediaType != currentMediaType ||
+                requestSeason != currentSeason ||
+                requestEpisode != currentEpisode
+            ) {
+                return@launch
+            }
+
             val result: SkipSegmentsResponse? = when {
-                !currentImdbId.isNullOrBlank() -> {
+                !requestImdb.isNullOrBlank() -> {
                     repository.fetchSkipSegments(
-                        imdbId = currentImdbId!!,
-                        season = if (currentMediaType == TYPE_SERIES) currentSeason else null,
-                        episode = if (currentMediaType == TYPE_SERIES) currentEpisode else null,
+                        imdbId = requestImdb,
+                        season = if (requestMediaType == TYPE_SERIES) requestSeason else null,
+                        episode = if (requestMediaType == TYPE_SERIES) requestEpisode else null,
                         streamDurationMs = durationMs
                     )
                 }
-                currentMediaType == TYPE_SERIES && currentTmdbId > 0 -> {
+                requestMediaType == TYPE_SERIES && requestTmdb > 0 -> {
                     repository.fetchSkipSegmentsByTmdb(
-                        tvId = currentTmdbId,
-                        season = currentSeason,
-                        episode = currentEpisode,
+                        tvId = requestTmdb,
+                        season = requestSeason,
+                        episode = requestEpisode,
                         streamDurationMs = durationMs
                     )
                 }
                 else -> null
             }
+
+            // Ignore a response that completed after the activity moved to a
+            // different media item.
+            if (
+                requestImdb != currentImdbId ||
+                requestTmdb != currentTmdbId ||
+                requestMediaType != currentMediaType ||
+                requestSeason != currentSeason ||
+                requestEpisode != currentEpisode
+            ) {
+                return@launch
+            }
+
             // If we successfully fetched segments, record which content
             // they belong to and update the UI. If the fetch failed but
             // the previously-loaded segments belong to the same content,
@@ -712,15 +745,15 @@ class DirectStreamActivity : AppCompatActivity() {
             // segments for this content.
             if (result != null) {
                 skipData = result
-                skipLoadedForImdbId = currentImdb
-                skipLoadedForTmdbId = currentTmdb
+                skipLoadedForImdbId = requestImdb
+                skipLoadedForTmdbId = requestTmdb
                 // Draw every valid intro/recap/outro/preview interval once
                 // the SkipDB response arrives. The custom SeekBar keeps these
                 // colors visible while playback continues.
                 binding.seekBar.setSegments(result.segments)
             } else {
-                val sameContent = (skipLoadedForImdbId != null && skipLoadedForImdbId == currentImdb) ||
-                    (skipLoadedForTmdbId != null && skipLoadedForTmdbId == currentTmdb && currentImdb.isNullOrBlank())
+                val sameContent = (skipLoadedForImdbId != null && skipLoadedForImdbId == requestImdb) ||
+                    (skipLoadedForTmdbId != null && skipLoadedForTmdbId == requestTmdb && requestImdb.isNullOrBlank())
                 if (!sameContent) {
                     skipData = null
                     skipLoadedForImdbId = null
@@ -1094,6 +1127,7 @@ class DirectStreamActivity : AppCompatActivity() {
         provider: StreamProviderChoice
     ) {
         streamJob?.cancel()
+        skipSegmentsFetchJob?.cancel()
         noStreamsDialog?.takeIf { it.isShowing }?.dismiss()
         noStreamsDialog = null
         availableStreams = emptyList()
@@ -1394,6 +1428,7 @@ class DirectStreamActivity : AppCompatActivity() {
         val streamKey = "${stream.url}|${stream.provider}|${startPositionMs}"
         if (lastStreamPlaybackKey == streamKey && engine.player.currentMediaItem != null) return
         lastStreamPlaybackKey = streamKey
+        skipSegmentsFetchJob?.cancel()
 
         // This also covers stream switching, subtitle reloads and sniffed
         // playback paths that do not pass through playBest().
@@ -2268,6 +2303,8 @@ class DirectStreamActivity : AppCompatActivity() {
         episodeFetchJob = null
         episodeDurationFetchJob?.cancel()
         episodeDurationFetchJob = null
+        skipSegmentsFetchJob?.cancel()
+        skipSegmentsFetchJob = null
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()
@@ -2290,6 +2327,7 @@ class DirectStreamActivity : AppCompatActivity() {
     companion object {
         private const val TAG = "KiduyuLitePlayer"
         private const val PROVIDER_TAG = "KiduyuLiteProvider"
+        private const val SKIP_DURATION_POLL_INTERVAL_MS = 100L
 
         const val EXTRA_TYPE = "MEDIA_TYPE"
         const val EXTRA_IS_TV = "IS_TV"

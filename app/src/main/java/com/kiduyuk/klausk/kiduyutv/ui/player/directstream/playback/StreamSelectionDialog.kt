@@ -65,12 +65,22 @@ class StreamSelectionDialog(
 
     override fun onStart() {
         super.onStart()
-        val maxWidth = (context.resources.displayMetrics.widthPixels * 0.9f).toInt()
-        val preferredWidth = (720 * context.resources.displayMetrics.density).toInt()
+
+        // Keep the TV sizing and navigation behavior unchanged. Phones report
+        // a small `smallestScreenWidthDp` even when held in landscape, so the
+        // compact width is applied only to mobile-sized displays.
+        val isCompactScreen = context.resources.configuration.smallestScreenWidthDp < 600
+        val maxWidthFraction = if (isCompactScreen) 0.84f else 0.9f
+        val preferredWidthDp = if (isCompactScreen) 560 else 720
+        val metrics = context.resources.displayMetrics
+        val maxWidth = (metrics.widthPixels * maxWidthFraction).toInt()
+        val preferredWidth = (preferredWidthDp * metrics.density).toInt()
+
         window?.setLayout(
             preferredWidth.coerceAtMost(maxWidth),
             WindowManager.LayoutParams.WRAP_CONTENT
         )
+
         val activeIndex = streams.indexOfFirst { it.url == activeUrl }.coerceAtLeast(0)
         list.setSelection(activeIndex)
         list.requestFocus()
