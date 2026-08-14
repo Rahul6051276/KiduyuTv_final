@@ -476,8 +476,37 @@ fun SettingsScreen(
                         logcatViewModel = logcatViewModel
                     )
                 }
-            }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Auto-skip segments toggle
+        var autoSkipEnabled by remember { mutableStateOf(settingsManager.isAutoSkipSegmentsEnabled()) }
+        SettingsSectionLabel(text = "Auto-skip segments")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CardDark)
+                .padding(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Auto-skip segments", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(text = if (autoSkipEnabled) "Automatically skip marked segments during playback" else "Require manual skip via the Skip button", color = TextSecondary, fontSize = 12.sp)
+            }
+            Switch(
+                checked = autoSkipEnabled,
+                onCheckedChange = {
+                    autoSkipEnabled = it
+                    settingsManager.setAutoSkipSegmentsEnabled(it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = PrimaryRed
+                )
+            )
+        }
+
     }
 }
 
@@ -1519,35 +1548,7 @@ private fun ProviderOptionItem(
             modifier = Modifier.size(24.dp)
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Auto-skip segments toggle
-        var autoSkipEnabled by remember { mutableStateOf(settingsManager.isAutoSkipSegmentsEnabled()) }
-        SettingsSectionLabel(text = "Auto-skip segments")
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(CardDark)
-                .padding(12.dp)
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Auto-skip segments", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                Text(text = if (autoSkipEnabled) "Automatically skip marked segments during playback" else "Require manual skip via the Skip button", color = TextSecondary, fontSize = 12.sp)
-            }
-            Switch(
-                checked = autoSkipEnabled,
-                onCheckedChange = {
-                    autoSkipEnabled = it
-                    settingsManager.setAutoSkipSegmentsEnabled(it)
-                },
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
-                    checkedTrackColor = PrimaryRed
-                )
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
+        
         Text(
             text = option,
             color = if (isSelected || isFocused) TextPrimary else TextSecondary,

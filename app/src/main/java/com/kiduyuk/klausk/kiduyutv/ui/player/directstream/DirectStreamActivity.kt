@@ -711,30 +711,39 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnSkipSegment.alpha = 1f
     }
 
+    
     private fun renderSkipSeekbarHighlight(segment: SkipSegment) {
-        val duration = engine.player.duration.takeIf { it > 0L } ?: return
-        val startPct = ((segment.startMs.coerceAtLeast(0L) * 1000L) / duration).toInt()
-            .coerceIn(0, 1000)
-        val endMs = segment.endMs ?: (segment.startMs + 5 * 60_000L)
-        val endPct = ((endMs.coerceAtLeast(segment.startMs) * 1000L) / duration).toInt()
-            .coerceIn(startPct, 1000)
+    val duration = engine.player.duration.takeIf { it > 0L } ?: return
+    val seekBar = binding.seekBar
+    if (seekBar.width <= 0) return
 
-        if (binding.seekBar.width <= 0) return
-        val startPx = (binding.seekBar.width.toFloat() * startPct / 1000f).toInt()
-        val endPx = (binding.seekBar.width.toFloat() * endPct / 1000f).toInt()
-        val width = (endPx - startPx).coerceAtLeast(0)
+    val endMs = segment.endMs ?: (segment.startMs + 5 * 60_000L)
+    val startFrac = (segment.startMs.coerceAtLeast(0L).toFloat() / duration).coerceIn(0f, 1f)
+    val endFrac = (endMs.coerceAtLeast(segment.startMs).toFloat() / duration).coerceIn(startFrac, 1f)
 
-        val lp = binding.skipHighlightView.layoutParams as? FrameLayout.LayoutParams
-            ?: FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
-        lp.width = width
-        lp.height = binding.seekBar.height.coerceAtLeast(8)
-        lp.leftMargin = startPx
-        lp.gravity = Gravity.CENTER_VERTICAL
-        binding.skipHighlightView.layoutParams = lp
-        binding.skipHighlightView.visibility = View.VISIBLE
-        binding.skipHighlightView.alpha = 1f
-        binding.skipHighlightView.setBackgroundColor(0x66F59E0B.toInt())
-    }
+    // The real track spans [paddingLeft + thumbOffset, width - paddingRight - thumbOffset],
+    // not the full view width — this is what was throwing off both position and size.
+    val trackLeft = seekBar.paddingLeft + seekBar.thumbOffset
+    val trackRight = seekBar.width - seekBar.paddingRight - seekBar.thumbOffset
+    val trackWidth = (trackRight - trackLeft).coerceAtLeast(0)
+
+    val startPx = trackLeft + (trackWidth * startFrac).toInt()
+    val endPx = trackLeft + (trackWidth * endFrac).toInt()
+    val width = (endPx - startPx).coerceAtLeast(0)
+
+    val trackHeightPx = (2 * resources.displayMetrics.density).toInt().coerceAtLeast(1) // ~2dp, matches a thin track
+
+    val lp = binding.skipHighlightView.layoutParams as? FrameLayout.LayoutParams
+        ?: FrameLayout.LayoutParams(0, trackHeightPx)
+    lp.width = width
+    lp.height = trackHeightPx
+    lp.leftMargin = startPx
+    lp.gravity = Gravity.CENTER_VERTICAL
+    binding.skipHighlightView.layoutParams = lp
+    binding.skipHighlightView.visibility = View.VISIBLE
+    binding.skipHighlightView.alpha = 1f
+    binding.skipHighlightView.setBackgroundColor(0x66F59E0B.toInt())
+}
 
     private fun clearSkipSeekbarHighlight() {
         binding.skipHighlightView.visibility = View.GONE
