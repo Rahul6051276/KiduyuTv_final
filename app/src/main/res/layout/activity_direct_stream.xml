@@ -192,16 +192,29 @@
                     android:fontFamily="monospace"
                     android:textSize="12sp" />
 
-                <SeekBar
-                    android:id="@+id/seekBar"
+                <FrameLayout
                     android:layout_width="0dp"
                     android:layout_height="32dp"
-                    android:layout_weight="1"
-                    android:focusable="false"
-                    android:max="1000"
-                    android:progressTint="@color/kiduyu_red"
-                    android:secondaryProgressTint="#80FFFFFF"
-                    android:thumbTint="@color/text_primary" />
+                    android:layout_weight="1">
+
+                    <SeekBar
+                        android:id="@+id/seekBar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:focusable="false"
+                        android:max="1000"
+                        android:progressTint="@color/kiduyu_red"
+                        android:secondaryProgressTint="#80FFFFFF"
+                        android:thumbTint="@color/text_primary" />
+
+                    <View
+                        android:id="@+id/skipHighlightView"
+                        android:layout_width="0dp"
+                        android:layout_height="10dp"
+                        android:layout_gravity="center_vertical"
+                        android:background="#66F59E0B"
+                        android:visibility="gone" />
+                </FrameLayout>
 
                 <TextView
                     android:id="@+id/tvTotalTime"

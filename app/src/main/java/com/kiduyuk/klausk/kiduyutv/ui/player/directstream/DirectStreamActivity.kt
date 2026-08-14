@@ -607,14 +607,32 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun updateSkipButton() {
-        val data = skipData ?: return
+        val data = skipData ?: run {
+            clearSkipSeekbarHighlight()
+            return
+        }
         val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
-        val active = listOf(
+        val candidates = listOf(
             SkipSegmentType.RECAP to data.segments.recap,
             SkipSegmentType.INTRO to data.segments.intro,
             SkipSegmentType.OUTRO to data.segments.outro,
             SkipSegmentType.PREVIEW to data.segments.preview
-        ).firstOrNull { (_, segment) -> isSkipActive(segment, positionMs) }
+        ).mapNotNull { (type, segment) ->
+            val resolved = segment ?: return@mapNotNull null
+            if (!SkipSegmentQuality.isUsable(resolved)) return@mapNotNull null
+            type to resolved
+        }
+
+        val active = candidates.firstOrNull { (_, segment) -> isSkipActive(segment, positionMs) }
+        val highlighted = active
+            ?: candidates.firstOrNull { (_, segment) -> segment.startMs >= positionMs }
+            ?: candidates.firstOrNull()
+
+        if (highlighted != null) {
+            renderSkipSeekbarHighlight(highlighted.second)
+        } else {
+            clearSkipSeekbarHighlight()
+        }
 
         if (active == null) {
             if (shownSkipType != null) hideSkipButton()
@@ -622,16 +640,44 @@ class DirectStreamActivity : AppCompatActivity() {
         }
 
         val (type, segment) = active
-        val resolvedSegment = segment ?: run {
-            hideSkipButton()
+        if (shownSkipType == type) {
+            binding.btnSkipSegment.isEnabled = true
+            binding.btnSkipSegment.alpha = 1f
             return
         }
-        if (!SkipSegmentQuality.isUsable(resolvedSegment)) {
-            hideSkipButton()
-            return
-        }
-        if (shownSkipType == type) return
-        showSkipButton(type, resolvedSegment)
+        showSkipButton(type, segment)
+        binding.btnSkipSegment.isEnabled = true
+        binding.btnSkipSegment.alpha = 1f
+    }
+
+    private fun renderSkipSeekbarHighlight(segment: SkipSegment) {
+        val duration = engine.player.duration.takeIf { it > 0L } ?: return
+        val startPct = ((segment.startMs.coerceAtLeast(0L) * 1000L) / duration).toInt()
+            .coerceIn(0, 1000)
+        val endMs = segment.endMs ?: (segment.startMs + 5 * 60_000L)
+        val endPct = ((endMs.coerceAtLeast(segment.startMs) * 1000L) / duration).toInt()
+            .coerceIn(startPct, 1000)
+
+        if (binding.seekBar.width <= 0) return
+        val startPx = (binding.seekBar.width.toFloat() * startPct / 1000f).toInt()
+        val endPx = (binding.seekBar.width.toFloat() * endPct / 1000f).toInt()
+        val width = (endPx - startPx).coerceAtLeast(0)
+
+        val lp = binding.skipHighlightView.layoutParams as? FrameLayout.LayoutParams
+            ?: FrameLayout.LayoutParams(0, FrameLayout.LayoutParams.MATCH_PARENT)
+        lp.width = width
+        lp.height = (binding.seekBar.height * 0.55f).toInt().coerceAtLeast(8)
+        lp.leftMargin = startPx
+        lp.gravity = Gravity.CENTER_VERTICAL
+        binding.skipHighlightView.layoutParams = lp
+        binding.skipHighlightView.visibility = View.VISIBLE
+        binding.skipHighlightView.alpha = 1f
+        binding.skipHighlightView.setBackgroundColor(0x66F59E0B.toInt())
+    }
+
+    private fun clearSkipSeekbarHighlight() {
+        binding.skipHighlightView.visibility = View.GONE
+        binding.skipHighlightView.alpha = 0f
     }
 
     private fun isSkipActive(segment: SkipSegment?, positionMs: Long): Boolean {
@@ -651,6 +697,8 @@ class DirectStreamActivity : AppCompatActivity() {
         }
         val durationSec = ((segment.endMs ?: segment.startMs) - segment.startMs).coerceAtLeast(0L) / 1000L
         binding.btnSkipSegment.text = if (durationSec > 0L) "$label • ${durationSec}s" else label
+        binding.btnSkipSegment.isEnabled = true
+        binding.btnSkipSegment.alpha = 1f
         binding.skipOverlayContainer.visibility = View.VISIBLE
         binding.btnSkipSegment.requestFocus()
     }
@@ -658,6 +706,8 @@ class DirectStreamActivity : AppCompatActivity() {
     private fun hideSkipButton() {
         if (shownSkipType == null && binding.skipOverlayContainer.visibility != View.VISIBLE) return
         shownSkipType = null
+        binding.btnSkipSegment.isEnabled = false
+        binding.btnSkipSegment.alpha = 0.45f
         binding.skipOverlayContainer.visibility = View.GONE
     }
 
