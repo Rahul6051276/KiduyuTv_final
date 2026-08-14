@@ -47,47 +47,34 @@
         <LinearLayout
             android:id="@+id/topBar"
             android:layout_width="match_parent"
-            android:layout_height="76dp"
+            android:layout_height="72dp"
             android:layout_gravity="top"
             android:background="@drawable/bg_direct_stream_top_scrim"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="20dp">
+            android:paddingStart="12dp"
+            android:paddingEnd="16dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlayerBack"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                style="@style/DirectStreamIconButtonFlat"
                 android:contentDescription="@string/back"
-                android:insetLeft="0dp"
-                android:insetTop="0dp"
-                android:insetRight="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
                 android:nextFocusDown="@id/btnPlayPause"
-                android:padding="0dp"
-                app:backgroundTint="@color/direct_stream_surface"
-                app:cornerRadius="20dp"
-                app:icon="@drawable/ic_back"
-                app:iconGravity="textStart"
-                app:iconPadding="0dp"
-                app:iconSize="20dp"
-                app:iconTint="#FFFFFF" />
+                app:icon="@drawable/ic_back" />
 
             <TextView
                 android:id="@+id/tvPlayerTitle"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
+                android:layout_marginStart="12dp"
                 android:layout_marginEnd="16dp"
                 android:layout_weight="1"
                 android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.01"
                 android:maxLines="1"
                 android:textColor="@color/text_primary"
-                android:textSize="19sp"
-                android:textStyle="bold" />
+                android:textSize="18sp" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -99,59 +86,70 @@
                     android:id="@+id/tvDate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="#FFFFFF"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/tvTime"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="end"
-                    android:textColor="#BBBBBB"
+                    android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
 
-        <TextView
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRewind"
-            style="@style/DirectStreamRoundControlButton"
-            android:layout_width="68dp"
-            android:layout_height="68dp"
+            style="@style/DirectStreamPillButton"
             android:layout_gravity="center_vertical|start"
-            android:layout_marginStart="24dp"
+            android:layout_marginStart="20dp"
             android:contentDescription="@string/skip_back"
             android:nextFocusDown="@id/btnFill"
             android:nextFocusRight="@id/btnPlayPause"
             android:nextFocusUp="@id/btnPlayerBack"
-            android:text="@string/direct_stream_rewind_30" />
+            android:text="30"
+            app:icon="@drawable/ic_replay" />
 
-        <TextView
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnForward"
-            style="@style/DirectStreamRoundControlButton"
-            android:layout_width="68dp"
-            android:layout_height="68dp"
+            style="@style/DirectStreamPillButton"
             android:layout_gravity="center_vertical|end"
-            android:layout_marginEnd="24dp"
+            android:layout_marginEnd="20dp"
             android:contentDescription="@string/skip_forward"
             android:nextFocusDown="@id/btnVolume"
             android:nextFocusLeft="@id/btnPlayPause"
             android:nextFocusUp="@id/btnPlayerBack"
-            android:text="@string/direct_stream_forward_30" />
+            android:text="30"
+            app:icon="@drawable/ic_forward" />
 
-        <TextView
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnPlayPause"
-            style="@style/DirectStreamPlayControlButton"
-            android:layout_width="82dp"
-            android:layout_height="82dp"
+            android:layout_width="72dp"
+            android:layout_height="72dp"
             android:layout_gravity="center"
             android:contentDescription="@string/player_play_pause"
+            android:insetLeft="0dp"
+            android:insetTop="0dp"
+            android:insetRight="0dp"
+            android:insetBottom="0dp"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
             android:nextFocusDown="@id/btnFill"
             android:nextFocusLeft="@id/btnRewind"
             android:nextFocusRight="@id/btnForward"
             android:nextFocusUp="@id/btnPlayerBack"
-            android:text="Ⅱ"
-            android:textSize="26sp" />
+            android:padding="0dp"
+            app:backgroundTint="@color/direct_stream_primary"
+            app:cornerRadius="36dp"
+            app:elevation="6dp"
+            app:icon="@drawable/ic_pause"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"
+            app:iconSize="28dp"
+            app:iconTint="@color/direct_stream_on_primary"
+            app:rippleColor="@color/direct_stream_on_primary" />
 
         <FrameLayout
             android:id="@+id/skipOverlayContainer"
@@ -161,20 +159,27 @@
             android:layout_marginTop="88dp"
             android:visibility="gone">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSkipSegment"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                    android:focusable="true"
-                    android:focusableInTouchMode="false"
-                    android:nextFocusDown="@id/btnPlayPause"
-                    android:nextFocusUp="@id/btnPlayerBack"
-                android:backgroundTint="#CC1F1F1F"
+                android:layout_height="40dp"
+                android:focusable="true"
+                android:focusableInTouchMode="false"
+                android:nextFocusDown="@id/btnPlayPause"
+                android:nextFocusUp="@id/btnPlayerBack"
                 android:contentDescription="@string/skip_segment"
-                android:minHeight="36dp"
-                android:paddingHorizontal="18dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:paddingHorizontal="20dp"
                 android:textAllCaps="false"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:fontFamily="sans-serif-medium"
+                app:backgroundTint="@color/direct_stream_surface_high"
+                app:cornerRadius="20dp"
+                app:elevation="2dp"
+                app:strokeColor="@color/direct_stream_outline"
+                app:strokeWidth="1dp"
                 tools:text="Skip Intro • 30s"
                 xmlns:tools="http://schemas.android.com/tools" />
         </FrameLayout>
@@ -203,7 +208,7 @@
                     android:layout_height="wrap_content"
                     android:gravity="start|center_vertical"
                     android:text="00:00"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/text_secondary"
                     android:fontFamily="monospace"
                     android:textSize="12sp" />
 
@@ -218,7 +223,8 @@
                         android:layout_height="match_parent"
                         android:focusable="false"
                         android:max="1000"
-                        android:thumbTint="@color/text_primary" />
+                        android:progressTint="@color/direct_stream_primary"
+                        android:thumbTint="@color/direct_stream_primary" />
                 </FrameLayout>
 
                 <TextView
@@ -227,7 +233,7 @@
                     android:layout_height="wrap_content"
                     android:gravity="end|center_vertical"
                     android:text="00:00"
-                    android:textColor="@color/text_primary"
+                    android:textColor="@color/text_secondary"
                     android:fontFamily="monospace"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -388,33 +394,18 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:ellipsize="end"
+                    android:fontFamily="sans-serif-medium"
                     android:maxLines="1"
                     android:textColor="@color/text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
+                    android:textSize="17sp"
                     tools:text="Season 1 — 13 episodes"
                     xmlns:tools="http://schemas.android.com/tools" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnCloseEpisodesPanel"
-                    android:layout_width="42dp"
-                    android:layout_height="42dp"
+                    style="@style/DirectStreamIconButtonFlat"
                     android:contentDescription="@string/close"
-                    android:insetLeft="0dp"
-                    android:insetTop="0dp"
-                    android:insetRight="0dp"
-                    android:insetBottom="0dp"
-                    android:minWidth="0dp"
-                    android:minHeight="0dp"
-                    android:padding="0dp"
-                    android:text="×"
-                    android:textColor="@color/text_primary"
-                    android:textSize="24sp"
-                    app:backgroundTint="@color/direct_stream_surface"
-                    app:cornerRadius="21dp"
-                    app:iconGravity="textStart"
-                    app:strokeColor="@color/direct_stream_outline"
-                    app:strokeWidth="1dp" />
+                    app:icon="@drawable/ic_close" />
             </LinearLayout>
 
             <View

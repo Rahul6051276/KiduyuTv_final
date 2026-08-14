@@ -246,7 +246,9 @@ class DirectStreamActivity : AppCompatActivity() {
                     } else {
                         0
                     }
-                binding.btnPlayPause.text = if (engine.player.isPlaying) "Ⅱ" else "▶"
+                binding.btnPlayPause.setIconResource(
+                    if (engine.player.isPlaying) R.drawable.ic_pause else R.drawable.ic_play
+                )
             }
             val now = Date()
             binding.tvDate.text = controlsClock.format(now)

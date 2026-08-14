@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#141414</color>
+    <!-- ===== colors.xml ===== -->
+
+    <color name="direct_stream_primary">#E6221C</color>
+    <color name="direct_stream_on_primary">#FFFFFF</color>
+
 
     <!-- Trakt Auth screen colors -->
     <color name="trakt_purple">#9C41C1</color>
