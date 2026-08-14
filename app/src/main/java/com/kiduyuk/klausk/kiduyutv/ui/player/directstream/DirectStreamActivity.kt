@@ -125,6 +125,9 @@ class DirectStreamActivity : AppCompatActivity() {
     // streams for the same title.
     private var skipLoadedForImdbId: String? = null
     private var skipLoadedForTmdbId: Int? = null
+    // Remember which segment we've already auto-skipped to avoid repeats
+    private var autoSkippedSegmentStartMs: Long? = null
+    private val settingsManager by lazy { SettingsManager(this) }
     private val repository = TmdbRepository()
     private var pendingStartPositionMs = 0L
     private var pendingReadySeekPositionMs = 0L
@@ -676,6 +679,24 @@ class DirectStreamActivity : AppCompatActivity() {
         if (active == null) {
             if (shownSkipType != null) hideSkipButton()
             return
+        }
+
+        // If auto-skip is enabled, jump to the segment end automatically
+        // the first time we encounter the segment to avoid repeated seeks.
+        if (settingsManager.isAutoSkipSegmentsEnabled()) {
+            val (atype, asegment) = active
+            val segmentStart = asegment.startMs
+            val segmentEnd = asegment.endMs ?: (segmentStart + 5 * 60_000L)
+            if (autoSkippedSegmentStartMs != segmentStart) {
+                autoSkippedSegmentStartMs = segmentStart
+                engine.player.seekTo(segmentEnd)
+                clearSkipSeekbarHighlight()
+                hideSkipButton()
+                return
+            }
+        } else {
+            // reset auto-skip tracker when auto-skip disabled
+            autoSkippedSegmentStartMs = null
         }
 
         val (type, segment) = active

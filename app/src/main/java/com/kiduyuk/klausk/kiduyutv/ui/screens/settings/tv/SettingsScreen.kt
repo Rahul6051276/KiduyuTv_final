@@ -1518,6 +1518,35 @@ private fun ProviderOptionItem(
             tint = if (isSelected) PrimaryRed else TextSecondary,
             modifier = Modifier.size(24.dp)
         )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Auto-skip segments toggle
+        val autoSkipEnabled = remember { mutableStateOf(settingsManager.isAutoSkipSegmentsEnabled()) }
+        SettingsSectionLabel(text = "Auto-skip segments")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CardDark)
+                .padding(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = "Auto-skip segments", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                Text(text = if (autoSkipEnabled.value) "Automatically skip marked segments during playback" else "Require manual skip via the Skip button", color = TextSecondary, fontSize = 12.sp)
+            }
+            Switch(
+                checked = autoSkipEnabled.value,
+                onCheckedChange = {
+                    autoSkipEnabled.value = it
+                    settingsManager.setAutoSkipSegmentsEnabled(it)
+                },
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = Color.White,
+                    checkedTrackColor = PrimaryRed
+                )
+            )
+        }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = option,

@@ -96,6 +96,7 @@ class SettingsManager(context: Context) {
         private const val KEY_DIRECT_STREAM_ENABLED = "direct_stream_enabled"
         private const val KEY_WEB_SNIFFER_ENABLED = "web_sniffer_enabled"
         private const val KEY_DADDYLIVE_ENABLED = "daddylive_enabled"
+        private const val KEY_AUTO_SKIP_SEGMENTS = "auto_skip_segments"
 
         /** Sentinel value meaning "ask me each time" — no automatic selection. */
         const val AUTO = "Auto"
@@ -106,5 +107,13 @@ class SettingsManager(context: Context) {
          */
         val PROVIDERS: List<String>
             get() = StreamProviderManager.providers.take(10).map { it.name }
+    }
+
+    fun setAutoSkipSegmentsEnabled(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_AUTO_SKIP_SEGMENTS, enabled).apply()
+    }
+
+    fun isAutoSkipSegmentsEnabled(): Boolean {
+        return preferences.getBoolean(KEY_AUTO_SKIP_SEGMENTS, true)
     }
 }

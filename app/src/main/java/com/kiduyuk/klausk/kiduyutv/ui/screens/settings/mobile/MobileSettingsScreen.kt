@@ -749,6 +749,30 @@ fun MobileSettingsScreen(
                         uiState.defaultProvider,
                     onClick = { showProviderPicker = true }
                 )
+                SettingsItem(
+                    icon = Icons.Default.SkipNext,
+                    title = "Auto-skip segments",
+                    subtitle = if (settingsManager.isAutoSkipSegmentsEnabled())
+                        "Automatically skip marked segments during playback"
+                    else
+                        "Require manual skip via the Skip button",
+                    onClick = {
+                        val enabled = !settingsManager.isAutoSkipSegmentsEnabled()
+                        settingsManager.setAutoSkipSegmentsEnabled(enabled)
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = settingsManager.isAutoSkipSegmentsEnabled(),
+                            onCheckedChange = {
+                                settingsManager.setAutoSkipSegmentsEnabled(it)
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = PrimaryRed
+                            )
+                        )
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
