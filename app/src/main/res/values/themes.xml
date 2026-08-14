@@ -136,28 +136,7 @@
     </style>
 
     <!-- Bottom control-strip icon buttons: Fit, Subs, Tracks, Streams, Vol, Prev/Next, Episodes -->
-    <style name="DirectStreamIconButton" parent="Widget.Material3.Button.IconButton">
-        <item name="android:layout_width">40dp</item>
-        <item name="android:layout_height">40dp</item>
-        <item name="android:insetLeft">0dp</item>
-        <item name="android:insetTop">0dp</item>
-        <item name="android:insetRight">0dp</item>
-        <item name="android:insetBottom">0dp</item>
-        <item name="android:minWidth">0dp</item>
-        <item name="android:minHeight">0dp</item>
-        <item name="android:padding">0dp</item>
-        <item name="backgroundTint">@color/direct_stream_surface_high</item>
-        <item name="cornerRadius">20dp</item>
-        <item name="elevation">1dp</item>
-        <item name="strokeColor">@color/direct_stream_outline</item>
-        <item name="strokeWidth">1dp</item>
-        <item name="iconGravity">textStart</item>
-        <item name="iconPadding">0dp</item>
-        <item name="iconSize">20dp</item>
-        <item name="iconTint">@color/text_primary</item>
-        <item name="rippleColor">@color/direct_stream_outline</item>
-    </style>
-
+    
     <!-- Rewind/forward pill buttons: icon + "30" label -->
     <style name="DirectStreamPillButton" parent="Widget.Material3.Button.TonalButton">
         <item name="android:layout_width">wrap_content</item>
