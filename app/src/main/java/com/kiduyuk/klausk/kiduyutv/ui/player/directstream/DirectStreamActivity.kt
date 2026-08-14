@@ -1418,7 +1418,7 @@ class DirectStreamActivity : AppCompatActivity() {
         episodeFetchJob?.cancel()
         episodeFetchJob = lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
-                runCatching { tmdbRepository.getSeasonDetail(tmdbId, season) }
+                runCatching { repository.getSeasonDetail(tmdbId, season) }
             }
             result
                 .onSuccess { detail ->
