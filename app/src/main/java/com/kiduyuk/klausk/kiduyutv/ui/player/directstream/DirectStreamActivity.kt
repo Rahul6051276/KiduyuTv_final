@@ -589,16 +589,29 @@ class DirectStreamActivity : AppCompatActivity() {
     ): String = "$type|$tmdbId|${season ?: 0}|${episode ?: 0}|${provider.key}"
 
     private fun loadSkipSegments() {
-        val imdbId = currentImdbId ?: return
-        if (currentMediaType == TYPE_SERIES && (currentSeason == null || currentEpisode == null)) return
+        // Prefer a known IMDb id. If missing for TV shows, resolve it from
+        // TMDB's external_ids endpoint and pass that to SkipDB.
         lifecycleScope.launch {
             val durationMs = engine.player.duration.takeIf { it > 0L }
-            val result = repository.fetchSkipSegments(
-                imdbId = imdbId,
-                season = if (currentMediaType == TYPE_SERIES) currentSeason else null,
-                episode = if (currentMediaType == TYPE_SERIES) currentEpisode else null,
-                streamDurationMs = durationMs
-            )
+            val result: SkipSegmentsResponse? = when {
+                !currentImdbId.isNullOrBlank() -> {
+                    repository.fetchSkipSegments(
+                        imdbId = currentImdbId!!,
+                        season = if (currentMediaType == TYPE_SERIES) currentSeason else null,
+                        episode = if (currentMediaType == TYPE_SERIES) currentEpisode else null,
+                        streamDurationMs = durationMs
+                    )
+                }
+                currentMediaType == TYPE_SERIES && currentTmdbId > 0 -> {
+                    repository.fetchSkipSegmentsByTmdb(
+                        tvId = currentTmdbId,
+                        season = currentSeason,
+                        episode = currentEpisode,
+                        streamDurationMs = durationMs
+                    )
+                }
+                else -> null
+            }
             skipData = result
             if (result == null) {
                 hideSkipButton()
@@ -935,6 +948,7 @@ class DirectStreamActivity : AppCompatActivity() {
         if (active != null) {
             cloudflareProbeJob?.cancel()
             cloudflareProbeJob = lifecycleScope.launch {
+                Log.w(TAG, "Playback error for active stream; url=${active.url} provider=${active.provider} quality=${active.quality}")
                 val statusCode = withContext(Dispatchers.IO) {
                     StreamValidator.probeStatus(active)
                 }
@@ -1203,8 +1217,15 @@ class DirectStreamActivity : AppCompatActivity() {
     private fun needsDahmerMoviesClearance(stream: StreamItem): Boolean {
         val url = stream.url.trim()
         if (url.isBlank()) return false
-        val isDahmerStream = url.startsWith(DAHMER_CLEARANCE_URL, ignoreCase = true) ||
+        val host = runCatching { Uri.parse(url).host?.lowercase()?.trim() }.getOrNull().orEmpty()
+        // Consider it a Dahmer stream when either:
+        // - the host equals the known Dahmer host (p.111477.xyz),
+        // - the URL starts with the configured clearance URL (covers scheme+prefix),
+        // - or the provider name equals the Dahmer provider token.
+        val isDahmerStream = host.equals(DAHMER_CLEARANCE_HOST, ignoreCase = true) ||
+            url.startsWith(DAHMER_CLEARANCE_URL, ignoreCase = true) ||
             stream.provider.equals(DAHMER_PROVIDER, ignoreCase = true)
+        Log.d(TAG, "needsDahmerMoviesClearance: url=$url host=$host provider=${stream.provider} isDahmer=$isDahmerStream")
         if (!isDahmerStream) return false
 
         val streamCookie = stream.headers.entries

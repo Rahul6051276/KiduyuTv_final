@@ -287,6 +287,34 @@ class TmdbRepository {
         }
     }
 
+    /**
+     * Fetch skip segments when only a TMDB TV id is available. This will
+     * query TMDB's `external_ids` endpoint to obtain the `imdb_id` and
+     * then call SkipDB.
+     */
+    suspend fun fetchSkipSegmentsByTmdb(
+        tvId: Int,
+        season: Int? = null,
+        episode: Int? = null,
+        streamDurationMs: Long? = null
+    ): SkipSegmentsResponse? = withContext(Dispatchers.IO) {
+        if (tvId <= 0) return@withContext null
+        try {
+            val external = runCatching { api.getTvExternalIds(tvId) }.getOrNull()
+            val imdbId = external?.get("imdb_id")?.takeIf { it?.isNotBlank() == true } ?: return@withContext null
+            val durationSec = streamDurationMs?.div(1000L)
+            skipDbService.getSegments(
+                imdbId = imdbId,
+                season = season,
+                episode = episode,
+                durationSec = durationSec
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "SkipDB fetch (via TMDB) failed for tvId=$tvId S${season ?: "-"}E${episode ?: "-"}: ${e.message}")
+            null
+        }
+    }
+
     /** Fetches poster and backdrop images for a specific movie. */
     suspend fun getMovieImages(movieId: Int): Result<List<MovieImage>> = runCatching {
         val response = api.getMovieImages(movieId)

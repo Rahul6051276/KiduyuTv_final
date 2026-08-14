@@ -150,6 +150,15 @@ interface TmdbApiService {
         @Path("tv_id") tvId: Int
     ): TvShowDetail
 
+    /**
+     * Fetches external IDs for a TV show (contains `imdb_id`).
+     * Returns a simple map where `imdb_id` can be read.
+     */
+    @GET("tv/{tv_id}/external_ids")
+    suspend fun getTvExternalIds(
+        @Path("tv_id") tvId: Int
+    ): Map<String, String?>
+
     /** Fetches poster and backdrop images for a specific TV show. */
     @GET("tv/{tv_id}/images")
     suspend fun getTvShowImages(
