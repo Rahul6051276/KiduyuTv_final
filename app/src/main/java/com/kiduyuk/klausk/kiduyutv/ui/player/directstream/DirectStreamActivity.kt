@@ -27,6 +27,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kiduyuk.klausk.kiduyutv.data.local.database.DatabaseManager
 import com.kiduyuk.klausk.kiduyutv.data.model.Episode
 import com.kiduyuk.klausk.kiduyutv.data.model.SeasonDetail
@@ -683,15 +684,18 @@ class DirectStreamActivity : AppCompatActivity() {
         results: List<SubdlSubtitleResult>,
         client: SubdlSubtitleClient
     ) {
-        subtitleDialog = AlertDialog.Builder(this)
+        val labels = results.map { it.displayName }.toTypedArray()
+        subtitleDialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.subdl_choose)
-            .setItems(results.map { it.displayName }.toTypedArray()) { dialog, index ->
+            .setIcon(R.drawable.ic_direct_stream_subtitles)
+            .setItems(labels) { dialog, index ->
                 dialog.dismiss()
                 downloadAndLoadSubtitle(results[index], client)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .create()
             .also { dialog ->
+                dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
                 dialog.setOnDismissListener { subtitleDialog = null }
                 dialog.show()
             }
