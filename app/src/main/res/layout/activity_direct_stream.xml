@@ -298,6 +298,18 @@
         </LinearLayout>
     </FrameLayout>
 
+    <!-- Scrim that fades in over the player while the panel is open.
+         Keep it behind the panel so touch scrolls on the RecyclerView are not
+         intercepted by the dimming overlay. -->
+    <View
+        android:id="@+id/episodesPanelScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
+
     <!-- ============================================================== -->
     <!--  Episodes side panel                                           -->
     <!--  Sits on top of overlayControls. Toggled by btnEpisodes.       -->
@@ -404,16 +416,6 @@
                 android:scrollbars="vertical" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
-
-    <!-- Scrim that fades in over the player while the panel is open. -->
-    <View
-        android:id="@+id/episodesPanelScrim"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#80000000"
-        android:clickable="true"
-        android:focusable="true"
-        android:visibility="gone" />
 
     <!-- Kept outside overlayControls so buffering remains visible after
          the playback controls automatically hide. -->

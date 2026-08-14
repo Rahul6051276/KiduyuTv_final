@@ -565,7 +565,7 @@ class DirectStreamActivity : AppCompatActivity() {
         season: Int?,
         episode: Int?,
         provider: StreamProviderChoice
-    ): String = "$type|$tmdbId|${season ?: 0}|${episode ?: 0}|${provider.name}"
+    ): String = "$type|$tmdbId|${season ?: 0}|${episode ?: 0}|${provider.key}"
 
     private fun loadCurrentMedia() {
         val signature = mediaLoadSignature(
