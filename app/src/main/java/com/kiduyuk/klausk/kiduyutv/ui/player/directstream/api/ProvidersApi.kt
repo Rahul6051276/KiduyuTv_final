@@ -2,6 +2,7 @@ package com.kiduyuk.klausk.kiduyutv.ui.player.directstream.api
 
 import android.net.Uri
 import android.util.Log
+import com.kiduyuk.klausk.kiduyutv.BuildConfig
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamItem
 import com.kiduyuk.klausk.kiduyutv.ui.player.directstream.model.StreamResponse
 import org.json.JSONObject
@@ -40,7 +41,7 @@ object ProvidersApi {
     private const val STREAMS_READ_TIMEOUT_MS = 180_000
 
     private const val baseUrl = "https://sflatransport.com/kiduyuTv_providers"
-    private const val streamApiToken = "0a965c3877cd30510c014d81a5d400536a99bc65831d7af57caf479915d57186"
+    private const val streamApiToken = BuildConfig.STREAM_API_TOKEN
 
     /**
      * Returns the server-side keys of providers currently enabled by
@@ -175,9 +176,13 @@ object ProvidersApi {
                 val s = arr.getJSONObject(i)
                 val url = s.optString("url").takeIf { it.isNotBlank() } ?: continue
                 val provider = s.optString("provider", "")
+                val type = s.optString("type", "")
+                val isMovieBoxDirect = provider.equals("MovieBox", ignoreCase = true) &&
+                    type.equals("direct", ignoreCase = true)
+                if (isMovieBoxDirect) continue
                 val isVixsrcHls = provider.equals("vixsrc", ignoreCase = true) &&
                     url.contains("vixsrc.to/playlist/", ignoreCase = true)
-                val type = s.optString("type", "").ifBlank {
+                val normalizedType = type.ifBlank {
                     if (isVixsrcHls) "hls" else ""
                 }
                 val mimeType = s.optString(
@@ -215,7 +220,7 @@ object ProvidersApi {
                         url = url,
                         quality = s.optString("quality", "Auto"),
                         provider = provider,
-                        type = type,
+                        type = normalizedType,
                         mimeType = mimeType,
                         headers = headers
                     )

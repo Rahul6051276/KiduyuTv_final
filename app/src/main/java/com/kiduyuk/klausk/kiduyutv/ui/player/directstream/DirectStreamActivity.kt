@@ -130,6 +130,9 @@ class DirectStreamActivity : AppCompatActivity() {
      * after a successful Cloudflare bypass resumes from the same point.
      */
     private var pendingCloudflareResumeMs: Long = 0L
+    private var lastLoadSignature: String? = null
+    private var lastStreamPlaybackKey: String? = null
+    private var lastFocusChainSignature: String? = null
 
     // --- Episodes side panel ------------------------------------------
     private lateinit var episodeAdapter: EpisodeAdapter
@@ -556,7 +559,24 @@ class DirectStreamActivity : AppCompatActivity() {
         }
     }
 
+    private fun mediaLoadSignature(
+        type: String,
+        tmdbId: Int,
+        season: Int?,
+        episode: Int?,
+        provider: StreamProviderChoice
+    ): String = "$type|$tmdbId|${season ?: 0}|${episode ?: 0}|${provider.name}"
+
     private fun loadCurrentMedia() {
+        val signature = mediaLoadSignature(
+            type = currentMediaType,
+            tmdbId = currentTmdbId,
+            season = currentSeason,
+            episode = currentEpisode,
+            provider = currentProvider
+        )
+        if (lastLoadSignature == signature && streamJob?.isActive == true) return
+        lastLoadSignature = signature
         loadAndPlay(
             currentMediaType,
             currentTmdbId,
@@ -1090,6 +1110,10 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun startStreamPlayback(stream: StreamItem, startPositionMs: Long = 0L) {
+        val streamKey = "${stream.url}|${stream.provider}|${startPositionMs}"
+        if (lastStreamPlaybackKey == streamKey && engine.player.currentMediaItem != null) return
+        lastStreamPlaybackKey = streamKey
+
         // This also covers stream switching, subtitle reloads and sniffed
         // playback paths that do not pass through playBest().
         if (!engine.player.isPlaying && needsDahmerMoviesClearance(stream)) {
@@ -1429,11 +1453,12 @@ class DirectStreamActivity : AppCompatActivity() {
         val season = currentSeason ?: return
         val tmdbId = currentTmdbId.takeIf { it > 0 } ?: return
 
-        // If we already have the right season cached, just rebind the "now playing" row.
         if (cachedSeasonFor == season && cachedSeasonDetail != null) {
             bindEpisodes(cachedSeasonDetail!!)
             return
         }
+
+        if (episodeFetchJob?.isActive == true && cachedSeasonFor == season) return
 
         binding.tvEpisodesPanelStatus.visibility = View.VISIBLE
         binding.tvEpisodesPanelStatus.text = getString(R.string.episode_panel_loading)
@@ -1459,6 +1484,15 @@ class DirectStreamActivity : AppCompatActivity() {
 
     private fun bindEpisodes(detail: SeasonDetail) {
         val episodes = detail.episodes.sortedBy { it.episodeNumber }
+        if (binding.tvEpisodesPanelHeader.text.toString() == buildString {
+                append(detail.name)
+                append(" — ")
+                append(episodes.size)
+                append(if (episodes.size == 1) " episode" else " episodes")
+            } && episodeAdapter.currentList == episodes) {
+            return
+        }
+
         binding.tvEpisodesPanelStatus.visibility = View.GONE
         binding.tvEpisodesPanelHeader.text = buildString {
             append(detail.name)
@@ -1553,12 +1587,14 @@ class DirectStreamActivity : AppCompatActivity() {
     }
 
     private fun showControls() {
-        uiHandler.removeCallbacks(hideControlsRunnable)
-        val wasHidden = binding.overlayControls.visibility != View.VISIBLE
-        binding.overlayControls.visibility = View.VISIBLE
-        if (wasHidden || currentFocus == null || currentFocus === binding.overlayControls) {
-            binding.btnPlayPause.post { binding.btnPlayPause.requestFocus() }
+        if (binding.overlayControls.visibility == View.VISIBLE) {
+            uiHandler.removeCallbacks(hideControlsRunnable)
+            uiHandler.postDelayed(hideControlsRunnable, 4_000)
+            return
         }
+        uiHandler.removeCallbacks(hideControlsRunnable)
+        binding.overlayControls.visibility = View.VISIBLE
+        binding.btnPlayPause.post { binding.btnPlayPause.requestFocus() }
         uiHandler.postDelayed(hideControlsRunnable, 4_000)
     }
 
@@ -1573,6 +1609,21 @@ class DirectStreamActivity : AppCompatActivity() {
             binding.btnNextEpisode,
             binding.btnEpisodes
         ).filter { it.visibility == View.VISIBLE }
+
+        val signature = buildString {
+            controls.forEachIndexed { index, control ->
+                append(control.id)
+                append(':')
+                append(control.visibility)
+                append('|')
+                append(index)
+                append(';')
+            }
+            append(binding.btnPlayPause.id)
+        }
+        if (signature == lastFocusChainSignature) return
+        lastFocusChainSignature = signature
+
         controls.forEachIndexed { index, control ->
             control.nextFocusLeftId = controls[(index - 1 + controls.size) % controls.size].id
             control.nextFocusRightId = controls[(index + 1) % controls.size].id

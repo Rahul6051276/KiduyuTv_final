@@ -11,6 +11,10 @@ def subdlApiKey = providers.gradleProperty("SUBDL_API_KEY")
         .orElse(providers.environmentVariable("SUBDL_API_KEY"))
         .getOrElse("")
 def escapedSubdlApiKey = subdlApiKey.replace("\\", "\\\\").replace("\"", "\\\"")
+def streamApiToken = providers.gradleProperty("STREAM_API_TOKEN")
+        .orElse(providers.environmentVariable("STREAM_API_TOKEN"))
+        .getOrElse("")
+def escapedStreamApiToken = streamApiToken.replace("\\", "\\\\").replace("\"", "\\\"")
 def startIoAppId = "207814611"
 
 android {
@@ -31,6 +35,7 @@ android {
         }
         multiDexEnabled = true
         buildConfigField "String", "SUBDL_API_KEY", "\"${escapedSubdlApiKey}\""
+        buildConfigField "String", "STREAM_API_TOKEN", "\"${escapedStreamApiToken}\""
         buildConfigField "String", "START_IO_APP_ID", "\"${startIoAppId}\""
         manifestPlaceholders = [
             unityAdsGameId: "800077880",
