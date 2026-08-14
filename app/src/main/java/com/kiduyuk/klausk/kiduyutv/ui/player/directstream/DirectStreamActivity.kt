@@ -127,7 +127,7 @@ class DirectStreamActivity : AppCompatActivity() {
     private var skipLoadedForTmdbId: Int? = null
     // Remember which segment we've already auto-skipped to avoid repeats
     private var autoSkippedSegmentStartMs: Long? = null
-    private val settingsManager by lazy { SettingsManager(this) }
+    private lateinit var settingsManager: com.kiduyuk.klausk.kiduyutv.util.SettingsManager
     private val repository = TmdbRepository()
     private var pendingStartPositionMs = 0L
     private var pendingReadySeekPositionMs = 0L
@@ -268,6 +268,7 @@ class DirectStreamActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        settingsManager = com.kiduyuk.klausk.kiduyutv.util.SettingsManager(this)
         Log.i(TAG, "Player activity created")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         binding = ActivityDirectStreamBinding.inflate(layoutInflater)

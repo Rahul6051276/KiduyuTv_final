@@ -1522,7 +1522,7 @@ private fun ProviderOptionItem(
         Spacer(modifier = Modifier.height(12.dp))
 
         // Auto-skip segments toggle
-        val autoSkipEnabled = remember { mutableStateOf(settingsManager.isAutoSkipSegmentsEnabled()) }
+        var autoSkipEnabled by remember { mutableStateOf(settingsManager.isAutoSkipSegmentsEnabled()) }
         SettingsSectionLabel(text = "Auto-skip segments")
         Row(
             modifier = Modifier
@@ -1533,12 +1533,12 @@ private fun ProviderOptionItem(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = "Auto-skip segments", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                Text(text = if (autoSkipEnabled.value) "Automatically skip marked segments during playback" else "Require manual skip via the Skip button", color = TextSecondary, fontSize = 12.sp)
+                Text(text = if (autoSkipEnabled) "Automatically skip marked segments during playback" else "Require manual skip via the Skip button", color = TextSecondary, fontSize = 12.sp)
             }
             Switch(
-                checked = autoSkipEnabled.value,
+                checked = autoSkipEnabled,
                 onCheckedChange = {
-                    autoSkipEnabled.value = it
+                    autoSkipEnabled = it
                     settingsManager.setAutoSkipSegmentsEnabled(it)
                 },
                 colors = SwitchDefaults.colors(
