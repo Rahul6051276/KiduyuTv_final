@@ -204,7 +204,7 @@ class DirectStreamActivity : AppCompatActivity() {
         }
     }
 
-    private val skipTick = object : Runnable {
+    private val skipOverlayTick = object : Runnable {
         override fun run() {
             updateSkipButton()
             uiHandler.postDelayed(this, 250L)
@@ -241,7 +241,7 @@ class DirectStreamActivity : AppCompatActivity() {
     // and ramping up to 60s after 5 seconds of holding.
     private var skipDirection = 0
     private var skipHoldStart = 0L
-    private val skipTick = object : Runnable {
+    private val skipRampTick = object : Runnable {
         override fun run() {
             if (skipDirection == 0) return
             val held = System.currentTimeMillis() - skipHoldStart
@@ -414,7 +414,7 @@ class DirectStreamActivity : AppCompatActivity() {
         updateBottomFocusChain()
         showControls()
         uiHandler.post(progressTick)
-        uiHandler.post(skipTick)
+        uiHandler.post(skipOverlayTick)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -620,12 +620,16 @@ class DirectStreamActivity : AppCompatActivity() {
         }
 
         val (type, segment) = active
-        if (!SkipSegmentQuality.isUsable(segment)) {
+        val resolvedSegment = segment ?: run {
+            hideSkipButton()
+            return
+        }
+        if (!SkipSegmentQuality.isUsable(resolvedSegment)) {
             hideSkipButton()
             return
         }
         if (shownSkipType == type) return
-        showSkipButton(type, segment)
+        showSkipButton(type, resolvedSegment)
     }
 
     private fun isSkipActive(segment: SkipSegment?, positionMs: Long): Boolean {
@@ -1815,7 +1819,7 @@ class DirectStreamActivity : AppCompatActivity() {
                 skipDirection = dir
                 skipHoldStart = System.currentTimeMillis()
                 engine.seekBy(dir * SKIP_SEC_MIN * 1000L)
-                uiHandler.postDelayed(skipTick, SKIP_REPEAT_MS)
+                uiHandler.postDelayed(skipRampTick, SKIP_REPEAT_MS)
             }
             true
         }
@@ -1828,7 +1832,7 @@ class DirectStreamActivity : AppCompatActivity() {
 
     private fun stopSkipRamp() {
         skipDirection = 0
-        uiHandler.removeCallbacks(skipTick)
+        uiHandler.removeCallbacks(skipRampTick)
     }
 
     private data class ResumeHistory(
