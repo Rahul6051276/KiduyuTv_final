@@ -711,8 +711,7 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnSkipSegment.alpha = 1f
     }
 
-    
-    private fun renderSkipSeekbarHighlight(segment: SkipSegment) {
+   private fun renderSkipSeekbarHighlight(segment: SkipSegment) {
     val duration = engine.player.duration.takeIf { it > 0L } ?: return
     val seekBar = binding.seekBar
     if (seekBar.width <= 0) return
@@ -721,8 +720,7 @@ class DirectStreamActivity : AppCompatActivity() {
     val startFrac = (segment.startMs.coerceAtLeast(0L).toFloat() / duration).coerceIn(0f, 1f)
     val endFrac = (endMs.coerceAtLeast(segment.startMs).toFloat() / duration).coerceIn(startFrac, 1f)
 
-    // The real track spans [paddingLeft + thumbOffset, width - paddingRight - thumbOffset],
-    // not the full view width — this is what was throwing off both position and size.
+    // Real track spans [paddingLeft + thumbOffset, width - paddingRight - thumbOffset].
     val trackLeft = seekBar.paddingLeft + seekBar.thumbOffset
     val trackRight = seekBar.width - seekBar.paddingRight - seekBar.thumbOffset
     val trackWidth = (trackRight - trackLeft).coerceAtLeast(0)
@@ -731,7 +729,7 @@ class DirectStreamActivity : AppCompatActivity() {
     val endPx = trackLeft + (trackWidth * endFrac).toInt()
     val width = (endPx - startPx).coerceAtLeast(0)
 
-    val trackHeightPx = (2 * resources.displayMetrics.density).toInt().coerceAtLeast(1) // ~2dp, matches a thin track
+    val trackHeightPx = seekBarTrackHeightPx(seekBar)
 
     val lp = binding.skipHighlightView.layoutParams as? FrameLayout.LayoutParams
         ?: FrameLayout.LayoutParams(0, trackHeightPx)
@@ -744,6 +742,26 @@ class DirectStreamActivity : AppCompatActivity() {
     binding.skipHighlightView.alpha = 1f
     binding.skipHighlightView.setBackgroundColor(0x66F59E0B.toInt())
 }
+
+/**
+ * Reads the actual rendered thickness of the SeekBar's track from its
+ * progressDrawable, so the highlight always matches the real track —
+ * regardless of theme, style, or density. bounds.height() is only valid
+ * once the drawable has gone through a layout pass, which is guaranteed
+ * here since we early-return above until seekBar.width > 0.
+ */
+private fun seekBarTrackHeightPx(seekBar: SeekBar): Int {
+    val drawableHeight = seekBar.progressDrawable?.bounds?.height() ?: 0
+    return if (drawableHeight > 0) {
+        drawableHeight
+    } else {
+        // Drawable not yet measured — fall back to a sane default rather
+        // than a 0px (invisible) or full-view-height (oversized) highlight.
+        (2 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
+    }
+} 
+   
+   
 
     private fun clearSkipSeekbarHighlight() {
         binding.skipHighlightView.visibility = View.GONE

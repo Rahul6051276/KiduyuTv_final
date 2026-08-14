@@ -508,6 +508,8 @@ fun SettingsScreen(
         }
 
     }
+
+}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1120,7 +1122,7 @@ private fun AppVersionContent(
                     lineHeight = 20.sp
                 )
 
-Row(
+                Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
