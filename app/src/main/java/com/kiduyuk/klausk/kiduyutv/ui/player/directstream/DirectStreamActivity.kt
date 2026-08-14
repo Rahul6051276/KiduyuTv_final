@@ -388,7 +388,7 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnVolume.setOnClickListener {
             muted = !muted
             engine.player.volume = if (muted) 0f else 1f
-            binding.btnVolume.text = if (muted) "MUTE" else "VOL"
+            binding.btnVolume.setIconResource(if (muted) R.drawable.ic_vol_mute else R.drawable.ic_vol)
             showControls()
         }
         binding.btnPreviousEpisode.setOnClickListener { loadAdjacentEpisode(-1) }
@@ -539,7 +539,7 @@ class DirectStreamActivity : AppCompatActivity() {
             requestLayout()
             invalidate()
         }
-        binding.btnFill.setText(mode.label)
+        Toast.makeText(this, mode.label, Toast.LENGTH_SHORT).show()
         Log.i(TAG, "Player resize mode changed to ${getString(mode.label)}")
     }
 
@@ -2372,56 +2372,4 @@ class DirectStreamActivity : AppCompatActivity() {
             putExtra(EXTRA_SNIFFED_HEADERS, JSONObject(headers).toString())
             putExtra(EXTRA_SNIFFED_COOKIE, cookie)
             putExtra(EXTRA_SNIFFED_TYPE, type)
-            putExtra(EXTRA_SNIFFED_MIME_TYPE, mimeType)
-            putExtra(
-                EXTRA_SNIFFED_SUBTITLES,
-                JSONArray().apply {
-                    subtitles.forEach { subtitle ->
-                        put(
-                            JSONObject()
-                                .put("url", subtitle.url)
-                                .put("mimeType", subtitle.mimeType)
-                                .put("headers", JSONObject(subtitle.headers))
-                                .put("cookie", subtitle.cookie.orEmpty())
-                        )
-                    }
-                }.toString()
-            )
-        }
-
-        const val TYPE_MOVIE  = "movie"
-        const val TYPE_SERIES = "series"
-
-        private const val OOGACHAKA_STREAM_PREFIX = "https://serve.oogachakacdn.store"
-        private const val DAHMER_PROVIDER = "DahmerMovies"
-        private const val DAHMER_CLEARANCE_HOST = "p.111477.xyz"
-        private const val DAHMER_CLEARANCE_URL = "https://p.111477.xyz/"
-
-        private const val SKIP_SEC_MIN = 30
-        private const val WATCH_PROGRESS_INTERVAL_MS = 15_000L
-        private const val FIREBASE_HISTORY_TIMEOUT_MS = 8_000L
-        private const val SKIP_SEC_MAX = 60
-        private const val SEEK_STEP_MS = 30_000L
-        private const val SKIP_RAMP_DURATION_MS = 5_000L
-        private const val SKIP_REPEAT_MS = 600L
-    }
-
-    private fun normalizeArtworkUrl(path: String?): String? = when {
-        path.isNullOrBlank() -> null
-        path.startsWith("http://") || path.startsWith("https://") -> path
-        else -> "https://image.tmdb.org/t/p/original/${path.trimStart('/')}"
-    }
-
-    private data class ResizeModeOption(
-        val resizeMode: Int,
-        val label: Int
-    )
-
-    private val resizeModes = listOf(
-        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FIT, R.string.player_fit),
-        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FILL, R.string.player_fill),
-        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_ZOOM, R.string.player_zoom),
-        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH, R.string.player_fixed_width),
-        ResizeModeOption(AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT, R.string.player_fixed_height)
-    )
-}
+            putExtra(EXTRA_SNI

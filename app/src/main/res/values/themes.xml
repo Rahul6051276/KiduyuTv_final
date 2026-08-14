@@ -95,6 +95,24 @@
 
     <style name="Theme.NoTitleBar.Fullscreen" parent="@android:style/Theme.NoTitleBar.Fullscreen" />
     <style name="Theme.Translucent.NoTitleBar.Fullscreen" parent="@android:style/Theme.Translucent.NoTitleBar.Fullscreen" />
+    <style name="DirectStreamIconButton" parent="Widget.Material3.Button.IconButton">
+    <item name="android:layout_width">40dp</item>
+    <item name="android:layout_height">40dp</item>
+    <item name="android:insetLeft">0dp</item>
+    <item name="android:insetTop">0dp</item>
+    <item name="android:insetRight">0dp</item>
+    <item name="android:insetBottom">0dp</item>
+    <item name="android:minWidth">0dp</item>
+    <item name="android:minHeight">0dp</item>
+    <item name="android:padding">0dp</item>
+    <item name="backgroundTint">@color/direct_stream_surface</item>
+    <item name="cornerRadius">20dp</item>
+    <item name="iconGravity">textStart</item>
+    <item name="iconPadding">0dp</item>
+    <item name="iconSize">20dp</item>
+    <item name="iconTint">#FFFFFF</item>
+    <item name="rippleColor">#33FFFFFF</item>
+</style>
     <style name="Theme.Translucent.NoTitleBar" parent="@android:style/Theme.Translucent.NoTitleBar" />
 </resources>
 

@@ -55,15 +55,26 @@
             android:paddingStart="16dp"
             android:paddingEnd="20dp">
 
-            <TextView
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlayerBack"
-                style="@style/DirectStreamControlButton"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:contentDescription="@string/back"
+                android:insetLeft="0dp"
+                android:insetTop="0dp"
+                android:insetRight="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
                 android:nextFocusDown="@id/btnPlayPause"
-                android:text="‹"
-                android:textSize="30sp" />
+                android:padding="0dp"
+                app:backgroundTint="@color/direct_stream_surface"
+                app:cornerRadius="20dp"
+                app:icon="@drawable/ic_back"
+                app:iconGravity="textStart"
+                app:iconPadding="0dp"
+                app:iconSize="20dp"
+                app:iconTint="#FFFFFF" />
 
             <TextView
                 android:id="@+id/tvPlayerTitle"
@@ -221,109 +232,101 @@
                     android:textSize="12sp" />
             </LinearLayout>
 
-            <LinearLayout
+            <HorizontalScrollView
                 android:layout_width="match_parent"
-                android:layout_height="58dp"
+                android:layout_height="44dp"
                 android:layout_marginTop="6dp"
-                android:gravity="center"
-                android:orientation="horizontal">
+                android:clipToPadding="false"
+                android:overScrollMode="ifContentScrolls"
+                android:scrollbars="none">
 
-                <TextView
-                    android:id="@+id/btnPreviousEpisode"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="76dp"
-                    android:contentDescription="@string/player_previous_episode_cd"
-                    android:drawableStart="@drawable/ic_direct_stream_episode_previous"
-                    android:drawablePadding="6dp"
-                    android:text="@string/player_previous_episode"
-                    android:visibility="gone" />
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingEnd="4dp">
 
-                <TextView
-                    android:id="@+id/btnFill"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="76dp"
-                    android:layout_marginStart="8dp"
-                    android:nextFocusLeft="@id/btnVolume"
-                    android:nextFocusRight="@id/btnPlayPause"
-                    android:nextFocusUp="@id/btnRewind"
-                    android:text="@string/player_fit" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPreviousEpisode"
+                        style="@style/DirectStreamIconButton"
+                        android:contentDescription="@string/player_previous_episode_cd"
+                        android:visibility="gone"
+                        app:icon="@drawable/ic_prev" />
 
-                <TextView
-                    android:id="@+id/btnPlayerSubtitles"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="88dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/subdl_subtitles_cd"
-                    android:nextFocusLeft="@id/btnFill"
-                    android:nextFocusRight="@id/btnPlayerTracks"
-                    android:nextFocusUp="@id/btnPlayerBack"
-                    android:text="@string/subdl_subtitles" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnFill"
+                        style="@style/DirectStreamIconButton"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/player_fit"
+                        android:nextFocusLeft="@id/btnVolume"
+                        android:nextFocusRight="@id/btnPlayPause"
+                        android:nextFocusUp="@id/btnRewind"
+                        app:icon="@drawable/ic_fit" />
 
-                <TextView
-                    android:id="@+id/btnPlayerTracks"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="76dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/track_settings_cd"
-                    android:nextFocusLeft="@id/btnPlayPause"
-                    android:nextFocusRight="@id/btnPlayerStreams"
-                    android:nextFocusUp="@id/btnPlayerBack"
-                    android:text="@string/track_settings"
-                    android:visibility="gone" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPlayerSubtitles"
+                        style="@style/DirectStreamIconButton"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/subdl_subtitles_cd"
+                        android:nextFocusLeft="@id/btnFill"
+                        android:nextFocusRight="@id/btnPlayerTracks"
+                        android:nextFocusUp="@id/btnPlayerBack"
+                        app:icon="@drawable/ic_subs" />
 
-                <!-- Replaces Favorite from the supplied IPTV player. -->
-                <TextView
-                    android:id="@+id/btnPlayerStreams"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="120dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/stream_sources_cd"
-                    android:drawableStart="@drawable/ic_direct_stream_cloud"
-                    android:drawablePadding="8dp"
-                    android:nextFocusLeft="@id/btnPlayerTracks"
-                    android:nextFocusRight="@id/btnVolume"
-                    android:nextFocusUp="@id/btnPlayerBack"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:text="@string/stream_sources"
-                    android:visibility="gone" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPlayerTracks"
+                        style="@style/DirectStreamIconButton"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/track_settings_cd"
+                        android:nextFocusLeft="@id/btnPlayPause"
+                        android:nextFocusRight="@id/btnPlayerStreams"
+                        android:nextFocusUp="@id/btnPlayerBack"
+                        android:visibility="gone"
+                        app:icon="@drawable/ic_tracks" />
 
-                <TextView
-                    android:id="@+id/btnVolume"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="56dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/player_volume"
-                    android:nextFocusLeft="@id/btnPlayerStreams"
-                    android:nextFocusRight="@id/btnFill"
-                    android:nextFocusUp="@id/btnPlayerBack"
-                    android:text="VOL" />
+                    <!-- Replaces Favorite from the supplied IPTV player. -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnPlayerStreams"
+                        style="@style/DirectStreamIconButton"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/stream_sources_cd"
+                        android:nextFocusLeft="@id/btnPlayerTracks"
+                        android:nextFocusRight="@id/btnVolume"
+                        android:nextFocusUp="@id/btnPlayerBack"
+                        android:visibility="gone"
+                        app:icon="@drawable/ic_streams" />
 
-                <TextView
-                    android:id="@+id/btnNextEpisode"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="76dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/player_next_episode_cd"
-                    android:drawableStart="@drawable/ic_direct_stream_episode_next"
-                    android:drawablePadding="6dp"
-                    android:text="@string/player_next_episode"
-                    android:visibility="gone" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnVolume"
+                        style="@style/DirectStreamIconButton"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/player_volume"
+                        android:nextFocusLeft="@id/btnPlayerStreams"
+                        android:nextFocusRight="@id/btnFill"
+                        android:nextFocusUp="@id/btnPlayerBack"
+                        app:icon="@drawable/ic_vol" />
 
-                <TextView
-                    android:id="@+id/btnEpisodes"
-                    style="@style/DirectStreamControlButton"
-                    android:layout_width="92dp"
-                    android:layout_marginStart="8dp"
-                    android:contentDescription="@string/player_episodes_cd"
-                    android:drawableStart="@drawable/ic_direct_stream_episodes"
-                    android:drawablePadding="6dp"
-                    android:nextFocusUp="@id/btnPlayerBack"
-                    android:nextFocusDown="@id/btnPlayPause"
-                    android:text="@string/player_episodes"
-                    android:visibility="gone" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNextEpisode"
+                        style="@style/DirectStreamIconButton"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/player_next_episode_cd"
+                        android:visibility="gone"
+                        app:icon="@drawable/ic_next" />
 
-            </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnEpisodes"
+                        style="@style/DirectStreamIconButton"
+                        android:layout_marginStart="6dp"
+                        android:contentDescription="@string/player_episodes_cd"
+                        android:nextFocusUp="@id/btnPlayerBack"
+                        android:nextFocusDown="@id/btnPlayPause"
+                        android:visibility="gone"
+                        app:icon="@drawable/ic_episodes" />
+
+                </LinearLayout>
+            </HorizontalScrollView>
         </LinearLayout>
     </FrameLayout>
 
