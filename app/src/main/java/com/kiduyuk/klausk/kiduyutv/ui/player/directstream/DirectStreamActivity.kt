@@ -13,11 +13,11 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
-import android.view.Gravity
+
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.SeekBar
 import android.widget.Toast
-import android.widget.FrameLayout
+
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -228,9 +228,9 @@ class DirectStreamActivity : AppCompatActivity() {
             if (::engine.isInitialized) {
                 val duration = engine.player.duration.takeIf { it > 0 } ?: 0L
                 val currentPosition = engine.player.currentPosition.coerceAtLeast(0L)
+                binding.seekBar.setDurationMs(duration)
                 if (!userSeeking) {
-                    binding.seekBar.progress =
-                        if (duration > 0) ((currentPosition * 1000L) / duration).toInt() else 0
+                    binding.seekBar.setPositionMs(currentPosition)
                     binding.tvCurrentTime.text = formatPlaybackTime(currentPosition)
                 }
                 binding.tvTotalTime.text = formatPlaybackTime(duration)
@@ -413,12 +413,15 @@ class DirectStreamActivity : AppCompatActivity() {
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                binding.seekBar.setDurationMs(engine.player.duration)
                 userSeeking = true
                 controlsLockedVisible = true
             }
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 val duration = engine.player.duration
-                if (duration > 0) engine.player.seekTo((duration * (seekBar?.progress ?: 0)) / 1000L)
+                if (duration > 0L) {
+                    engine.player.seekTo(binding.seekBar.getPositionMsFromProgress())
+                }
                 userSeeking = false
                 controlsLockedVisible = false
                 showControls()
@@ -635,6 +638,10 @@ class DirectStreamActivity : AppCompatActivity() {
                 skipData = result
                 skipLoadedForImdbId = currentImdb
                 skipLoadedForTmdbId = currentTmdb
+                // Draw every valid intro/recap/outro/preview interval once
+                // the SkipDB response arrives. The custom SeekBar keeps these
+                // colors visible while playback continues.
+                binding.seekBar.setSegments(result.segments)
             } else {
                 val sameContent = (skipLoadedForImdbId != null && skipLoadedForImdbId == currentImdb) ||
                     (skipLoadedForTmdbId != null && skipLoadedForTmdbId == currentTmdb && currentImdb.isNullOrBlank())
@@ -642,6 +649,7 @@ class DirectStreamActivity : AppCompatActivity() {
                     skipData = null
                     skipLoadedForImdbId = null
                     skipLoadedForTmdbId = null
+                    binding.seekBar.clearHighlights()
                     hideSkipButton()
                 }
                 // else: keep existing skipData for the same content
@@ -651,9 +659,11 @@ class DirectStreamActivity : AppCompatActivity() {
 
     private fun updateSkipButton() {
         val data = skipData ?: run {
-            clearSkipSeekbarHighlight()
+            binding.seekBar.clearHighlights()
             return
         }
+        val duration = engine.player.duration
+        if (duration > 0L) binding.seekBar.setDurationMs(duration)
         val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
         val candidates = listOf(
             SkipSegmentType.RECAP to data.segments.recap,
@@ -667,15 +677,6 @@ class DirectStreamActivity : AppCompatActivity() {
         }
 
         val active = candidates.firstOrNull { (_, segment) -> isSkipActive(segment, positionMs) }
-        val highlighted = active
-            ?: candidates.firstOrNull { (_, segment) -> segment.startMs >= positionMs }
-            ?: candidates.firstOrNull()
-
-        if (highlighted != null) {
-            renderSkipSeekbarHighlight(highlighted.second)
-        } else {
-            clearSkipSeekbarHighlight()
-        }
 
         if (active == null) {
             if (shownSkipType != null) hideSkipButton()
@@ -691,7 +692,6 @@ class DirectStreamActivity : AppCompatActivity() {
             if (autoSkippedSegmentStartMs != segmentStart) {
                 autoSkippedSegmentStartMs = segmentStart
                 engine.player.seekTo(segmentEnd)
-                clearSkipSeekbarHighlight()
                 hideSkipButton()
                 return
             }
@@ -711,62 +711,6 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnSkipSegment.alpha = 1f
     }
 
-   private fun renderSkipSeekbarHighlight(segment: SkipSegment) {
-    val duration = engine.player.duration.takeIf { it > 0L } ?: return
-    val seekBar = binding.seekBar
-    if (seekBar.width <= 0) return
-
-    val endMs = segment.endMs ?: (segment.startMs + 5 * 60_000L)
-    val startFrac = (segment.startMs.coerceAtLeast(0L).toFloat() / duration).coerceIn(0f, 1f)
-    val endFrac = (endMs.coerceAtLeast(segment.startMs).toFloat() / duration).coerceIn(startFrac, 1f)
-
-    // Real track spans [paddingLeft + thumbOffset, width - paddingRight - thumbOffset].
-    val trackLeft = seekBar.paddingLeft + seekBar.thumbOffset
-    val trackRight = seekBar.width - seekBar.paddingRight - seekBar.thumbOffset
-    val trackWidth = (trackRight - trackLeft).coerceAtLeast(0)
-
-    val startPx = trackLeft + (trackWidth * startFrac).toInt()
-    val endPx = trackLeft + (trackWidth * endFrac).toInt()
-    val width = (endPx - startPx).coerceAtLeast(0)
-
-    val trackHeightPx = seekBarTrackHeightPx(seekBar)
-
-    val lp = binding.skipHighlightView.layoutParams as? FrameLayout.LayoutParams
-        ?: FrameLayout.LayoutParams(0, trackHeightPx)
-    lp.width = width
-    lp.height = trackHeightPx
-    lp.leftMargin = startPx
-    lp.gravity = Gravity.CENTER_VERTICAL
-    binding.skipHighlightView.layoutParams = lp
-    binding.skipHighlightView.visibility = View.VISIBLE
-    binding.skipHighlightView.alpha = 1f
-    binding.skipHighlightView.setBackgroundColor(0x66F59E0B.toInt())
-}
-
-/**
- * Reads the actual rendered thickness of the SeekBar's track from its
- * progressDrawable, so the highlight always matches the real track —
- * regardless of theme, style, or density. bounds.height() is only valid
- * once the drawable has gone through a layout pass, which is guaranteed
- * here since we early-return above until seekBar.width > 0.
- */
-private fun seekBarTrackHeightPx(seekBar: SeekBar): Int {
-    val drawableHeight = seekBar.progressDrawable?.bounds?.height() ?: 0
-    return if (drawableHeight > 0) {
-        drawableHeight
-    } else {
-        // Drawable not yet measured — fall back to a sane default rather
-        // than a 0px (invisible) or full-view-height (oversized) highlight.
-        (2 * resources.displayMetrics.density).toInt().coerceAtLeast(1)
-    }
-} 
-   
-   
-
-    private fun clearSkipSeekbarHighlight() {
-        binding.skipHighlightView.visibility = View.GONE
-        binding.skipHighlightView.alpha = 0f
-    }
 
     private fun isSkipActive(segment: SkipSegment?, positionMs: Long): Boolean {
         if (segment == null) return false
