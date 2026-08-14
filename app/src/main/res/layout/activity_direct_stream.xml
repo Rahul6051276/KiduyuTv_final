@@ -142,6 +142,28 @@
             android:text="Ⅱ"
             android:textSize="26sp" />
 
+        <FrameLayout
+            android:id="@+id/skipOverlayContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|center_horizontal"
+            android:layout_marginTop="88dp"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/btnSkipSegment"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#CC1F1F1F"
+                android:contentDescription="@string/skip_segment"
+                android:minHeight="36dp"
+                android:paddingHorizontal="18dp"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                tools:text="Skip Intro • 30s"
+                xmlns:tools="http://schemas.android.com/tools" />
+        </FrameLayout>
+
         <LinearLayout
             android:id="@+id/videoBottomStrip"
             android:layout_width="match_parent"

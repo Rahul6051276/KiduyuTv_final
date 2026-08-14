@@ -88,6 +88,10 @@
     <string name="player_next_episode_cd">Play next episode</string>
     <string name="player_episodes">Episodes</string>
     <string name="player_episodes_cd">Show episode list</string>
+    <string name="skip_intro">Skip Intro</string>
+    <string name="skip_recap">Skip Recap</string>
+    <string name="skip_outro">Skip Credits</string>
+    <string name="skip_segment">Skip segment</string>
     <string name="episode_playing_badge">▶ Now playing</string>
     <string name="episode_runtime_minutes">%1$d min</string>
     <string name="episode_panel_loading">Loading episodes…</string>

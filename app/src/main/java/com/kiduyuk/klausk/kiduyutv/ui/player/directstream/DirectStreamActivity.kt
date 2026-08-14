@@ -24,6 +24,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
+import com.kiduyuk.klausk.kiduyutv.data.model.SkipSegment
+import com.kiduyuk.klausk.kiduyutv.data.model.SkipSegmentQuality
+import com.kiduyuk.klausk.kiduyutv.data.model.SkipSegmentType
+import com.kiduyuk.klausk.kiduyutv.data.model.SkipSegmentsResponse
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
@@ -111,6 +115,9 @@ class DirectStreamActivity : AppCompatActivity() {
     private var currentVoteAverage: Double = 0.0
     private var currentReleaseDate: String? = null
     private var currentProvider: StreamProviderChoice = StreamCatalog.default
+    private var currentImdbId: String? = null
+    private var skipData: SkipSegmentsResponse? = null
+    private var shownSkipType: SkipSegmentType? = null
     private val repository = TmdbRepository()
     private var pendingStartPositionMs = 0L
     private var pendingReadySeekPositionMs = 0L
@@ -197,6 +204,13 @@ class DirectStreamActivity : AppCompatActivity() {
         }
     }
 
+    private val skipTick = object : Runnable {
+        override fun run() {
+            updateSkipButton()
+            uiHandler.postDelayed(this, 250L)
+        }
+    }
+
     private val progressTick = object : Runnable {
         override fun run() {
             if (::engine.isInitialized) {
@@ -263,6 +277,7 @@ class DirectStreamActivity : AppCompatActivity() {
         currentVoteAverage = intent.getDoubleExtra(EXTRA_VOTE_AVERAGE, 0.0)
         currentReleaseDate = intent.getStringExtra(EXTRA_RELEASE_DATE)
         currentProvider = StreamCatalog.resolve(intent.getStringExtra(EXTRA_PROVIDER))
+        currentImdbId = intent.getStringExtra(EXTRA_IMDB_ID)?.takeIf { it.isNotBlank() }
         updatePlayerTitle()
 
         Log.i(
@@ -289,6 +304,7 @@ class DirectStreamActivity : AppCompatActivity() {
                     }
                     Player.STATE_READY -> {
                         binding.playerStatus.visibility = View.GONE
+                        loadSkipSegments()
                         applyPendingReadySeek()
                         startWatchProgressUpdates()
                     }
@@ -333,6 +349,7 @@ class DirectStreamActivity : AppCompatActivity() {
         // app:show_subtitle_button="false" because we don't render
         // subtitle tracks via the Media3 overlay.
         binding.btnPlayerBack.setOnClickListener { showExitConfirmationDialog() }
+        binding.btnSkipSegment.setOnClickListener { onSkipClicked() }
         binding.btnPlayerTracks.setOnClickListener { showTrackDialog() }
         binding.btnPlayerStreams.setOnClickListener { showStreamDialog() }
         binding.btnPlayerSubtitles.setOnClickListener { searchSubdlSubtitles() }
@@ -397,6 +414,7 @@ class DirectStreamActivity : AppCompatActivity() {
         updateBottomFocusChain()
         showControls()
         uiHandler.post(progressTick)
+        uiHandler.post(skipTick)
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -567,6 +585,83 @@ class DirectStreamActivity : AppCompatActivity() {
         episode: Int?,
         provider: StreamProviderChoice
     ): String = "$type|$tmdbId|${season ?: 0}|${episode ?: 0}|${provider.key}"
+
+    private fun loadSkipSegments() {
+        val imdbId = currentImdbId ?: return
+        if (currentMediaType == TYPE_SERIES && (currentSeason == null || currentEpisode == null)) return
+        lifecycleScope.launch {
+            val durationMs = engine.player.duration.takeIf { it > 0L }
+            val result = repository.fetchSkipSegments(
+                imdbId = imdbId,
+                season = if (currentMediaType == TYPE_SERIES) currentSeason else null,
+                episode = if (currentMediaType == TYPE_SERIES) currentEpisode else null,
+                streamDurationMs = durationMs
+            )
+            skipData = result
+            if (result == null) {
+                hideSkipButton()
+            }
+        }
+    }
+
+    private fun updateSkipButton() {
+        val data = skipData ?: return
+        val positionMs = engine.player.currentPosition.coerceAtLeast(0L)
+        val active = listOf(
+            SkipSegmentType.RECAP to data.segments.recap,
+            SkipSegmentType.INTRO to data.segments.intro,
+            SkipSegmentType.OUTRO to data.segments.outro,
+            SkipSegmentType.PREVIEW to data.segments.preview
+        ).firstOrNull { (_, segment) -> isSkipActive(segment, positionMs) }
+
+        if (active == null) {
+            if (shownSkipType != null) hideSkipButton()
+            return
+        }
+
+        val (type, segment) = active
+        if (!SkipSegmentQuality.isUsable(segment)) {
+            hideSkipButton()
+            return
+        }
+        if (shownSkipType == type) return
+        showSkipButton(type, segment)
+    }
+
+    private fun isSkipActive(segment: SkipSegment?, positionMs: Long): Boolean {
+        if (segment == null) return false
+        val startMs = segment.startMs
+        val endMs = segment.endMs ?: (startMs + 5 * 60_000L)
+        return positionMs in (startMs - 2_000L)..endMs
+    }
+
+    private fun showSkipButton(type: SkipSegmentType, segment: SkipSegment) {
+        shownSkipType = type
+        val label = when (type) {
+            SkipSegmentType.INTRO -> getString(R.string.skip_intro)
+            SkipSegmentType.RECAP -> getString(R.string.skip_recap)
+            SkipSegmentType.OUTRO -> getString(R.string.skip_outro)
+            SkipSegmentType.PREVIEW -> getString(R.string.skip_outro)
+        }
+        val durationSec = ((segment.endMs ?: segment.startMs) - segment.startMs).coerceAtLeast(0L) / 1000L
+        binding.btnSkipSegment.text = if (durationSec > 0L) "$label • ${durationSec}s" else label
+        binding.skipOverlayContainer.visibility = View.VISIBLE
+        binding.btnSkipSegment.requestFocus()
+    }
+
+    private fun hideSkipButton() {
+        if (shownSkipType == null && binding.skipOverlayContainer.visibility != View.VISIBLE) return
+        shownSkipType = null
+        binding.skipOverlayContainer.visibility = View.GONE
+    }
+
+    private fun onSkipClicked() {
+        val type = shownSkipType ?: return
+        val segment = skipData?.segments?.get(type) ?: return
+        val targetMs = segment.endMs ?: return
+        engine.player.seekTo(targetMs)
+        hideSkipButton()
+    }
 
     private fun loadCurrentMedia() {
         val signature = mediaLoadSignature(
@@ -2014,6 +2109,7 @@ class DirectStreamActivity : AppCompatActivity() {
         const val EXTRA_TYPE = "MEDIA_TYPE"
         const val EXTRA_IS_TV = "IS_TV"
         const val EXTRA_TMDB_ID = "TMDB_ID"
+        const val EXTRA_IMDB_ID = "IMDB_ID"
         const val EXTRA_SEASON = "SEASON_NUMBER"
         const val EXTRA_EPISODE = "EPISODE_NUMBER"
         const val EXTRA_PROVIDER = "PROVIDER"
@@ -2036,6 +2132,7 @@ class DirectStreamActivity : AppCompatActivity() {
             isTv: Boolean,
             season: Int? = null,
             episode: Int? = null,
+            imdbId: String? = null,
             title: String = "",
             posterPath: String? = null,
             backdropPath: String? = null,
@@ -2044,6 +2141,7 @@ class DirectStreamActivity : AppCompatActivity() {
             releaseDate: String? = null
         ): Intent = Intent(context, DirectStreamActivity::class.java).apply {
             putExtra(EXTRA_TMDB_ID, tmdbId)
+            putExtra(EXTRA_IMDB_ID, imdbId)
             putExtra(EXTRA_TYPE, if (isTv) TYPE_SERIES else TYPE_MOVIE)
             putExtra(EXTRA_IS_TV, isTv)
             putExtra(EXTRA_SEASON, season ?: 0)

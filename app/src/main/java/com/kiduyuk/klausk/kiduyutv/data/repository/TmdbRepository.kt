@@ -5,6 +5,7 @@ import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kiduyuk.klausk.kiduyutv.data.api.ApiClient
+import com.kiduyuk.klausk.kiduyutv.data.api.SkipDbApiService
 import com.kiduyuk.klausk.kiduyutv.data.local.database.DatabaseManager
 import com.kiduyuk.klausk.kiduyutv.data.local.entity.CachedMovieEntity
 import com.kiduyuk.klausk.kiduyutv.data.local.entity.CachedTvShowEntity
@@ -24,6 +25,7 @@ import com.kiduyuk.klausk.kiduyutv.data.model.ProductionCompany
 import com.kiduyuk.klausk.kiduyutv.data.model.ProfileImage
 import com.kiduyuk.klausk.kiduyutv.data.model.SearchResult
 import com.kiduyuk.klausk.kiduyutv.data.model.SeasonDetail
+import com.kiduyuk.klausk.kiduyutv.data.model.SkipSegmentsResponse
 import com.kiduyuk.klausk.kiduyutv.data.model.TvShow
 import com.kiduyuk.klausk.kiduyutv.data.model.TvShowCreditsResponse
 import com.kiduyuk.klausk.kiduyutv.data.model.TvShowDetail
@@ -40,6 +42,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import okhttp3.Cache
 import okhttp3.OkHttpClient
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.Request
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -59,6 +63,14 @@ class TmdbRepository {
     private val api = ApiClient.tmdbApiService
     private val gson = Gson()
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val skipDbService: SkipDbApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl(SkipDbApiService.BASE_URL)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build())
+            .build()
+            .create(SkipDbApiService::class.java)
+    }
 
     companion object {
         private const val TAG = "TmdbRepository"
@@ -252,6 +264,27 @@ class TmdbRepository {
     /** Fetches detailed information for a specific movie. */
     suspend fun getMovieDetail(movieId: Int): Result<MovieDetail> = runCatching {
         api.getMovieDetail(movieId)
+    }
+
+    suspend fun fetchSkipSegments(
+        imdbId: String,
+        season: Int? = null,
+        episode: Int? = null,
+        streamDurationMs: Long? = null
+    ): SkipSegmentsResponse? = withContext(Dispatchers.IO) {
+        if (imdbId.isBlank()) return@withContext null
+        try {
+            val durationSec = streamDurationMs?.div(1000L)
+            skipDbService.getSegments(
+                imdbId = imdbId,
+                season = season,
+                episode = episode,
+                durationSec = durationSec
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "SkipDB fetch failed for $imdbId S${season ?: "-"}E${episode ?: "-"}: ${e.message}")
+            null
+        }
     }
 
     /** Fetches poster and backdrop images for a specific movie. */
