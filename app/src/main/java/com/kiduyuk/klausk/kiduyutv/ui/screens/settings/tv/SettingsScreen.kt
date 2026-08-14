@@ -405,51 +405,6 @@ fun SettingsScreen(
                         defaultProvider = uiState.defaultProvider,
                         onProviderSelect = { viewModel.setDefaultProvider(context, it) }
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Auto-skip segments toggle
-                    var autoSkipEnabled by remember { mutableStateOf(settingsManager.isAutoSkipSegmentsEnabled()) }
-                    val autoSkipInteractionSource = remember { MutableInteractionSource() }
-                    val isAutoSkipFocused by autoSkipInteractionSource.collectIsFocusedAsState()
-                    SettingsSectionLabel(text = "Auto-skip segments")
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (isAutoSkipFocused) DarkRed.copy(alpha = 0.1f) else CardDark)
-                            .border(
-                                width = if (isAutoSkipFocused) 2.dp else 0.dp,
-                                color = if (isAutoSkipFocused) DarkRed else Color.Transparent,
-                                shape = RoundedCornerShape(16.dp)
-                            )
-                            .clickable(
-                                interactionSource = autoSkipInteractionSource,
-                                indication = null,
-                                onClick = {
-                                    autoSkipEnabled = !autoSkipEnabled
-                                    settingsManager.setAutoSkipSegmentsEnabled(autoSkipEnabled)
-                                }
-                            )
-                            .focusable(interactionSource = autoSkipInteractionSource)
-                            .padding(12.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = "Auto-skip segments", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                            Text(text = if (autoSkipEnabled) "Automatically skip marked segments during playback" else "Require manual skip via the Skip button", color = TextSecondary, fontSize = 12.sp)
-                        }
-                        Switch(
-                            checked = autoSkipEnabled,
-                            onCheckedChange = {
-                                autoSkipEnabled = it
-                                settingsManager.setAutoSkipSegmentsEnabled(it)
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = PrimaryRed
-                            )
-                        )
-                    }
                 }
 
                 SettingsSection.ADS_SETTINGS -> {
@@ -1328,6 +1283,9 @@ private fun PlaybackContent(
     var daddyLiveEnabled by remember {
         mutableStateOf(settingsManager.isDaddyLiveEnabled())
     }
+    var autoSkipEnabled by remember {
+        mutableStateOf(settingsManager.isAutoSkipSegmentsEnabled())
+    }
     val options = listOf(SettingsManager.AUTO) + StreamProviderManager.getProviderNamesForDevice(isTvDevice = true)
 
     Column(
@@ -1471,6 +1429,59 @@ private fun PlaybackContent(
                 onCheckedChange = {
                     daddyLiveEnabled = it
                     settingsManager.setDaddyLiveEnabled(it)
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = PrimaryRed)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        SettingsSectionLabel(text = "Auto-skip segments")
+
+        val autoSkipInteraction = remember { MutableInteractionSource() }
+        val autoSkipFocused by autoSkipInteraction.collectIsFocusedAsState()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(CardDark)
+                .border(
+                    if (autoSkipFocused) 2.dp else 0.dp,
+                    if (autoSkipFocused) PrimaryRed else Color.Transparent,
+                    RoundedCornerShape(16.dp)
+                )
+                .clickable(
+                    interactionSource = autoSkipInteraction,
+                    indication = null
+                ) {
+                    autoSkipEnabled = !autoSkipEnabled
+                    settingsManager.setAutoSkipSegmentsEnabled(autoSkipEnabled)
+                }
+                .focusable(interactionSource = autoSkipInteraction)
+                .padding(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Auto-skip segments",
+                    color = TextPrimary,
+                    fontSize = 16.sp
+                )
+                Text(
+                    text = if (autoSkipEnabled) {
+                        "Automatically skip marked segments during playback"
+                    } else {
+                        "Require manual skip via the Skip button"
+                    },
+                    color = TextSecondary,
+                    fontSize = 13.sp
+                )
+            }
+            Switch(
+                checked = autoSkipEnabled,
+                onCheckedChange = {
+                    autoSkipEnabled = it
+                    settingsManager.setAutoSkipSegmentsEnabled(it)
                 },
                 colors = SwitchDefaults.colors(checkedTrackColor = PrimaryRed)
             )
