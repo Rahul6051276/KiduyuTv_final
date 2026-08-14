@@ -204,13 +204,26 @@ class PlayerEngine(context: Context) {
         }
         if (subtitles.isEmpty()) return videoSource
 
-        val subtitleSources = subtitles.mapIndexed { index, subtitle ->
-            val httpFactory = DefaultHttpDataSource.Factory()
-                .setUserAgent(REAL_BROWSER_USER_AGENT)
-                .setAllowCrossProtocolRedirects(true)
-                .setDefaultRequestProperties(subtitle.headers)
-            val subtitleDataSource = DefaultDataSource.Factory(appContext, httpFactory)
-            val configuration = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitle.url))
+        val subtitleSources = subtitles.filter { subtitle ->
+            subtitle.url.isNotBlank() && subtitle.mimeType.isNotBlank() &&
+                (subtitle.url.startsWith("http://", ignoreCase = true) ||
+                    subtitle.url.startsWith("https://", ignoreCase = true) ||
+                    subtitle.url.startsWith("file://", ignoreCase = true))
+        }.mapIndexed { index, subtitle ->
+            val subtitleUri = Uri.parse(subtitle.url)
+            val subtitleDataSource = if (
+                subtitleUri.scheme.equals("http", ignoreCase = true) ||
+                subtitleUri.scheme.equals("https", ignoreCase = true)
+            ) {
+                val httpFactory = DefaultHttpDataSource.Factory()
+                    .setUserAgent(REAL_BROWSER_USER_AGENT)
+                    .setAllowCrossProtocolRedirects(true)
+                    .setDefaultRequestProperties(subtitle.headers)
+                DefaultDataSource.Factory(appContext, httpFactory)
+            } else {
+                DefaultDataSource.Factory(appContext)
+            }
+            val configuration = MediaItem.SubtitleConfiguration.Builder(subtitleUri)
                 .setMimeType(subtitle.mimeType)
                 .apply {
                     subtitle.language?.let { setLanguage(it) }
@@ -221,6 +234,7 @@ class PlayerEngine(context: Context) {
             SingleSampleMediaSource.Factory(subtitleDataSource)
                 .createMediaSource(configuration, C.TIME_UNSET)
         }
+        if (subtitleSources.isEmpty()) return videoSource
         // Do not clip an external subtitle source whose duration is unknown.
         // Media3 treats that as an invalid merged timeline and reports
         // ERROR_CODE_FAILED_RUNTIME_CHECK before playback can start.
