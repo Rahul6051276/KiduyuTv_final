@@ -1,5 +1,8 @@
 package com.kiduyuk.klausk.kiduyutv.ui.player.directstream
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -10,6 +13,7 @@ import android.util.Log
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
+import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -21,8 +25,11 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.kiduyuk.klausk.kiduyutv.data.local.database.DatabaseManager
+import com.kiduyuk.klausk.kiduyutv.data.model.Episode
+import com.kiduyuk.klausk.kiduyutv.data.model.SeasonDetail
 import com.kiduyuk.klausk.kiduyutv.data.repository.TmdbRepository
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -123,6 +130,13 @@ class DirectStreamActivity : AppCompatActivity() {
      * after a successful Cloudflare bypass resumes from the same point.
      */
     private var pendingCloudflareResumeMs: Long = 0L
+
+    // --- Episodes side panel ------------------------------------------
+    private lateinit var episodeAdapter: EpisodeAdapter
+    private var isEpisodesPanelOpen = false
+    private var episodeFetchJob: Job? = null
+    private var cachedSeasonDetail: SeasonDetail? = null
+    private var cachedSeasonFor: Int? = null   // which season is in the cache
 
     /**
      * Receives the result from [CloudflareBypassActivity]. When the user
@@ -340,6 +354,21 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnPreviousEpisode.setOnClickListener { loadAdjacentEpisode(-1) }
         binding.btnNextEpisode.setOnClickListener { loadAdjacentEpisode(1) }
         updateEpisodeButtons()
+
+        // ── Episodes side panel ────────────────────────────────────────────
+        episodeAdapter = EpisodeAdapter { episode -> onEpisodeSelected(episode) }
+        binding.rvEpisodes.layoutManager = LinearLayoutManager(this)
+        binding.rvEpisodes.adapter = episodeAdapter
+        episodeAdapter.setCurrentlyPlaying(currentEpisode)
+
+        binding.btnEpisodes.setOnClickListener { toggleEpisodesPanel() }
+        binding.btnCloseEpisodesPanel.setOnClickListener { closeEpisodesPanel() }
+        binding.episodesPanelScrim.setOnClickListener { closeEpisodesPanel() }
+
+        // Pre-position the panel off-screen; openEpisodesPanel() will animate it in.
+        binding.episodesPanelContainer.translationX = -binding.episodesPanelContainer.width.toFloat()
+        binding.episodesPanelContainer.visibility = View.GONE
+
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 if (!fromUser) return
@@ -367,6 +396,10 @@ class DirectStreamActivity : AppCompatActivity() {
 
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                if (isEpisodesPanelOpen) {
+                    closeEpisodesPanel()
+                    return
+                }
                 showExitConfirmationDialog()
             }
         })
@@ -484,6 +517,9 @@ class DirectStreamActivity : AppCompatActivity() {
         currentTitle = currentTitle.substringBefore(" • ")
         updatePlayerTitle()
         updateEpisodeButtons()
+        if (::episodeAdapter.isInitialized) {
+            episodeAdapter.setCurrentlyPlaying(nextEpisode)
+        }
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         streamDialog?.takeIf { it.isShowing }?.dismiss()
         engine.pause()
@@ -502,6 +538,7 @@ class DirectStreamActivity : AppCompatActivity() {
         binding.btnNextEpisode.visibility = if (isSeries) View.VISIBLE else View.GONE
         binding.btnPreviousEpisode.visibility =
             if (isSeries && (currentEpisode ?: 1) > 1) View.VISIBLE else View.GONE
+        binding.btnEpisodes.visibility = if (isSeries) View.VISIBLE else View.GONE
         updateBottomFocusChain()
     }
 
@@ -1301,6 +1338,166 @@ class DirectStreamActivity : AppCompatActivity() {
             .start()
     }
 
+    // ── Episodes side panel helpers ────────────────────────────────────────
+
+    private fun toggleEpisodesPanel() {
+        if (isEpisodesPanelOpen) closeEpisodesPanel() else openEpisodesPanel()
+    }
+
+    private fun openEpisodesPanel() {
+        if (isEpisodesPanelOpen) return
+        if (currentMediaType != TYPE_SERIES) return
+        isEpisodesPanelOpen = true
+
+        // Keep the player playing — the user requested "without exiting the player".
+        showControls()
+        binding.episodesPanelContainer.visibility = View.VISIBLE
+        binding.episodesPanelScrim.visibility = View.VISIBLE
+        binding.episodesPanelScrim.alpha = 0f
+        binding.episodesPanelScrim.animate().alpha(1f).setDuration(180L).start()
+
+        val panelWidth = binding.episodesPanelContainer.width
+            .takeIf { it > 0 } ?: (360 * resources.displayMetrics.density).toInt()
+        binding.episodesPanelContainer.translationX = -panelWidth.toFloat()
+        ObjectAnimator.ofFloat(binding.episodesPanelContainer, "translationX", 0f)
+            .apply {
+                duration = 220L
+                interpolator = AccelerateDecelerateInterpolator()
+            }
+            .start()
+
+        // Move focus into the panel for D-pad users.
+        binding.rvEpisodes.post {
+            val target = binding.rvEpisodes.layoutManager
+                ?.findViewByPosition(currentEpisode?.minus(1)?.coerceAtLeast(0) ?: 0)
+            (target ?: binding.rvEpisodes).requestFocus()
+        }
+
+        loadEpisodesForCurrentSeason()
+    }
+
+    private fun closeEpisodesPanel() {
+        if (!isEpisodesPanelOpen) return
+        isEpisodesPanelOpen = false
+        val panelWidth = binding.episodesPanelContainer.width
+            .takeIf { it > 0 } ?: (360 * resources.displayMetrics.density).toInt()
+        ObjectAnimator.ofFloat(binding.episodesPanelContainer, "translationX", -panelWidth.toFloat())
+            .apply {
+                duration = 200L
+                interpolator = AccelerateDecelerateInterpolator()
+                addListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) {
+                        binding.episodesPanelContainer.visibility = View.GONE
+                    }
+                })
+            }
+            .start()
+        binding.episodesPanelScrim.animate()
+            .alpha(0f)
+            .setDuration(180L)
+            .withEndAction { binding.episodesPanelScrim.visibility = View.GONE }
+            .start()
+
+        // Return focus to the button that opened the panel.
+        binding.btnEpisodes.requestFocus()
+    }
+
+    private fun loadEpisodesForCurrentSeason() {
+        val season = currentSeason ?: return
+        val tmdbId = currentTmdbId.takeIf { it > 0 } ?: return
+
+        // If we already have the right season cached, just rebind the "now playing" row.
+        if (cachedSeasonFor == season && cachedSeasonDetail != null) {
+            bindEpisodes(cachedSeasonDetail!!)
+            return
+        }
+
+        binding.tvEpisodesPanelStatus.visibility = View.VISIBLE
+        binding.tvEpisodesPanelStatus.text = getString(R.string.episode_panel_loading)
+
+        episodeFetchJob?.cancel()
+        episodeFetchJob = lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching { tmdbRepository.getSeasonDetail(tmdbId, season) }
+            }
+            result
+                .onSuccess { detail ->
+                    cachedSeasonDetail = detail
+                    cachedSeasonFor = season
+                    bindEpisodes(detail)
+                }
+                .onFailure { e ->
+                    Log.w(TAG, "Failed to load season $season: ${e.message}")
+                    binding.tvEpisodesPanelStatus.text =
+                        getString(R.string.episode_panel_error)
+                }
+        }
+    }
+
+    private fun bindEpisodes(detail: SeasonDetail) {
+        val episodes = detail.episodes.sortedBy { it.episodeNumber }
+        binding.tvEpisodesPanelStatus.visibility = View.GONE
+        binding.tvEpisodesPanelHeader.text = buildString {
+            append(detail.name)
+            append(" — ")
+            append(episodes.size)
+            append(if (episodes.size == 1) " episode" else " episodes")
+        }
+        episodeAdapter.setCurrentlyPlaying(currentEpisode)
+        episodeAdapter.submitList(episodes)
+    }
+
+    private fun onEpisodeSelected(episode: Episode) {
+        if (currentMediaType != TYPE_SERIES) return
+        if (episode.seasonNumber == currentSeason && episode.episodeNumber == currentEpisode) {
+            // Tapped the row that is already playing — just close the panel.
+            closeEpisodesPanel()
+            return
+        }
+        playEpisode(episode)
+    }
+
+    private fun playEpisode(episode: Episode) {
+        // Persist the user's progress for the episode they're leaving so the
+        // new instance of the activity can resume at the right place if the
+        // user comes back.
+        resetWatchProgressForCurrentEpisode()
+
+        val newIntent = DirectStreamActivity.createIntent(
+            context = this,
+            tmdbId = currentTmdbId,
+            isTv = true,
+            season = episode.seasonNumber,
+            episode = episode.episodeNumber,
+            title = currentTitle.substringBefore(" • "),
+            posterPath = currentPosterPath,
+            backdropPath = currentBackdropPath,
+            overview = currentOverview,
+            voteAverage = currentVoteAverage,
+            releaseDate = currentReleaseDate
+        )
+        // Preserve the provider choice and any sniffed-stream extras so the
+        // new activity picks the same source as the old one.
+        intent.getStringExtra(EXTRA_PROVIDER)?.let { newIntent.putExtra(EXTRA_PROVIDER, it) }
+        intent.getStringExtra(EXTRA_SNIFFED_URL)?.let { newIntent.putExtra(EXTRA_SNIFFED_URL, it) }
+        intent.getStringExtra(EXTRA_SNIFFED_TYPE)?.let { newIntent.putExtra(EXTRA_SNIFFED_TYPE, it) }
+        intent.getStringExtra(EXTRA_SNIFFED_MIME_TYPE)?.let { newIntent.putExtra(EXTRA_SNIFFED_MIME_TYPE, it) }
+        intent.getStringExtra(EXTRA_SNIFFED_HEADERS)?.let { newIntent.putExtra(EXTRA_SNIFFED_HEADERS, it) }
+        intent.getStringExtra(EXTRA_SNIFFED_COOKIE)?.let { newIntent.putExtra(EXTRA_SNIFFED_COOKIE, it) }
+        intent.getStringExtra(EXTRA_SNIFFED_SUBTITLES)?.let { newIntent.putExtra(EXTRA_SNIFFED_SUBTITLES, it) }
+
+        // Cancel any in-flight panel fetch and dismiss the panel cleanly
+        // *before* finishing so the user does not see the panel "snap shut"
+        // after the new activity is already on top.
+        episodeFetchJob?.cancel()
+        isEpisodesPanelOpen = false
+        binding.episodesPanelContainer.visibility = View.GONE
+        binding.episodesPanelScrim.visibility = View.GONE
+
+        DirectStreamLauncher.launch(this, newIntent)
+        finish()
+    }
+
     private fun showExitConfirmationDialog() {
         if (quitDialog?.isShowing == true) return
         quitDialog = QuitDialog(
@@ -1350,14 +1547,15 @@ class DirectStreamActivity : AppCompatActivity() {
             binding.btnPlayerTracks,
             binding.btnPlayerStreams,
             binding.btnVolume,
-            binding.btnNextEpisode
+            binding.btnNextEpisode,
+            binding.btnEpisodes
         ).filter { it.visibility == View.VISIBLE }
         controls.forEachIndexed { index, control ->
             control.nextFocusLeftId = controls[(index - 1 + controls.size) % controls.size].id
             control.nextFocusRightId = controls[(index + 1) % controls.size].id
             control.nextFocusUpId = binding.btnPlayPause.id
         }
-        binding.btnPlayPause.nextFocusDownId = controls.first().id
+        binding.btnPlayPause.nextFocusDownId = controls.firstOrNull()?.id ?: View.NO_ID
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -1707,6 +1905,8 @@ class DirectStreamActivity : AppCompatActivity() {
         subtitleJob?.cancel()
         cloudflareProbeJob?.cancel()
         cloudflareProbeJob = null
+        episodeFetchJob?.cancel()
+        episodeFetchJob = null
         trackDialog?.takeIf { it.isShowing }?.dismiss()
         trackDialog = null
         streamDialog?.takeIf { it.isShowing }?.dismiss()

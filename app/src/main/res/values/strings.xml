@@ -86,4 +86,11 @@
     <string name="player_previous_episode_cd">Play previous episode</string>
     <string name="player_next_episode">NEXT</string>
     <string name="player_next_episode_cd">Play next episode</string>
+    <string name="player_episodes">Episodes</string>
+    <string name="player_episodes_cd">Show episode list</string>
+    <string name="episode_playing_badge">▶ Now playing</string>
+    <string name="episode_runtime_minutes">%1$d min</string>
+    <string name="episode_panel_loading">Loading episodes…</string>
+    <string name="episode_panel_error">Could not load episodes. Try again later.</string>
+    <string name="close">Close</string>
 </resources>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/episodeRowRoot"
+    android:layout_width="match_parent"
+    android:layout_height="96dp"
+    android:layout_marginStart="4dp"
+    android:layout_marginEnd="4dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    android:background="?android:attr/selectableItemBackground"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <FrameLayout
+        android:layout_width="160dp"
+        android:layout_height="match_parent">
+
+        <ImageView
+            android:id="@+id/ivEpisodeStill"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#222222"
+            android:contentDescription="@null"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/tvEpisodeStillFallback"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:text="S1E3" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvEpisodeNumberAndTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="@color/text_primary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            tools:text="3. The One Where…" />
+
+        <TextView
+            android:id="@+id/tvEpisodeRuntime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp"
+            tools:text="22 min" />
+
+        <TextView
+            android:id="@+id/tvEpisodePlayingBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/bg_episode_row_playing"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:text="@string/episode_playing_badge"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp"
+            android:visibility="gone" />
+    </LinearLayout>
+</LinearLayout>

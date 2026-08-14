@@ -281,9 +281,112 @@
                     android:text="@string/player_next_episode"
                     android:visibility="gone" />
 
+                <TextView
+                    android:id="@+id/btnEpisodes"
+                    style="@style/DirectStreamControlButton"
+                    android:layout_width="92dp"
+                    android:layout_marginStart="8dp"
+                    android:contentDescription="@string/player_episodes_cd"
+                    android:drawableStart="@drawable/ic_direct_stream_episodes"
+                    android:drawablePadding="6dp"
+                    android:nextFocusUp="@id/btnPlayerBack"
+                    android:nextFocusDown="@id/btnPlayPause"
+                    android:text="@string/player_episodes"
+                    android:visibility="gone" />
+
             </LinearLayout>
         </LinearLayout>
     </FrameLayout>
+
+    <!-- ============================================================== -->
+    <!--  Episodes side panel                                           -->
+    <!--  Sits on top of overlayControls. Toggled by btnEpisodes.       -->
+    <!--  translationX is animated by DirectStreamActivity.             -->
+    <!-- ============================================================== -->
+    <FrameLayout
+        android:id="@+id/episodesPanelContainer"
+        android:layout_width="360dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@drawable/bg_episode_panel"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="24dp"
+        android:translationX="-360dp"
+        android:visibility="gone"
+        android:nextFocusRight="@id/btnEpisodes">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <!-- Panel header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/tvEpisodesPanelHeader"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    tools:text="Season 1 — 13 episodes"
+                    xmlns:tools="http://schemas.android.com/tools" />
+
+                <TextView
+                    android:id="@+id/btnCloseEpisodesPanel"
+                    style="@style/DirectStreamControlButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:contentDescription="@string/close"
+                    android:text="×"
+                    android:textSize="26sp" />
+            </LinearLayout>
+
+            <!-- Status row shown while loading or on error -->
+            <TextView
+                android:id="@+id/tvEpisodesPanelStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:padding="24dp"
+                android:textColor="@color/text_secondary"
+                android:visibility="gone"
+                xmlns:tools="http://schemas.android.com/tools"
+                tools:text="@string/episode_panel_loading" />
+
+            <!-- Episode list -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvEpisodes"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingBottom="16dp"
+                android:scrollbars="vertical" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- Scrim that fades in over the player while the panel is open. -->
+    <View
+        android:id="@+id/episodesPanelScrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone" />
 
     <!-- Kept outside overlayControls so buffering remains visible after
          the playback controls automatically hide. -->
