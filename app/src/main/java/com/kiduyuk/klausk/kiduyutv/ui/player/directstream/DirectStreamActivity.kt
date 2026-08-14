@@ -120,10 +120,11 @@ class DirectStreamActivity : AppCompatActivity() {
     private var currentImdbId: String? = null
     private var skipData: SkipSegmentsResponse? = null
     private var shownSkipType: SkipSegmentType? = null
-    // Segment metadata belongs to the movie/episode, not to a particular
-    // provider URL. Keep a stable media key so changing streams does not
-    // cause the already-loaded highlights to be fetched or cleared again.
-    private var skipLoadedForMediaKey: String? = null
+    // Track which content the skipData corresponds to so we don't clear
+    // the UI when a transient fetch failure happens while switching
+    // streams for the same title.
+    private var skipLoadedForImdbId: String? = null
+    private var skipLoadedForTmdbId: Int? = null
     // Remember which segment we've already auto-skipped to avoid repeats
     private var autoSkippedSegmentStartMs: Long? = null
     private lateinit var settingsManager: com.kiduyuk.klausk.kiduyutv.util.SettingsManager
@@ -602,18 +603,11 @@ class DirectStreamActivity : AppCompatActivity() {
     ): String = "$type|$tmdbId|${season ?: 0}|${episode ?: 0}|${provider.key}"
 
     private fun loadSkipSegments() {
-        // Segment metadata belongs to the current movie/episode rather than
-        // the selected stream URL. Therefore, do not make another SkipDB
-        // request, and do not clear the view, when only the stream changes.
-        val mediaKey = currentSkipMediaKey()
-        if (skipData != null && skipLoadedForMediaKey == mediaKey) {
-            binding.seekBar.setSegments(skipData?.segments)
-            return
-        }
-
         // Prefer a known IMDb id. If missing for TV shows, resolve it from
         // TMDB's external_ids endpoint and pass that to SkipDB.
         lifecycleScope.launch {
+            val currentImdb = currentImdbId
+            val currentTmdb = currentTmdbId
             val durationMs = engine.player.duration.takeIf { it > 0L }
             val result: SkipSegmentsResponse? = when {
                 !currentImdbId.isNullOrBlank() -> {
@@ -634,41 +628,32 @@ class DirectStreamActivity : AppCompatActivity() {
                 }
                 else -> null
             }
-
+            // If we successfully fetched segments, record which content
+            // they belong to and update the UI. If the fetch failed but
+            // the previously-loaded segments belong to the same content,
+            // keep them rather than clearing the UI (avoids blink when
+            // switching streams). Only clear when we truly don't have
+            // segments for this content.
             if (result != null) {
                 skipData = result
-                skipLoadedForMediaKey = mediaKey
+                skipLoadedForImdbId = currentImdb
+                skipLoadedForTmdbId = currentTmdb
                 // Draw every valid intro/recap/outro/preview interval once
                 // the SkipDB response arrives. The custom SeekBar keeps these
                 // colors visible while playback continues.
                 binding.seekBar.setSegments(result.segments)
-            } else if (skipLoadedForMediaKey != mediaKey) {
-                // Clear only when this is a genuinely different media item.
-                // A stream change for the same media returns above and never
-                // reaches this branch.
-                skipData = null
-                skipLoadedForMediaKey = null
-                binding.seekBar.clearHighlights()
-                hideSkipButton()
+            } else {
+                val sameContent = (skipLoadedForImdbId != null && skipLoadedForImdbId == currentImdb) ||
+                    (skipLoadedForTmdbId != null && skipLoadedForTmdbId == currentTmdb && currentImdb.isNullOrBlank())
+                if (!sameContent) {
+                    skipData = null
+                    skipLoadedForImdbId = null
+                    skipLoadedForTmdbId = null
+                    binding.seekBar.clearHighlights()
+                    hideSkipButton()
+                }
+                // else: keep existing skipData for the same content
             }
-        }
-    }
-
-    /** Stable identity for segment metadata; intentionally excludes provider/URL. */
-    private fun currentSkipMediaKey(): String {
-        val contentId = if (currentTmdbId > 0) {
-            "tmdb:$currentTmdbId"
-        } else {
-            "imdb:${currentImdbId.orEmpty()}"
-        }
-        return buildString {
-            append(currentMediaType)
-            append('|')
-            append(contentId)
-            append('|')
-            append(currentSeason ?: 0)
-            append('|')
-            append(currentEpisode ?: 0)
         }
     }
 
