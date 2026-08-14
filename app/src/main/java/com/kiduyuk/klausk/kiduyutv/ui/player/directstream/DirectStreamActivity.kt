@@ -685,20 +685,19 @@ class DirectStreamActivity : AppCompatActivity() {
         client: SubdlSubtitleClient
     ) {
         val labels = results.map { it.displayName }.toTypedArray()
-        subtitleDialog = MaterialAlertDialogBuilder(this)
+        val dialog = MaterialAlertDialogBuilder(this)
             .setTitle(R.string.subdl_choose)
-            .setIcon(R.drawable.ic_direct_stream_subtitles)
-            .setItems(labels) { dialog, index ->
-                dialog.dismiss()
+            .setIcon(R.drawable.ic_closed_caption)
+            .setSingleChoiceItems(labels, -1) { chooser, index ->
+                chooser.dismiss()
                 downloadAndLoadSubtitle(results[index], client)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .create()
-            .also { dialog ->
-                dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
-                dialog.setOnDismissListener { subtitleDialog = null }
-                dialog.show()
-            }
+
+        subtitleDialog = dialog
+        dialog.setOnDismissListener { subtitleDialog = null }
+        dialog.show()
     }
 
     private fun downloadAndLoadSubtitle(
