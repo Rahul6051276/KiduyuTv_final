@@ -1,6 +1,7 @@
 package com.kiduyuk.klausk.kiduyutv.data.api
 
 import com.kiduyuk.klausk.kiduyutv.data.model.CollectionDetail
+import com.kiduyuk.klausk.kiduyutv.data.model.Episode
 import com.kiduyuk.klausk.kiduyutv.data.model.GenreResponse
 import com.kiduyuk.klausk.kiduyutv.data.model.MovieCreditsResponse
 import com.kiduyuk.klausk.kiduyutv.data.model.MovieDetail
