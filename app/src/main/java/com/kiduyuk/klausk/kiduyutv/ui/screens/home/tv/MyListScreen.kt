@@ -314,10 +314,11 @@ fun MyListScreen(
         coroutineScope.launch {
             try {
                 traktRepository
-                    .getTraktWatchHistory(page = nextPage, limit = WATCHED_PAGE_SIZE)
+                    .getTraktWatchHistoryPage(page = nextPage, limit = WATCHED_PAGE_SIZE)
                     .collect { result ->
                         result.fold(
-                            onSuccess = { history ->
+                            onSuccess = { historyPage ->
+                                val history = historyPage.items
                                 if (history.isEmpty()) {
                                     //Log.i("MyListScreen", "Page $nextPage empty — no more watched items")
                                     hasMoreWatched = false
@@ -331,11 +332,12 @@ fun MyListScreen(
                                     withContext(Dispatchers.Main) {
                                         watchedItems = watchedItems + newItems
                                         currentWatchedPage = nextPage
-                                        // If fewer items than the page size were returned,
-                                        // we have reached the end of available history.
-                                        if (history.size < WATCHED_PAGE_SIZE) {
-                                            hasMoreWatched = false
-                                        }
+                                        // Trakt's page-count response header is authoritative.
+                                        // Falling back to page size preserves compatibility if a
+                                        // proxy removes the pagination header.
+                                        hasMoreWatched = historyPage.pageCount?.let {
+                                            nextPage < it
+                                        } ?: (history.size == WATCHED_PAGE_SIZE)
                                         // Persist the merged list (best-effort)
                                         saveWatchedCache(
                                             context,

@@ -19,6 +19,11 @@ import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class TraktWatchHistoryPage(
+    val items: TraktWatchHistoryResponse,
+    val pageCount: Int?
+)
+
 /**
  * Repository for Trakt.tv API operations.
  * Handles data fetching and syncing with Trakt services.
@@ -70,6 +75,39 @@ class TraktRepository @Inject constructor(
             )
             if (response.isSuccessful && response.body() != null) {
                 emit(Result.success(response.body()!!))
+            } else {
+                emit(Result.failure(Exception("Failed to fetch watch history: ${response.code()}")))
+            }
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    /**
+     * Gets one Trakt history page together with the server's total page count.
+     * The `X-Pagination-Page-Count` header is the authoritative signal for
+     * stopping large history pagination because a final page may still contain
+     * the requested number of history records.
+     */
+    fun getTraktWatchHistoryPage(
+        page: Int = 1,
+        limit: Int = 20
+    ): Flow<Result<TraktWatchHistoryPage>> = flow {
+        try {
+            val token = traktAuthManager.getValidAccessToken()
+            if (token == null) {
+                emit(Result.failure(Exception("Not authenticated with Trakt.tv")))
+                return@flow
+            }
+
+            val response = traktApiService.getWatchedHistory(
+                token = "Bearer $token",
+                page = page,
+                limit = limit
+            )
+            if (response.isSuccessful && response.body() != null) {
+                val pageCount = response.headers()["X-Pagination-Page-Count"]?.toIntOrNull()
+                emit(Result.success(TraktWatchHistoryPage(response.body()!!, pageCount)))
             } else {
                 emit(Result.failure(Exception("Failed to fetch watch history: ${response.code()}")))
             }
