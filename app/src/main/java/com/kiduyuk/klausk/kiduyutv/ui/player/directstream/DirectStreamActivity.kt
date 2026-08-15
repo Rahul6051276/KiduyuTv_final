@@ -105,6 +105,7 @@ class DirectStreamActivity : AppCompatActivity() {
     private val uiHandler = Handler(Looper.getMainLooper())
     private var controlsLockedVisible = false
     private var userSeeking = false
+    private var remoteSeekInProgress = false
     private var resizeModeIndex = 0
     private var muted = false
     private var currentMediaType = TYPE_MOVIE
@@ -439,6 +440,16 @@ class DirectStreamActivity : AppCompatActivity() {
                 showControls()
             }
         })
+        binding.seekBar.setOnKeyListener { _, keyCode, event ->
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT -> handleSeekBarRemoteKey(event, -1)
+                KeyEvent.KEYCODE_DPAD_RIGHT -> handleSeekBarRemoteKey(event, 1)
+                else -> false
+            }
+        }
+        binding.seekBar.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) completeRemoteSeek()
+        }
         updateBottomFocusChain()
         showControls()
         uiHandler.post(progressTick)
@@ -2001,7 +2012,47 @@ class DirectStreamActivity : AppCompatActivity() {
             control.nextFocusRightId = controls[(index + 1) % controls.size].id
             control.nextFocusUpId = binding.btnPlayPause.id
         }
-        binding.btnPlayPause.nextFocusDownId = controls.firstOrNull()?.id ?: View.NO_ID
+        binding.btnPlayPause.nextFocusDownId = binding.seekBar.id
+        binding.seekBar.nextFocusUpId = binding.btnPlayPause.id
+        binding.seekBar.nextFocusDownId = controls.firstOrNull()?.id ?: View.NO_ID
+    }
+
+    private fun handleSeekBarRemoteKey(event: KeyEvent, direction: Int): Boolean {
+        val duration = engine.player.duration
+        if (duration <= 0L) return true
+
+        return when (event.action) {
+            KeyEvent.ACTION_DOWN -> {
+                binding.seekBar.setDurationMs(duration)
+                remoteSeekInProgress = true
+                userSeeking = true
+                controlsLockedVisible = true
+
+                val nextProgress = (binding.seekBar.progress +
+                    (direction * REMOTE_SEEK_PROGRESS_STEP)).coerceIn(0, binding.seekBar.max)
+                binding.seekBar.progress = nextProgress
+                binding.tvCurrentTime.text =
+                    formatPlaybackTime(binding.seekBar.getPositionMsFromProgress())
+                true
+            }
+            KeyEvent.ACTION_UP -> {
+                completeRemoteSeek()
+                true
+            }
+            else -> true
+        }
+    }
+
+    private fun completeRemoteSeek() {
+        if (!remoteSeekInProgress) return
+        remoteSeekInProgress = false
+        val duration = engine.player.duration
+        if (duration > 0L) {
+            engine.player.seekTo(binding.seekBar.getPositionMsFromProgress())
+        }
+        userSeeking = false
+        controlsLockedVisible = false
+        showControls()
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -2499,6 +2550,8 @@ class DirectStreamActivity : AppCompatActivity() {
         private const val FIREBASE_HISTORY_TIMEOUT_MS = 8_000L
         private const val SKIP_SEC_MAX = 60
         private const val SEEK_STEP_MS = 30_000L
+        // One D-pad press moves 1% of the media duration; repeat presses support fast seeking.
+        private const val REMOTE_SEEK_PROGRESS_STEP = 10
         private const val SKIP_RAMP_DURATION_MS = 5_000L
         private const val SKIP_REPEAT_MS = 600L
     }

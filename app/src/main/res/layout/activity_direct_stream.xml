@@ -238,7 +238,10 @@
                         android:id="@+id/seekBar"
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
-                        android:focusable="false"
+                        android:focusable="true"
+                        android:focusableInTouchMode="false"
+                        android:nextFocusUp="@id/btnPlayPause"
+                        android:nextFocusDown="@id/btnFill"
                         android:max="1000"
                         android:progressTint="@color/direct_stream_primary"
                         android:thumbTint="@color/direct_stream_primary" />
