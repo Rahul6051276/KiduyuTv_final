@@ -34,6 +34,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.kiduyuk.klausk.kiduyutv.R
+import com.kiduyuk.klausk.kiduyutv.ui.player.webview.AdBlockerWebViewClient
 import com.kiduyuk.klausk.kiduyutv.ui.player.webview.MouseCursorView
 
 /**
@@ -92,8 +93,11 @@ class CloudflareBypassActivity : AppCompatActivity() {
     companion object {
         const val TAG = "CloudflareBypass"
 
-        /** Required: the gated URL to open. */
+        /** Legacy URL input, retained for callers that have not migrated to [EXTRA_HOST]. */
         const val EXTRA_URL = "url"
+
+        /** Required for new callers: the gated stream host, without a path or query string. */
+        const val EXTRA_HOST = "host"
 
         /** Optional: human-readable label for the top bar. */
         const val EXTRA_TITLE = "title"
@@ -337,18 +341,24 @@ class CloudflareBypassActivity : AppCompatActivity() {
         // Keep the screen on while the user is solving the challenge.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        targetUrl = intent.getStringExtra(EXTRA_URL).orEmpty().trim()
-        if (targetUrl.isBlank()) {
-            Log.e(TAG, "Missing or empty $EXTRA_URL extra")
-            finish()
-            return
-        }
-        targetHost = runCatching { Uri.parse(targetUrl).host.orEmpty() }.getOrDefault("")
+        val requestedHost = intent.getStringExtra(EXTRA_HOST).orEmpty().trim()
+        val legacyUrl = intent.getStringExtra(EXTRA_URL).orEmpty().trim()
+        targetHost = requestedHost
+            .removePrefix("https://")
+            .removePrefix("http://")
+            .substringBefore('/')
+            .substringBefore('?')
+            .substringBefore('#')
+            .takeIf { it.isNotBlank() }
+            ?: runCatching { Uri.parse(legacyUrl).host.orEmpty() }.getOrDefault("")
         if (targetHost.isBlank()) {
-            Log.e(TAG, "Could not extract host from URL: $targetUrl")
+            Log.e(TAG, "Missing or invalid $EXTRA_HOST / $EXTRA_URL verification target")
             finish()
             return
         }
+        // Resolve against the host root only. A stream URL can be a short-lived
+        // media resource that cannot render the Cloudflare challenge itself.
+        targetUrl = "https://$targetHost"
         displayTitle = intent.getStringExtra(EXTRA_TITLE)?.takeIf { it.isNotBlank() }
             ?: "Verifying $targetHost"
         timeoutMs = intent.getLongExtra(EXTRA_TIMEOUT_MS, DEFAULT_TIMEOUT_MS)
@@ -547,8 +557,10 @@ class CloudflareBypassActivity : AppCompatActivity() {
                 }
             }
 
-            webViewClient = object : WebViewClient() {
-
+            webViewClient = object : AdBlockerWebViewClient(
+                onPageFinished = {},
+                onError = {}
+            ) {
                 override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                     super.onPageStarted(view, url, favicon)
                     Log.i(TAG, "[WebView] onPageStarted: $url")
@@ -557,6 +569,7 @@ class CloudflareBypassActivity : AppCompatActivity() {
                 }
 
                 override fun onPageFinished(view: WebView?, url: String?) {
+                    // The parent installs request interception and DOM cleanup for ads.
                     super.onPageFinished(view, url)
                     Log.i(TAG, "[WebView] onPageFinished: $url")
                     if (isSolved) return
@@ -573,14 +586,14 @@ class CloudflareBypassActivity : AppCompatActivity() {
                     view: WebView?,
                     request: WebResourceRequest?
                 ): Boolean {
-                    val url = request?.url?.toString() ?: return false
-                    Log.d(TAG, "[WebView] Navigating: $url")
-                    return false  // let WebView handle every navigation
+                    if (super.shouldOverrideUrlLoading(view, request)) return true
+                    Log.d(TAG, "[WebView] Navigating: ${request?.url}")
+                    return false
                 }
 
                 override fun onReceivedError(
                     view: WebView?,
-                    request: android.webkit.WebResourceRequest?,
+                    request: WebResourceRequest?,
                     error: android.webkit.WebResourceError?
                 ) {
                     super.onReceivedError(view, request, error)

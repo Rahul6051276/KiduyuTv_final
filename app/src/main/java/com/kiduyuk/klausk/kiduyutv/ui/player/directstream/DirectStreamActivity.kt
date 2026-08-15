@@ -1596,11 +1596,11 @@ class DirectStreamActivity : AppCompatActivity() {
      * `RESULT_OK`. Our [cloudflareBypassLauncher] picks that result up and
      * retries [stream].
      */
-    private fun resolveCloudflareBypassUrl(
+    private fun resolveCloudflareBypassHost(
         stream: StreamItem,
         fallbackUrl: String = stream.url
-    ): String {
-        val candidate = stream.headers.entries
+    ): String? {
+        val candidateUrl = stream.headers.entries
             .firstOrNull { (key, _) ->
                 key.equals("Referer", ignoreCase = true) ||
                     key.equals("Referrer", ignoreCase = true) ||
@@ -1609,22 +1609,34 @@ class DirectStreamActivity : AppCompatActivity() {
             ?.value
             ?.trim()
             ?.takeIf { it.isNotBlank() && it.startsWith("http", ignoreCase = true) }
-        return candidate ?: fallbackUrl
+            ?: fallbackUrl.trim()
+
+        return runCatching { Uri.parse(candidateUrl).host.orEmpty() }
+            .getOrDefault("")
+            .takeIf { it.isNotBlank() }
     }
 
     private fun launchCloudflareBypass(
         stream: StreamItem,
         verificationUrl: String = stream.url
     ) {
-        val resolvedUrl = when {
-            verificationUrl.isBlank() -> resolveCloudflareBypassUrl(stream, stream.url)
+        // Retain explicit verification targets (for example, the DahmerMovies
+        // clearance page), while reducing the final input to the host only.
+        val bypassHost = when {
+            verificationUrl.isBlank() -> resolveCloudflareBypassHost(stream, stream.url)
             verificationUrl.equals(stream.url, ignoreCase = true) ->
-                resolveCloudflareBypassUrl(stream, verificationUrl)
-            else -> verificationUrl
+                resolveCloudflareBypassHost(stream, verificationUrl)
+            else -> runCatching { Uri.parse(verificationUrl).host.orEmpty() }
+                .getOrDefault("")
+                .takeIf { it.isNotBlank() }
+        }
+        if (bypassHost == null) {
+            Log.e(TAG, "Could not resolve Cloudflare verification host for ${stream.url}")
+            return
         }
 
         val intent = Intent(this, CloudflareBypassActivity::class.java).apply {
-            putExtra(CloudflareBypassActivity.EXTRA_URL, resolvedUrl)
+            putExtra(CloudflareBypassActivity.EXTRA_HOST, bypassHost)
             putExtra(
                 CloudflareBypassActivity.EXTRA_TITLE,
                 if (stream.provider.isNotBlank()) {
@@ -1637,7 +1649,7 @@ class DirectStreamActivity : AppCompatActivity() {
         Log.i(
             TAG,
             "Launching CloudflareBypassActivity for ${stream.provider} " +
-                "${stream.quality} verificationUrl=$resolvedUrl (source=${if (resolvedUrl == stream.url) "stream" else "referer"})"
+                "${stream.quality} verificationHost=$bypassHost"
         )
         runCatching {
             cloudflareBypassLauncher.launch(intent)
