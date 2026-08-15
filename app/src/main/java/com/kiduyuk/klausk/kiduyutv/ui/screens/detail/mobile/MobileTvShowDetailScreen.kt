@@ -183,9 +183,13 @@ fun MobileTvShowDetailScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(
                             onClick = {
-                                val seasonNumber = uiState.watchHistoryItem?.seasonNumber ?: 1
-                                val episodeNumber = uiState.watchHistoryItem?.episodeNumber ?: 1
-                                val timestamp = uiState.watchHistoryItem?.playbackPosition ?: 0L
+                                val history = uiState.watchHistoryItem
+                                val hasEpisodeHistory = history?.seasonNumber?.let { it > 0 } == true &&
+                                    history.episodeNumber?.let { it > 0 } == true
+                                // A TV show without an episode-history record starts at S01E01.
+                                val seasonNumber = history?.seasonNumber?.takeIf { it > 0 } ?: 1
+                                val episodeNumber = history?.episodeNumber?.takeIf { it > 0 } ?: 1
+                                val timestamp = if (hasEpisodeHistory) history?.playbackPosition ?: 0L else 0L
                                 val settings = SettingsManager(context)
                                 val defaultProvider = if (settings.isDirectStreamEnabled()) {
                                     SettingsManager.AUTO
@@ -237,7 +241,10 @@ fun MobileTvShowDetailScreen(
                                         posterPath = tvShow.posterPath,
                                         backdropPath = tvShow.backdropPath,
                                         voteAverage = tvShow.voteAverage,
-                                        releaseDate = tvShow.firstAirDate
+                                        releaseDate = tvShow.firstAirDate,
+                                        season = seasonNumber,
+                                        episode = episodeNumber,
+                                        timestamp = timestamp
                                     )
                                     onPlayClick(route)
                                 }
