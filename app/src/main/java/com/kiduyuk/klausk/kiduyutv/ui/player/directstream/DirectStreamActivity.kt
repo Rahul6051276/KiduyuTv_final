@@ -806,23 +806,26 @@ class DirectStreamActivity : AppCompatActivity() {
             return
         }
 
-        // If auto-skip is enabled, show a 5s countdown before jumping to the segment end.
+        // Auto-skip uses only the snackbar countdown; the manual skip button
+        // remains hidden so the player UI presents one clear action.
         if (settingsManager.isAutoSkipSegmentsEnabled()) {
-            val (atype, asegment) = active
-            if (autoSkippedSegmentStartMs != asegment.startMs) {
+            hideSkipButton()
+            val (type, segment) = active
+            if (autoSkippedSegmentStartMs != segment.startMs) {
                 if (engine.player.isPlaying) {
-                    startAutoSkipCountdown(atype, asegment)
+                    startAutoSkipCountdown(type, segment)
                 } else {
                     cancelAutoSkipCountdown()
                 }
             } else {
                 cancelAutoSkipCountdown()
             }
-        } else {
-            cancelAutoSkipCountdown()
-            // reset auto-skip tracker when auto-skip disabled
-            autoSkippedSegmentStartMs = null
+            return
         }
+
+        cancelAutoSkipCountdown()
+        // Reset auto-skip tracker when auto-skip is disabled.
+        autoSkippedSegmentStartMs = null
 
         val (type, segment) = active
         if (shownSkipType == type) {
