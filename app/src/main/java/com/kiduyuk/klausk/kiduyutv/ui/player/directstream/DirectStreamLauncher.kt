@@ -4,17 +4,20 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
-import com.kiduyuk.klausk.kiduyutv.util.AdFallbackDispatcher
+import android.util.Log
+import com.kiduyuk.klausk.kiduyutv.util.AdManager
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Single launch boundary for native direct playback.
  *
- * An interstitial is requested before the player opens. The ad dispatcher
- * always completes its callback when an ad is dismissed, unavailable, or
- * disabled, so playback navigation can never be blocked by ad inventory.
+ * A preloaded interstitial is shown before the player opens. If no ad is
+ * ready, playback opens immediately while the next ad continues loading in
+ * the background.
  */
 object DirectStreamLauncher {
+
+    private const val TAG = "DirectStreamLauncher"
 
     fun launch(
         context: Context,
@@ -37,8 +40,14 @@ object DirectStreamLauncher {
 
         if (activity == null || activity.isFinishing || activity.isDestroyed) {
             openPlayer()
+        } else if (AdManager.isInterstitialReady) {
+            AdManager.showInterstitial(activity) { openPlayer() }
         } else {
-            AdFallbackDispatcher.showInterstitial(activity) { openPlayer() }
+            // Do not wait for an ad network to load while the user is opening
+            // playback. Start a background preload for a future launch instead.
+            Log.i(TAG, "No ready interstitial — opening DirectStreamActivity immediately")
+            AdManager.preloadInterstitial(activity)
+            openPlayer()
         }
     }
 
