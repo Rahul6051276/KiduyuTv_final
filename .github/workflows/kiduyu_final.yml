@@ -625,4 +625,4 @@ jobs:
                 console.warn(`⚠️  Could not delete run #${id}: ${err.message}`);
               }
             }
-            console.log(`\nSummary: ${deleted} deleted, ${skipped} skipped (current run).`);
+            console.log(`\nSummary: ${deleted} deleted, ${skipped} skipped (current run).`); 
