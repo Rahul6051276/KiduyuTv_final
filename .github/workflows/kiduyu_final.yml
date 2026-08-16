@@ -1,6 +1,7 @@
 name: Android Release CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -13,9 +14,6 @@ permissions:
   actions: write
 
 jobs:
-  # ══════════════════════════════════════════════════════════════════════
-  # PREPARE — compute tag + commit info once, shared by both build jobs
-  # ══════════════════════════════════════════════════════════════════════
   prepare_release:
     name: Prepare Release Info
     runs-on: ubuntu-latest
@@ -27,11 +25,8 @@ jobs:
       build_count: ${{ github.run_number }}
 
     steps:
-      # Shallow clone with tags only — we no longer need full commit
-      # history here. Build number now comes from github.run_number,
-      # and version-bump tag logic only needs tag refs, not full history.
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
           fetch-tags: true
@@ -51,10 +46,7 @@ jobs:
       - name: Determine Release Tag
         id: tag
         run: |
-          LATEST=$(git tag --list 'v*.*.*' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | sort -V | tail -1)
-
+          LATEST=$(git tag --list 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
           if [ -z "$LATEST" ]; then
             NEW_TAG="v1.1.1"
           else
@@ -64,13 +56,9 @@ jobs:
             NEW_PATCH=$(( PATCH + 1 ))
             NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
           fi
-
           echo "tag=${NEW_TAG}" >> $GITHUB_OUTPUT
           echo "Release tag: ${NEW_TAG}"
 
-  # ══════════════════════════════════════════════════════════════════════
-  # BUILD APK — matrix over phone/tv flavors, runs in parallel
-  # ══════════════════════════════════════════════════════════════════════
   build_apk:
     name: Build ${{ matrix.flavor }} APK
     runs-on: ubuntu-latest
@@ -87,76 +75,19 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
-        # Shallow clone — we no longer need full history here,
-        # the build number now comes from prepare_release.
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # cache-read-only omitted: this workflow only runs on push to main,
-      # so setup-gradle's default (write cache on default branch) already
-      # does the right thing — the old ternary always evaluated to false.
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@v3
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-
-      # ═══════════════════════════════════════════════════════════════
-      # OPTIMIZE GRADLE FOR CI (16GB Runner)
-      # Overrides local 6GB settings with 16GB-optimized values
-      # only during CI execution. Local file is restored after build.
-      # ═══════════════════════════════════════════════════════════════
-      - name: Optimize Gradle for CI (16GB)
-        run: |
-          # Backup the local properties (don't touch the file in repo)
-          if [ -f gradle.properties ]; then
-            cp gradle.properties gradle.properties.local-backup
-          fi
-
-          # Write CI-optimized gradle.properties (only modifying existing settings)
-          cat > gradle.properties << 'EOF'
-          # --------------------------------------------------
-          # CI-OPTIMIZED — GitHub Actions 16GB Runner
-          # Auto-generated, DO NOT COMMIT
-          # --------------------------------------------------
-
-          # JVM MEMORY (Tuned for 16GB RAM runner — 14GB to JVMs, 2GB headroom for OS/AAPT/D8)
-          org.gradle.jvmargs=-Xmx10g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dfile.encoding=UTF-8
-
-          # GRADLE PERFORMANCE
-          # Daemon disabled: the runner is ephemeral and dies after the job,
-          # so keeping a background daemon alive only adds startup overhead.
-          org.gradle.daemon=false
-          org.gradle.parallel=true
-          org.gradle.workers.max=4
-          org.gradle.caching=true
-          org.gradle.configuration-cache=true
-
-          # KOTLIN OPTIMIZATION
-          kotlin.daemon.jvm.options=-Xmx4g
-          kotlin.incremental=true
-          kotlin.incremental.android=true
-          kotlin.incremental.useClasspathSnapshot=true
-          kotlin.compiler.execution.strategy=daemon
-
-          # ANDROID SETTINGS
-          android.useAndroidX=true
-          android.enableJetifier=false
-          android.nonTransitiveRClass=true
-
-          # JAVA TOOLCHAIN
-          org.gradle.java.installations.auto-detect=true
-          org.gradle.java.installations.auto-download=true
-          EOF
-
-          echo "=== CI-Optimized gradle.properties ==="
-          cat gradle.properties
-          echo "======================================="
 
       - name: Bump versionName and VERSION file
         run: |
@@ -166,51 +97,26 @@ jobs:
           echo "${VERSION}" > VERSION
           echo "Version set to ${VERSION}"
 
-      - name: Restore keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > kiduyutv_final
+      - name: Build ${{ matrix.flavor }} Debug APK
+        run: ./gradlew assemble${{ matrix.flavor_task }}Debug --build-cache --parallel -x lint -x test
 
-      # ── Release APK ──────────────────────────────────────────
-      - name: Build ${{ matrix.flavor }} Release APK
-        env:
-          SUBDL_API_KEY: ${{ secrets.SUBDL_API_KEY }}
-          STREAM_API_TOKEN: ${{ secrets.STREAM_API_TOKEN }}
-        run: ./gradlew assemble${{ matrix.flavor_task }}Release --build-cache --configuration-cache --parallel -x lint -x test
-
-      - name: Rename ${{ matrix.flavor }} Release APK
+      - name: Rename ${{ matrix.flavor }} APK
         id: rename_release
         run: |
           VERSION=$(grep 'versionName' app/build.gradle | sed 's/.*"\(.*\)".*/\1/' | tr -d '[:space:]')
           BUILD=${{ needs.prepare_release.outputs.build_count }}
-          APK=$(find app/build/outputs/apk/${{ matrix.flavor }}/release -name "*.apk" | head -1)
-          NEW_APK_NAME="KiduyuTV-${{ matrix.flavor }}-release-${VERSION}-build${BUILD}.apk"
-          NEW_APK_PATH="app/build/outputs/apk/${{ matrix.flavor }}/release/$NEW_APK_NAME"
+          APK=$(find app/build/outputs/apk -name "*.apk" | head -1)
+          NEW_APK_NAME="KiduyuTV-${{ matrix.flavor }}-${VERSION}-build${BUILD}.apk"
+          NEW_APK_PATH="app/build/outputs/apk/$NEW_APK_NAME"
           mv "$APK" "$NEW_APK_PATH"
           echo "apk_path=$NEW_APK_PATH" >> $GITHUB_OUTPUT
 
-      - name: Upload ${{ matrix.flavor }} Release Artifact
+      - name: Upload ${{ matrix.flavor }} Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.flavor }}-release
+          name: ${{ matrix.flavor }}-apk
           path: ${{ steps.rename_release.outputs.apk_path }}
 
-      # ═══════════════════════════════════════════════════════════════
-      # RESTORE LOCAL GRADLE PROPERTIES (after build completes)
-      # Runs even if the build fails, ensuring local settings are preserved
-      # ═══════════════════════════════════════════════════════════════
-      - name: Restore local gradle.properties
-        if: always()
-        run: |
-          if [ -f gradle.properties.local-backup ]; then
-            cp gradle.properties.local-backup gradle.properties
-            rm gradle.properties.local-backup
-            echo "✓ Restored local gradle.properties"
-          else
-            echo "ℹ No local gradle.properties to restore"
-          fi
-
-  # ══════════════════════════════════════════════════════════════════════
-  # CREATE RELEASE — waits on both parallel builds, then publishes both APKs
-  # ══════════════════════════════════════════════════════════════════════
   create_release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
@@ -220,409 +126,28 @@ jobs:
       - name: Download Phone APK artifact
         uses: actions/download-artifact@v4
         with:
-          name: phone-release
-          path: ./apks/phone-release
+          name: phone-apk
+          path: ./apks/phone
 
       - name: Download TV APK artifact
         uses: actions/download-artifact@v4
         with:
-          name: tv-release
-          path: ./apks/tv-release
+          name: tv-apk
+          path: ./apks/tv
 
-      # ── Single GitHub Release with all 2 APKs ────────────────
       - name: Create GitHub Release
-        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare_release.outputs.tag }}
           name: "${{ needs.prepare_release.outputs.title }} — ${{ needs.prepare_release.outputs.tag }}"
           body: |
             ## KiduyuTV ${{ needs.prepare_release.outputs.tag }}
-
-            **Commit:** [`${{ needs.prepare_release.outputs.short_sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
-            **Branch:** `${{ github.ref_name }}`
-
-            ---
-            ${{ needs.prepare_release.outputs.full_message }}
-            ---
-
-            ### Downloads
-            | APK | Platform |
-            |-----|----------|
-            | `KiduyuTV-phone-release-*.apk` | Android Phone / Tablet |
-            | `KiduyuTV-tv-release-*.apk`    | Android TV / Fire TV   |
-
-            **Sideload via ADB (Phone):**
-            ```bash
-            adb install KiduyuTV-phone-release-*.apk
-            ```
-
-            **Sideload via ADB (TV / Fire TV):**
-            ```bash
-            adb connect <device-ip>:5555
-            adb install KiduyuTV-tv-release-*.apk
-            ```
+            Built automatically via GitHub Actions for Fork.
           files: |
-            ./apks/phone-release/*.apk
-            ./apks/tv-release/*.apk
+            ./apks/phone/*.apk
+            ./apks/tv/*.apk
           draft: false
           prerelease: false
           make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ══════════════════════════════════════════════════════════════════════
-  # UPDATE CHANGELOG + DEPLOY TO GITHUB PAGES
-  # Merged into a single job — deploy_pages always ran immediately after
-  # update_changelog anyway, so this cuts one job boot + checkout, and
-  # removes the artifact upload/download round-trip for index.html
-  # (it's just edited in place and used later in the same job).
-  # ══════════════════════════════════════════════════════════════════════
-  update_changelog:
-    name: Update Changelog & Deploy to GitHub Pages
-    runs-on: ubuntu-latest
-    needs: [create_release]
-
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Python dependencies
-        run: pip install requests
-
-      - name: Regenerate #changelog section
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-        run: |
-          python3 - <<'PYEOF'
-          #!/usr/bin/env python3
-          """
-          KiduyuTV Changelog Generator
-          Fetches GitHub releases and updates #changelog in index.html.
-          """
-
-          import os
-          import re
-          import html
-          from datetime import datetime
-          from pathlib import Path
-          import requests
-
-          GITHUB_REPO = os.environ.get("GITHUB_REPOSITORY", "kiduyu-klaus/KiduyuTv_final")
-          GITHUB_API = f"https://api.github.com/repos/{GITHUB_REPO}/releases"
-          GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
-          INDEX_FILE = Path("index.html")
-
-          def fetch_github_releases() -> list[dict]:
-              headers = {"Accept": "application/vnd.github+json"}
-              if GITHUB_TOKEN:
-                  headers["Authorization"] = f"Bearer {GITHUB_TOKEN}"
-
-              print(f"⬇ Fetching releases from {GITHUB_API} …")
-              try:
-                  r = requests.get(GITHUB_API, headers=headers, timeout=20)
-                  r.raise_for_status()
-                  data = r.json()
-                  print(f"✓ Got {len(data)} release(s) from GitHub.")
-                  return data if isinstance(data, list) else []
-              except Exception as e:
-                  print(f"⚠ Could not fetch releases: {e}")
-                  return []
-
-          def inline_md(text: str) -> str:
-              text = html.escape(text, quote=False)
-              text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
-              text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
-              return text
-
-          def md_to_html(text: str) -> str:
-              if not text:
-                  return "<p>No release notes provided.</p>"
-
-              lines = text.splitlines()
-              out = []
-              in_ul = False
-
-              def close_ul():
-                  nonlocal in_ul
-                  if in_ul:
-                      out.append("</ul>")
-                      in_ul = False
-
-              for raw in lines:
-                  line = raw.rstrip()
-                  if line.startswith("## "):
-                      close_ul()
-                      out.append(f"<h2>{inline_md(line[3:].strip())}</h2>")
-                  elif line.startswith("### "):
-                      close_ul()
-                      out.append(f"<h3>{inline_md(line[4:].strip())}</h3>")
-                  elif re.match(r"^[-*] ", line):
-                      if not in_ul:
-                          out.append("<ul>")
-                          in_ul = True
-                      out.append(f"<li>{inline_md(line[2:].strip())}</li>")
-                  elif line.strip() == "":
-                      close_ul()
-                  else:
-                      close_ul()
-                      out.append(f"<p>{inline_md(line.strip())}</p>")
-
-              close_ul()
-              return "\n".join(out)
-
-          def trim_body_before_downloads(text: str) -> str:
-              marker = "**Branch:** `main`\n\n"
-              if marker in text:
-                  text = text[text.index(marker):]
-
-              lines = text.splitlines()
-              trimmed = []
-              include_line = False
-              for line in lines:
-                  if line.strip().startswith("### Downloads"):
-                      break
-                  # Keep the branch line and everything after it
-                  if "**Branch:**" in line:
-                      include_line = True
-                  if include_line:
-                      trimmed.append(line)
-              return "\n".join(trimmed).strip()
-
-          def release_badge(rel: dict) -> str:
-              if rel.get("prerelease"):
-                  return '<span class="badge pre">Pre-release</span>'
-              if rel.get("draft"):
-                  return '<span class="badge draft">Draft</span>'
-              return '<span class="badge stable">Stable</span>'
-
-          def format_date(iso: str) -> str:
-              try:
-                  dt = datetime.fromisoformat((iso or "").replace("Z", "+00:00"))
-                  return dt.strftime("%B %d, %Y")
-              except Exception:
-                  return (iso or "")[:10]
-
-          release_block = """\
-          <article class="release">
-            <div class="release-inner">
-              <div class="release-header">
-                <span class="version-tag">{tag}</span>
-                <span class="release-name">{name}</span>
-                {badge}
-                <span class="release-date">{date}</span>
-                <a class="gh-link" href="{url}" target="_blank">↗ View on GitHub</a>
-              </div>
-              <div class="release-body">
-                {body_html}
-              </div>
-            </div>
-          </article>"""
-
-          releases = fetch_github_releases()
-          blocks = []
-          for rel in releases:
-              body_md = trim_body_before_downloads(rel.get("body") or "")
-              body_html = md_to_html(body_md)
-              indented = "\n".join("        " + line for line in body_html.splitlines())
-              blocks.append(release_block.format(
-                  tag=html.escape(rel.get("tag_name", "unknown")),
-                  name=html.escape(rel.get("name") or rel.get("tag_name", "")),
-                  badge=release_badge(rel),
-                  date=html.escape(format_date(rel.get("published_at", ""))),
-                  url=html.escape(rel.get("html_url", f"https://github.com/{GITHUB_REPO}")),
-                  body_html=indented
-              ))
-
-          if not blocks:
-              blocks = ['<div class="empty">No releases found.</div>']
-
-          content_html = "\n".join(blocks)
-          index_html = INDEX_FILE.read_text(encoding="utf-8")
-
-          pattern = r'(<div class="changelog-content">)(.*?)(</div>\s*</div>\s*</section>)'
-          replacement = r"\1\n" + content_html + r"\n        \3"
-          updated_html, count = re.subn(pattern, replacement, index_html, flags=re.DOTALL)
-
-          if count == 0:
-              raise RuntimeError("Could not find #changelog content block in index.html")
-
-          INDEX_FILE.write_text(updated_html, encoding="utf-8")
-          print(f"✓ Updated changelog with {len(blocks)} release block(s).")
-          PYEOF
-
-      - name: Download all APK artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./apks
-
-      - name: List downloaded APKs
-        run: |
-          echo "=== Downloaded APKs ==="
-          find ./apks -name "*.apk" -type f
-
-      - name: Resolve latest release info
-        id: release_info
-        run: |
-          # Get the latest release
-          RELEASE=$(curl -s \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/releases" \
-            | jq 'first')
-
-          TAG=$(echo "$RELEASE" | jq -r '.tag_name')
-          TITLE=$(echo "$RELEASE" | jq -r '.name')
-
-          # Get TV release APK with the highest build number
-          TV_ASSET=$(echo "$RELEASE" | jq -r \
-            '[.assets[] | select(.name | test("tv-release.*\\.apk$"))] | sort_by(.name) | last')
-          TV_APK_URL=$(echo "$TV_ASSET" | jq -r '.browser_download_url')
-          TV_APK_NAME=$(echo "$TV_ASSET" | jq -r '.name')
-
-          # Get Phone release APK with the highest build number
-          PHONE_ASSET=$(echo "$RELEASE" | jq -r \
-            '[.assets[] | select(.name | test("phone-release.*\\.apk$"))] | sort_by(.name) | last')
-          PHONE_APK_URL=$(echo "$PHONE_ASSET" | jq -r '.browser_download_url')
-          PHONE_APK_NAME=$(echo "$PHONE_ASSET" | jq -r '.name')
-
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "title=${TITLE}" >> $GITHUB_OUTPUT
-          echo "tv_apk_url=${TV_APK_URL}" >> $GITHUB_OUTPUT
-          echo "tv_apk_name=${TV_APK_NAME}" >> $GITHUB_OUTPUT
-          echo "phone_apk_url=${PHONE_APK_URL}" >> $GITHUB_OUTPUT
-          echo "phone_apk_name=${PHONE_APK_NAME}" >> $GITHUB_OUTPUT
-          echo "Resolved: ${TV_APK_NAME} @ ${TV_APK_URL}"
-
-      - name: Update APK download links in index.html
-        env:
-          TV_APK_URL: ${{ steps.release_info.outputs.tv_apk_url }}
-          TV_APK_NAME: ${{ steps.release_info.outputs.tv_apk_name }}
-          PHONE_APK_URL: ${{ steps.release_info.outputs.phone_apk_url }}
-          PHONE_APK_NAME: ${{ steps.release_info.outputs.phone_apk_name }}
-        run: |
-          python3 - <<'PYEOF'
-          import os, re, pathlib
-
-          tv_apk_url    = os.environ["TV_APK_URL"]
-          tv_apk_name   = os.environ["TV_APK_NAME"]
-          phone_apk_url = os.environ["PHONE_APK_URL"]
-          phone_apk_name = os.environ["PHONE_APK_NAME"]
-
-          html = pathlib.Path("index.html").read_text(encoding="utf-8")
-
-          def patch_anchor(html, anchor_id, new_href, new_download):
-              """
-              Find <a> by id and update its href + download attributes,
-              regardless of attribute order in the tag.
-              """
-              def replacer(m):
-                  tag = m.group(0)
-                  # Update href value
-                  tag = re.sub(r'\bhref="[^"]*"', f'href="{new_href}"', tag)
-                  # Update download="..." if already set, else replace bare 'download'
-                  if re.search(r'\bdownload="[^"]*"', tag):
-                      tag = re.sub(r'\bdownload="[^"]*"', f'download="{new_download}"', tag)
-                  else:
-                      # Match only standalone 'download' attr (preceded by whitespace,
-                      # followed by whitespace or >) — avoids matching 'download-tv' etc.
-                      tag = re.sub(r'(?<=\s)download(?=[\s>])', f'download="{new_download}"', tag)
-                  return tag
-
-              # Lookahead confirms anchor has the target id; match the full opening tag
-              pattern = rf'<a\b(?=[^>]*\bid="{re.escape(anchor_id)}")[^>]*>'
-              return re.sub(pattern, replacer, html, flags=re.DOTALL)
-
-          html = patch_anchor(html, "download-tv",     tv_apk_url,    tv_apk_name)
-          html = patch_anchor(html, "download-mobile", phone_apk_url, phone_apk_name)
-
-          pathlib.Path("index.html").write_text(html, encoding="utf-8")
-          print(f"✅ Updated TV download link    → {tv_apk_name}")
-          print(f"✅ Updated Mobile download link → {phone_apk_name}")
-          PYEOF
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  # ══════════════════════════════════════════════════════════════════════
-  # CLEANUP: delete all failed workflow runs
-  # ══════════════════════════════════════════════════════════════════════
-  cleanup_failed_runs:
-    name: Delete Failed Workflow Runs
-    runs-on: ubuntu-latest
-    needs: [create_release]
-    if: always()
-    steps:
-      - name: Check for failed runs
-        id: check
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const owner = context.repo.owner;
-            const repo  = context.repo.repo;
-            let failedRuns = [];
-            let page = 1;
-            while (true) {
-              const { data } = await github.rest.actions.listWorkflowRunsForRepo({
-                owner,
-                repo,
-                status: 'failure',
-                per_page: 100,
-                page,
-              });
-              if (data.workflow_runs.length === 0) break;
-              failedRuns = failedRuns.concat(data.workflow_runs);
-              page++;
-            }
-            console.log(`Found ${failedRuns.length} failed run(s).`);
-            core.setOutput('count', failedRuns.length);
-            core.setOutput('run_ids', JSON.stringify(failedRuns.map(r => r.id)));
-
-      - name: Delete failed runs
-        if: steps.check.outputs.count != '0'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const owner   = context.repo.owner;
-            const repo    = context.repo.repo;
-            const runIds  = JSON.parse('${{ steps.check.outputs.run_ids }}');
-            const current = context.runId;
-            let deleted = 0;
-            let skipped = 0;
-            for (const id of runIds) {
-              if (id === current) {
-                console.log(`Skipping current run #${id}`);
-                skipped++;
-                continue;
-              }
-              try {
-                await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: id });
-                console.log(`✅ Deleted failed run #${id}`);
-                deleted++;
-              } catch (err) {
-                console.warn(`⚠️  Could not delete run #${id}: ${err.message}`);
-              }
-            }
-            console.log(`\nSummary: ${deleted} deleted, ${skipped} skipped (current run).`); 
