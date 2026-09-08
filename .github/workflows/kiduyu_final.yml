@@ -11,7 +11,7 @@ permissions:
   pages: write
   id-token: write
   actions: write
- 
+
 jobs:
   # ══════════════════════════════════════════════════════════════════════
   # PREPARE — compute tag + commit info once
@@ -23,7 +23,7 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
       title: ${{ steps.commit_info.outputs.title }}
       short_sha: ${{ steps.commit_info.outputs.short_sha }}
-      full_message: ${{ steps.commit_info.outputs.full_message }} 
+      full_message: ${{ steps.commit_info.outputs.full_message }}
       build_count: ${{ github.run_number }}
 
     steps:
@@ -530,4 +530,3 @@ jobs:
               } catch (err) {}
             }
           `
-
