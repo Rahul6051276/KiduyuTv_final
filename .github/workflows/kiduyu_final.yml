@@ -11,7 +11,7 @@ permissions:
   pages: write
   id-token: write
   actions: write
-
+ 
 jobs:
   # ══════════════════════════════════════════════════════════════════════
   # PREPARE — compute tag + commit info once
