@@ -135,7 +135,7 @@ jobs:
           echo "Version set to ${VERSION}"
 
       - name: Restore keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > kiduyutv_final
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/kiduyutv_final
 
       - name: Build ${{ matrix.flavor }} Release APK
         env:
